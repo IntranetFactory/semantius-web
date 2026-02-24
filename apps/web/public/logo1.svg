@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="60.392 61.106 160 140" width="160px" height="140px">
+  <polygon points="140.392 61.106 60.392 201.106 220.392 201.106" fill="white" style="stroke-width: 1;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -7.105427357601002e-15)"/>
+  <polygon points="140.392 61.106 60.392 201.106 220.392 201.106" fill="none" stroke="#003366" stroke-width="6" stroke-linejoin="round" stroke-linecap="round" style="stroke-width: 6;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -7.105427357601002e-15)"/>
+  <line x1="120.392" y1="96.106" x2="80.392" y2="166.106" stroke="white" stroke-width="6" stroke-linecap="butt" style="stroke-width: 6;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -7.105427357601002e-15)"/>
+  <line x1="105.392" y1="201.106" x2="175.392" y2="201.106" stroke="white" stroke-width="6" stroke-linecap="butt" style="stroke-width: 6;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -7.105427357601002e-15)"/>
+  <line x1="200.392" y1="166.106" x2="160.392" y2="96.106" stroke="white" stroke-width="6" stroke-linecap="butt" style="stroke-width: 6;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -7.105427357601002e-15)"/>
+  <circle cx="140.392" cy="154.436" r="34" style="stroke: rgb(0, 114, 229); paint-order: stroke; fill: rgb(134, 205, 255); stroke-width: 12px;" transform="matrix(0.9999999999999999, 0, 0, 0.9999999999999999, 0, -7.105427357601002e-15)"/>
+</svg>

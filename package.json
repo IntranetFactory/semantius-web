@@ -1,8 +1,8 @@
 {
-  "name": "agbr-test",
+  "name": "semantius-web",
   "private": true,
-  "version": "0.0.0",
-  "description": "Modern React monorepo with Vite, TypeScript, shadcn/ui, and agent-browser",
+  "version": "0.1.0",
+  "description": "web ui for semantius",
   "scripts": {
     "dev": "dotenvx run -- turbo dev",
     "build": "turbo build",

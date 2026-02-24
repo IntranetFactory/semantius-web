@@ -1,0 +1,32 @@
+import { Link } from '@tanstack/react-router'
+import { PanelLeft } from 'lucide-react'
+import { ThemeToggle } from '@/components/ThemeToggle'
+import { SidebarTrigger } from '@/components/ui/sidebar'
+
+export function Header() {
+
+  return (
+    <header className="sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex h-16 items-center px-4 gap-2">
+        <SidebarTrigger>
+          <PanelLeft className="h-5 w-5" />
+        </SidebarTrigger>
+        
+        <div className="flex items-center gap-2">
+          <Link to="/" className="flex items-center gap-2 md:hidden">
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
+              <span className="font-bold">S</span>
+            </div>
+            <span className="font-bold">Semantius UI</span>
+          </Link>
+        </div>
+
+        <div className="flex-1" />
+
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
+        </div>
+      </div>
+    </header>
+  )
+}

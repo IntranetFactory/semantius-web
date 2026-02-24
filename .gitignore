@@ -29,6 +29,9 @@ dist-ssr
 
 .dist
 .env.keys
+.env.*
+!.env.sample
+!.env.example
 
 # Workplace version tracking
 .workplace-version

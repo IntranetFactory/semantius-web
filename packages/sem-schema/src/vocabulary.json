@@ -1,0 +1,80 @@
+{
+  "$id": "https://semantius.com/meta/sem-schema/v1",
+  "$vocabulary": {
+    "https://json-schema.org/draft/2020-12/vocab/core": true,
+    "https://json-schema.org/draft/2020-12/vocab/applicator": true,
+    "https://json-schema.org/draft/2020-12/vocab/validation": true
+  },
+  "$dynamicAnchor": "meta",
+  "title": "Custom Schema Vocabulary",
+  "allOf": [
+    { "$ref": "https://json-schema.org/draft/2020-12/schema" }
+  ],
+  "type": ["object", "boolean"],
+  "properties": {
+    "format": {
+      "type": "string"
+    },
+    "inputMode": {
+      "description": "Determines the interaction state of a form field. When set to 'required', validates that values are not null/undefined/empty and shows asterisk in UI.",
+      "type": "string",
+      "enum": ["default", "required", "readonly", "disabled", "hidden"]
+    },
+    "precision": {
+      "description": "Number of decimal places allowed (0-4)",
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 4
+    },
+    "table": {
+      "description": "Database table metadata for schema-driven applications",
+      "type": "object",
+      "properties": {
+        "table_name": {
+          "type": "string",
+          "description": "Primary key - unique table identifier"
+        },
+        "singular": {
+          "type": "string",
+          "description": "Singular form of entity name"
+        },
+        "plural": {
+          "type": "string",
+          "description": "Plural form of entity name"
+        },
+        "singular_label": {
+          "type": "string",
+          "description": "Singular display label"
+        },
+        "plural_label": {
+          "type": "string",
+          "description": "Plural display label"
+        },
+        "icon_url": {
+          "type": "string",
+          "description": "URL to icon representing this entity"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description of the entity"
+        }
+      }
+    },
+    "grid": {
+      "description": "Grid display configuration for data presentation",
+      "type": "object",
+      "properties": {
+        "sortField": {
+          "type": "string",
+          "description": "Default field to sort by"
+        },
+        "sortOrder": {
+          "type": "string",
+          "enum": ["asc", "desc"],
+          "default": "asc",
+          "description": "Default sort order - ascending or descending"
+        }
+      }
+    }
+  }
+}

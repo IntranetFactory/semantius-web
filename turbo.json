@@ -1,8 +1,21 @@
 {
   "$schema": "https://turbo.build/schema.json",
   "globalDependencies": [
-    ".env", 
+    ".env",
     "**/.env.*local"
+  ],
+  "globalPassThroughEnv": [
+    "VITE_OAUTH_CLIENT_ID",
+    "VITE_OAUTH_AUTH_ENDPOINT",
+    "VITE_OAUTH_TOKEN_ENDPOINT",
+    "VITE_OAUTH_REDIRECT_URI",
+    "VITE_OAUTH_SCOPE",
+    "VITE_OAUTH_USERINFO_ENDPOINT",
+    "VITE_OAUTH_LOGOUT_ENDPOINT",
+    "VITE_OAUTH_AUDIENCE",
+    "VITE_API_BASE_URL",
+    "VITE_API_TYPE",
+    "VITE_SUPABASE_APIKEY"
   ],
   "tasks": {
     "build": {

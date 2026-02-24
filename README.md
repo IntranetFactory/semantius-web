@@ -1,22 +1,23 @@
-# level3-workplace
+# Semantius Web
 
-A template for a **Level 3 front-end coding agent workplace** — a production-grade React monorepo that provisions itself automatically for AI coding agents (Claude Code, GitHub Copilot) and human developers alike. The agent gets a real environment: encrypted secrets, browser automation, a build pipeline, and Cloudflare deployment — not a managed sandbox with guardrails.
-
-While tools like Lovable excel at rapid prototyping, they confine the agent to a managed sandbox and an opinionated stack. This workplace transitions you from "Vibe Coding" to "Agentic Engineering." It provides the agent with a raw, unconstrained environment where it can autonomously manage encrypted secrets, drive Playwright-powered browser automation, and orchestrate its own branch-based Preview Workers via the Cloudflare Wrangler CLI. Instead of a static preview, the agent creates a live, isolated testing ground for every task it tackles. You aren't just giving the agent a chat window; you're giving it a seat at the terminal with the full power of a production-grade CI/CD pipeline—where you own the stack and the agent owns the delivery.
+A production-ready React application with authentication, metadata-driven UI, and PostgREST data access — built on a monorepo that provisions itself automatically for AI coding agents and human developers.
 
 ## Stack
 
 - **Turborepo** — monorepo build orchestration
-- **Vite + React 19 + TypeScript** — front-end app
+- **Vite 7 + React 19 + TypeScript 5.9** — front-end app
 - **Tailwind CSS v4 + shadcn/ui** — styling and components
+- **TanStack Router / Query / Table / Form** — routing, data fetching, tables, forms
+- **react-oauth2-code-pkce** — OAuth2/OIDC with PKCE flow
+- **sem-schema** — custom JSON Schema vocabulary (validation + form rendering)
 - **pnpm workspaces** — package management
 - **dotenvx** — encrypted environment variables
 - **agent-browser** — browser automation and screenshot generation for AI agents
-- **Cloudflare (Wrangler)** — front-end deployment target
+- **Cloudflare Workers (Wrangler)** — deployment target
 
 ## Multi-Environment Support
 
-The workplace provisions itself via `workplace/setup.sh` (installs global deps, Playwright browsers, and project dependencies). It is idempotent — versioned so re-runs are skipped when already up to date.
+The workspace provisions itself via `workplace/setup.sh` (installs global deps, Playwright browsers, and project dependencies). It is idempotent — versioned so re-runs are skipped when already up to date.
 
 | Environment | How setup runs |
 |---|---|
@@ -24,8 +25,6 @@ The workplace provisions itself via `workplace/setup.sh` (installs global deps, 
 | Claude Code sandbox | `.claude/settings.json` hooks run `setup.sh` on `SessionStart` |
 | DevContainer | `postCreateCommand` in `.devcontainer/devcontainer.json` |
 | Human clone | `bash workplace/setup.sh` |
-
-> **Known limitation:** `agent-browser` currently fails in the Claude Code web sandbox. DevContainer and GitHub Copilot coding agent work correctly.
 
 ## Monorepo Structure
 
@@ -35,56 +34,27 @@ The workplace provisions itself via `workplace/setup.sh` (installs global deps, 
 ├── .devcontainer/                  # DevContainer configuration
 ├── .github/workflows/              # copilot-setup-steps.yml
 ├── apps/web/                       # Main React application
-│   ├── src/│   
+│   ├── src/
+│   │   ├── components/             # UI components, layout, forms, tables
+│   │   ├── contexts/               # Auth context
+│   │   ├── hooks/                  # Data fetching, auth, permissions
+│   │   ├── routes/                 # TanStack Router file-based routes
+│   │   ├── lib/                    # API client, utilities
+│   │   └── global.css              # Tailwind v4 config
+│   ├── scripts/genconfig.js        # Interactive OAuth config tool
 │   ├── wrangler.jsonc              # Cloudflare deployment config
 │   └── deploy-wrangler.sh
+├── packages/
+│   └── sem-schema/                 # Custom JSON Schema vocabulary
 ├── workplace/
-│   └── setup.sh                   # Unified setup script (versioned)
+│   └── setup.sh                    # Unified setup script (versioned)
 ├── turbo.json
 └── pnpm-workspace.yaml
 ```
 
-## Using as a Template
-
-When creating a new project from this template, the encrypted `.env` in the template repo was generated with a key you do not have. You need to generate your own key pair and re-encrypt your own secrets before the Copilot agent (or any other environment) can decrypt them.
-
-1. **Generate a new key:**
-
-   ```bash
-   dotenvx genkey
-   ```
-
-   This creates `.env.keys` containing your `DOTENV_PRIVATE_KEY` and writes the corresponding public key into `.env`.
-
-2. **Set your secrets:**
-
-   ```bash
-   dotenvx set CLOUDFLARE_API_TOKEN <your-token>
-   dotenvx set CLOUDFLARE_ACCOUNT_ID <your-account-id>
-   dotenvx set NOTIFY_WEBHOOK_URL <your-slack-or-compatible-webhook-url>   # optional
-   ```
-
-   Each value is encrypted into `.env` using the public key.
-
-3. **Commit the updated `.env`:**
-
-   ```bash
-   git add .env
-   git commit -m "chore: initialize encrypted secrets"
-   ```
-
-4. **Store the private key securely:**
-
-   Copy `DOTENV_PRIVATE_KEY` from `.env.keys` and add it to:
-   - **Actions secret** (Settings → Secrets and variables → Actions → `DOTENV_PRIVATE_KEY`) — required for CI.
-   - **Copilot environment secret** (Settings → Environments → copilot → `DOTENV_PRIVATE_KEY`) — required for the Copilot coding agent.
-   - A secure store (1Password, etc.) as a backup.
-
 ## Getting Started
 
 ### Human / local clone
-
-Clone the repo and then execute
 
 ```bash
 bash workplace/setup.sh
@@ -96,47 +66,79 @@ Open in VS Code and choose **Reopen in Container**. Setup runs automatically.
 
 ### GitHub Copilot coding agent
 
-The `copilot-setup-steps.yml` workflow runs setup before each agent session. The following one-time configuration is required in your GitHub repository settings:
+The `copilot-setup-steps.yml` workflow runs setup before each agent session. One-time configuration required:
 
 **Repository secrets** — `DOTENV_PRIVATE_KEY` must be added in two places:
 - **Actions** (Settings → Secrets and variables → Actions) — used by CI.
 - **Copilot environment** (Settings → Environments → copilot) — used by the Copilot coding agent.
 
-**Allowed domains** (Settings → Copilot → Policies, or your organisation's Copilot network policy):
+**Allowed domains** (Settings → Copilot → Policies):
 - `cloudflare.com`
 - `workers.dev`
-- If you use an external notifications webhook, add that domain as well.
+
+## Configure OAuth
+
+```bash
+pnpm --filter @semantius/frontend genconfig
+```
+
+This interactive tool offers two options:
+1. **Auto-configure from OIDC discovery endpoint** (recommended) — provide your well-known URL and the script fetches all endpoints automatically
+2. **Manual setup** — creates `.env` from template for manual editing
+
+The app validates configuration on startup and shows a friendly error page if credentials are missing or contain placeholder values.
+
+Common OIDC discovery URLs:
+- Auth0: `https://DOMAIN.auth0.com/.well-known/openid-configuration`
+- Keycloak: `https://HOST/realms/REALM/.well-known/openid-configuration`
+- Azure AD: `https://login.microsoftonline.com/TENANT/.well-known/openid-configuration`
+- Google: `https://accounts.google.com/.well-known/openid-configuration`
+
+> **Auth0 note:** Auth0 may return JWE (encrypted) tokens instead of JWT by default. PostgREST requires standard JWT. Fix: set signature algorithm to RS256 in your Auth0 app settings and ensure the API token format is JWT.
 
 ## Development
 
 ```bash
-pnpm dev                # start all apps
-pnpm build              # build all apps
-pnpm lint               # lint all apps
-pnpm preview:cloudflare # build & deploy to cloudflare
+pnpm dev                # Start all apps (Vite HMR at http://localhost:5173)
+pnpm build              # Build all apps
+pnpm lint               # Lint all apps
+pnpm test               # Run tests
+pnpm preview:wrangler   # Deploy to Cloudflare branch preview
 ```
-
-App available at `http://localhost:5173`.
 
 ## Environment Variables
 
-Secrets are managed with [dotenvx](https://dotenvx.com/). Unlike a typical `.env` workflow, the encrypted `.env` file is committed to the repo — values are encrypted with a public key so the file is safe in version control. The private decryption key lives in `.env.keys`, which is gitignored and must never be committed.
+Secrets are managed with [dotenvx](https://dotenvx.com/). The encrypted `.env` file is committed to the repo — values are encrypted with a public key so the file is safe in version control. The private decryption key lives in `.env.keys`, which is gitignored and must never be committed.
+
+### OAuth
+
+| Variable | Description |
+|---|---|
+| `VITE_OAUTH_CLIENT_ID` | OAuth client ID |
+| `VITE_OAUTH_AUTH_ENDPOINT` | Authorization endpoint |
+| `VITE_OAUTH_TOKEN_ENDPOINT` | Token endpoint |
+| `VITE_OAUTH_REDIRECT_URI` | Redirect URI (e.g., `http://localhost:5173`) |
+| `VITE_OAUTH_SCOPE` | OAuth scopes (e.g., `openid profile email`) |
+| `VITE_OAUTH_USERINFO_ENDPOINT` | OIDC userinfo endpoint |
+| `VITE_OAUTH_LOGOUT_ENDPOINT` | Logout endpoint |
+| `VITE_OAUTH_LOGOUT_REDIRECT` | Post-logout redirect URI |
+| `VITE_OAUTH_AUDIENCE` | API audience (required for Auth0) |
+
+### API
+
+| Variable | Description |
+|---|---|
+| `VITE_API_BASE_URL` | PostgREST API base URL |
+| `VITE_API_TYPE` | Optional — set to `"supabase"` if using Supabase |
+| `VITE_SUPABASE_APIKEY` | Supabase anon key (required when `VITE_API_TYPE=supabase`) |
+
+### Deployment
 
 | Variable | Required | Description |
 |---|---|---|
 | `CLOUDFLARE_API_TOKEN` | Yes | Cloudflare API token for Wrangler deployments |
 | `CLOUDFLARE_ACCOUNT_ID` | Yes | Cloudflare account ID |
-| `NOTIFY_WEBHOOK_URL` | No | Slack or Slack-compatible webhook URL (e.g. Discord) — when set, a notification with the preview URL is sent after each deploy via `workplace/message.sh` |
-
-**First-time setup:** `.env.local` lists the required variables with empty values. Copy it, fill in your secrets, then encrypt:
-
-```bash
-cp .env.local .env.local.mine    # or just edit .env.local directly
-# fill in real values, then:
-dotenvx encrypt
-```
-
-This writes the encrypted values into `.env` (committed) and stores the private key in `.env.keys` (gitignored). Keep `.env.keys` somewhere safe — 1Password, a CI secret, etc.
+| `NOTIFY_WEBHOOK_URL` | No | Slack or compatible webhook — sends preview URL after deploy |
 
 **Adding or rotating a secret:**
 
@@ -147,31 +149,41 @@ dotenvx set KEY value
 **Running with secrets decrypted** (dotenvx injects them at runtime):
 
 ```bash
-dotenvx run -- pnpm dev
+dotenvx run -- <command>
 ```
 
 ## Deployment
 
-The web app deploys to **Cloudflare Workers** via Wrangler. Requires `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` set in `.env`. After a successful deploy, `workplace/message.sh` sends a notification with the preview URL — set `NOTIFY_WEBHOOK_URL` to a Slack or Slack-compatible webhook (e.g. Discord) to enable this.
+The web app deploys to **Cloudflare Workers** via Wrangler.
 
-**Branch preview** (default — always generates a preview URL):
 ```bash
-pnpm --filter web preview:wrangler
+pnpm preview:wrangler
 ```
 
+Each branch gets its own preview URL, written to `.preview-url.md` at the repo root.
 
-Each branch gets its own preview URL on Cloudflare Workers. The URL is written to `.preview-url.md` at the repo root after deployment, so a human reviewer or `agent-browser` can pick it up without manual copy-paste — the agent can deploy, read the URL, open it in the browser, and verify the result autonomously.
+## Packages
+
+### sem-schema
+
+Custom JSON Schema vocabulary with additional validation features for form rendering and data validation. See [packages/sem-schema/README.md](packages/sem-schema/README.md) for full documentation.
+
+Key features:
+- Custom formats: `json`, `html`, `text` (plus all standard ajv-formats)
+- `inputMode` keyword: `required`, `readonly`, `disabled`, `hidden`, `default`
+- `precision` keyword for decimal place validation
+- Used by the form components to drive field rendering and validation
 
 ## Browser Automation (agent-browser)
 
 `agent-browser` provides headless browser control for AI agents — navigation, clicks, form fills, snapshots, and screenshots.
 
 ```bash
-agent-browser open http://localhost:5173
-agent-browser screenshot --full screenshots/welcome.png
-agent-browser snapshot
+agent-browser open <url>
+agent-browser snapshot                   # get accessibility tree with element refs
 agent-browser click @ref
-agent-browser fill @ref "text"
+agent-browser fill @ref "value"
+agent-browser screenshot --full <path>
 ```
 
 Skill documentation: `.agents/skills/agent-browser/SKILL.md`
