@@ -8,7 +8,7 @@
     "dev:supabase": "cross-env CI=true vite --mode supabase --host",
     "dev:neon": "cross-env CI=true vite --mode neon --host",
     "dev:cf": "cross-env CI=true vite --mode cf --host",
-    "build": "tsc -b && vite build",
+    "build": "vite build && tsc -b --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest",
