@@ -132,6 +132,5 @@ All paths relative to `apps/web/`.
 
 <!-- Append new entries at the top. Format: YYYY-MM-DD — description -->
 
-- 2026-02-24 — **"Bad authorization state" root cause & fix**: `react-oauth2-code-pkce` sets `loginInProgress=true` in localStorage (key `SC_production_loginInProgress`) when `login()` is called. If the user visits the app again before completing sign-in at the OIDC provider (e.g. opens the URL in a new tab, or goes back to it), the library sees `loginInProgress=true` but no `?code=` in the URL, raises "Bad authorization state", and clears storage. **Fix in `src/routes/login.tsx`**: the `useEffect` simply checks the URL — if neither `?code=` nor `?error` is present, it calls `login()`. After the library clears the stale state, `loginInProgress` becomes `false`, the effect re-runs, sees no code/error → calls `login()` → clean PKCE flow starts. No retry counters, no timers needed.
 
 

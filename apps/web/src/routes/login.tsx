@@ -26,25 +26,30 @@ function LoginComponent() {
       return
     }
 
-    if (loginInProgress) return
-
     const params = new URLSearchParams(window.location.search)
 
-    if (params.has('code')) {
-      // Returning from the identity provider with an auth code.
-      // The library's own useEffect checks loginInProgress and exchanges the code.
-      return
-    }
+    // Auth code present: the library exchanges it for tokens when loginInProgress=true.
+    // When loginInProgress=false the exchange has completed (token set → navigate above)
+    // or failed (error state will be shown by the error UI below).
+    if (params.has('code')) return
 
-    if (params.has('error') || params.has('error_description')) {
-      // The identity provider returned an explicit error — let the error UI handle it.
-      return
-    }
+    // Explicit error from the identity provider (e.g. ?error=access_denied).
+    // The library sets error state and clears loginInProgress when it sees this, so we
+    // return here — both before and after that happens — to avoid overwriting the error
+    // by restarting the login flow.
+    if (params.has('error') || params.has('error_description')) return
 
-    // No code and no OIDC error in the URL → start (or restart) login.
-    // This covers the normal first-visit case AND the "Bad authorization state" recovery:
-    // the library clears the stale loginInProgress flag before raising that error,
-    // so login() here starts a clean PKCE flow without any special-casing.
+    // No code and no IdP error in the URL.
+    // Guard: if login() was already called (loginInProgress=true), the browser is either
+    // still redirecting to the IdP, or the library is about to process a bad-auth-state
+    // (no code despite loginInProgress) and will clear loginInProgress before our next
+    // render, at which point this effect re-runs and falls through to login() below.
+    if (loginInProgress) return
+
+    // Start (or restart) a fresh login.
+    // This handles first visits and automatic recovery from "Bad authorization state":
+    // the library clears loginInProgress before raising that error, so login() here
+    // begins a clean PKCE flow without any special-casing.
     login()
   }, [token, login, loginInProgress, navigate])
 
@@ -61,9 +66,6 @@ function LoginComponent() {
   }
 
   if (error) {
-    // Shown for genuine OIDC errors returned in the redirect (e.g. ?error=access_denied).
-    // "Bad authorization state" should self-heal via the useEffect above and never reach
-    // here under normal conditions, but we keep this UI as a safety net.
     const isBadAuthState = error.includes('Bad authorization state')
     return (
       <div className="flex h-screen items-center justify-center">
