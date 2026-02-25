@@ -104,6 +104,20 @@ All verification screenshots **must** be saved to the `screenshots/` folder at t
 Filename format: `YYYYMMDDHHMMSS-<short-title>.png`
 Example: `20240315143022-checkout-flow.png`
 
+When referencing a screenshot in task results or comments, always include:
+
+- The filename/path
+- A short description of what the screenshot shows
+- A confidence score (0–100%) reflecting how well the screenshot demonstrates that the task requirements have been met
+
+Example result comment:
+
+```
+Screenshot: screenshots/20240315143022-checkout-flow.png
+Description: Cloudflare preview showing the completed checkout flow with all three steps visible and the confirm button enabled.
+Confidence: 92% — all acceptance criteria visible; minor responsive layout not tested on mobile.
+```
+
 ## Verification Workflow
 
 When asked to implement and verify a change:
