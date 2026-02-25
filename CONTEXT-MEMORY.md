@@ -39,6 +39,7 @@ Token endpoint: `https://test-oidc-server.ma532.workers.dev/getaccesstoken?user_
 - Default `redirectUri`: `${window.location.origin}/callback` (override with `VITE_OAUTH_REDIRECT_URI`).
 - **`loginInProgress`** is stored in **localStorage** (library default) — persists across tabs and sessions. The `/callback`-based architecture means stale state is harmless: `/login` always calls `logIn()` which resets it via `clearStorage()`.
 - **Must register `/callback` as allowed redirect URI** in your OAuth provider (Auth0, Keycloak, etc.).
+- **`useLayoutEffect` for `router.update()`** — `RouterContextUpdater` uses `useLayoutEffect` (not `useEffect`) to call `router.update()`. This prevents a race condition where `CallbackComponent`'s `useEffect` (navigate) fires before the router context is updated with the new token.
 
 ### OAuth / Auth Configuration
 
@@ -141,4 +142,4 @@ All paths relative to `apps/web/`.
 
 <!-- Append new entries at the top. Format: YYYY-MM-DD — description -->
 
-_No entries yet._
+- 2026-02-25 — **Login race condition fix**: `RouterContextUpdater` in `AuthContext.tsx` was using `useEffect` to call `router.update()`. In React, child effects run before parent effects, so `CallbackComponent`'s `useEffect` (which calls `navigate({ to: '/' })`) ran before the router context was updated with `isAuthenticated: true`. This caused `_app.tsx` `beforeLoad` to see an unauthenticated context and redirect to `/login` on the first attempt. Fixed by changing `useEffect` to `useLayoutEffect` for `router.update()` — layout effects run synchronously before paint and before any passive effects (`useEffect`), ensuring the context is always up-to-date before navigation fires.

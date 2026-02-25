@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useContext, useState, useRef, createContext } from 'react'
+import { type ReactNode, useEffect, useLayoutEffect, useContext, useState, useRef, createContext } from 'react'
 import { AuthProvider, AuthContext as OAuthContext } from 'react-oauth2-code-pkce'
 import type { IAuthContext } from 'react-oauth2-code-pkce'
 import { ConfigErrorPage } from '@/components/ConfigErrorPage'
@@ -141,8 +141,12 @@ function RouterContextUpdater({
   const [isAuthReady, setIsAuthReady] = useState(false)
   const fetchedTokenRef = useRef<string | null>(null)
   
-  // Update router context whenever token changes
-  useEffect(() => {
+  // Update router context synchronously before any child useEffect hooks run.
+  // useLayoutEffect fires before paint and before passive effects (useEffect),
+  // so the router context is always up-to-date when CallbackComponent's
+  // useEffect calls navigate() — preventing the race condition where
+  // _app.tsx's beforeLoad would see isAuthenticated=false on first login.
+  useLayoutEffect(() => {
     const isAuthenticated = !!token && !!tokenData && tokenData.exp * 1000 > Date.now()
     
     router.update({
