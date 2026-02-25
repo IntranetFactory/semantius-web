@@ -11,6 +11,8 @@ describe('Data Validation Tests', () => {
       
       expect(validateData('{"key": "value"}', schema).valid).toBe(true);
       expect(validateData('[]', schema).valid).toBe(true);
+      expect(validateData('["x","y"]', schema).valid).toBe(true);
+      expect(validateData('[1,2,3]', schema).valid).toBe(true);
       expect(validateData('123', schema).valid).toBe(true);
       expect(validateData('"string"', schema).valid).toBe(true);
     });
@@ -69,6 +71,49 @@ describe('Data Validation Tests', () => {
       expect(validateData('$sum(items.price)', schema).valid).toBe(true);
       expect(validateData('items[price > 10]', schema).valid).toBe(true);
       expect(validateData('', schema).valid).toBe(true);
+    });
+  });
+
+  describe('Format: reference', () => {
+    it('should validate integer values', () => {
+      const schema = { type: 'number', format: 'reference' };
+      
+      expect(validateData(1, schema).valid).toBe(true);
+      expect(validateData(0, schema).valid).toBe(true);
+      expect(validateData(-5, schema).valid).toBe(true);
+      expect(validateData(999999, schema).valid).toBe(true);
+    });
+
+    it('should reject non-integer numbers', () => {
+      const schema = { type: 'number', format: 'reference' };
+      
+      expect(validateData(1.5, schema).valid).toBe(false);
+      expect(validateData(0.1, schema).valid).toBe(false);
+      expect(validateData(3.14159, schema).valid).toBe(false);
+    });
+
+    it('should reject non-number values', () => {
+      const schema = { type: 'number', format: 'reference' };
+      
+      expect(validateData('123', schema).valid).toBe(false);
+      expect(validateData('1', schema).valid).toBe(false);
+      expect(validateData(null, schema).valid).toBe(false);
+      expect(validateData(undefined, schema).valid).toBe(false);
+      expect(validateData(true, schema).valid).toBe(false);
+    });
+
+    it('should work with inputMode required', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          userId: { type: 'number', format: 'reference', inputMode: 'required' }
+        }
+      };
+      
+      expect(validateData({ userId: 1 }, schema).valid).toBe(true);
+      expect(validateData({ userId: 0 }, schema).valid).toBe(true);
+      expect(validateData({ userId: null }, schema).valid).toBe(false);
+      expect(validateData({}, schema).valid).toBe(false);
     });
   });
 

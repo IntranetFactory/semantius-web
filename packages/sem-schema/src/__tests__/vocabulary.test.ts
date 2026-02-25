@@ -1015,4 +1015,66 @@ describe('Vocabulary Definition Tests', () => {
       expect(result.errors).toBeNull();
     });
   });
+
+  describe('Schema Validity - width keyword', () => {
+    it('should accept schema with width: s', () => {
+      const schema = { type: 'string', width: 's' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with width: m', () => {
+      const schema = { type: 'string', width: 'm' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with width: w', () => {
+      const schema = { type: 'string', width: 'w' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with width: ns', () => {
+      const schema = { type: 'string', width: 'ns' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with width: nm', () => {
+      const schema = { type: 'string', width: 'nm' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with width: nw', () => {
+      const schema = { type: 'string', width: 'nw' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should reject schema with invalid width value', () => {
+      const schema = { type: 'string', width: 'x' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors?.[0]?.message).toContain('width');
+      expect(result.errors?.[0]?.message).toContain('must be equal to one of the allowed values');
+    });
+
+    it('should reject schema with non-string width', () => {
+      const schema = { type: 'string', width: 2 };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors).toBeDefined();
+      expect(result.errors?.[0]?.message).toContain('width');
+      expect(result.errors?.[0]?.message).toContain('must be string');
+    });
+  });
 });

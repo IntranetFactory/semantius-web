@@ -45,7 +45,7 @@ describe('InputJson', () => {
     await screen.findByText(/Loading editor.../i)
     // Note: In test environment, the actual CodeMirror might not fully render
     // We just verify the component structure is correct
-    expect(container.querySelector('.space-y-2')).toBeTruthy()
+    expect(container.querySelector('.pt-2')).toBeTruthy()
   })
 
   it('should show required indicator when required', () => {
@@ -83,6 +83,7 @@ describe('InputJson', () => {
     expect(validatorFn('{invalid}')).toBe('must be valid JSON')
     expect(validatorFn('{"valid": "json"}')).toBeUndefined()
     expect(validatorFn('[1, 2, 3]')).toBeUndefined()
+    expect(validatorFn('["a","b"]')).toBeUndefined()
     expect(validatorFn('{incomplete')).toBe('must be valid JSON')
   })
 

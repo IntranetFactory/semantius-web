@@ -31,6 +31,6 @@ describe('InputHtml', () => {
     await screen.findByText(/Loading editor.../i)
     // Note: In test environment, the actual CodeMirror might not fully render
     // We just verify the component structure is correct
-    expect(container.querySelector('.space-y-2')).toBeTruthy()
+    expect(container.querySelector('.pt-2')).toBeTruthy()
   })
 })

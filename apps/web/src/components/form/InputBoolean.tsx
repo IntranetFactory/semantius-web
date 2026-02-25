@@ -33,8 +33,9 @@ export function InputBoolean({
   return (
     <form.Field name={name} validators={validators}>
       {(field: any) => (
-        <div className="space-y-2">
-          <div className="flex items-start space-x-3">
+        <div className="pt-2 space-y-1">
+          <FormLabel htmlFor={name} label={label} required={false} error={!!field.state.meta.errors?.[0]} />
+          <div className="flex items-start space-x-2">
             <Checkbox
               id={name}
               name={name}
@@ -47,10 +48,7 @@ export function InputBoolean({
               aria-invalid={!!field.state.meta.errors?.[0]}
               aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : description ? `${name}-description` : undefined}
             />
-            <div className="grid gap-1.5 leading-none">
-              <FormLabel htmlFor={name} label={label} required={false} error={!!field.state.meta.errors?.[0]} />
-              <FormDescription description={description} />
-            </div>
+            <FormDescription description={description} />
           </div>
           <FormError name={name} error={field.state.meta.errors?.[0]} />
         </div>

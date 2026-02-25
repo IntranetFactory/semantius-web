@@ -55,7 +55,7 @@ export function InputDateTime({
         }
 
         return (
-          <div className="space-y-2">
+          <div className="pt-2 space-y-1">
             <FormLabel htmlFor={name} label={label} required={required} error={!!field.state.meta.errors?.[0]} />
             <DateTimePicker
               date={dateValue}

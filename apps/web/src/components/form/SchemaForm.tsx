@@ -100,6 +100,26 @@ function validateField(value: any, fieldSchema: SchemaObject, fieldName: string)
   return undefined
 }
 
+/**
+ * Formats that default to wide (span-8) width
+ */
+const WIDE_FORMATS = new Set(['json', 'html', 'text', 'code', 'jsonata'])
+
+/**
+ * Map a width value to CSS grid column class names
+ */
+function getWidthClasses(width: string): string {
+  switch (width) {
+    case 's': return 'span-2'
+    case 'm': return 'span-4'
+    case 'w': return 'span-8'
+    case 'ns': return 'span-2 start-1'
+    case 'nm': return 'span-4 start-1'
+    case 'nw': return 'span-8 start-1'
+    default: return 'span-4'
+  }
+}
+
 export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }: SchemaFormProps) {
   // Generate initial value if not provided
   const defaultValue = initialValue && Object.keys(initialValue).length > 0
@@ -322,7 +342,7 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
             }
           }, 100)
         }}
-        className="space-y-6"
+        className="space-y-4"
       >
       {/* Display schema validation errors */}
       <form.Subscribe selector={(state) => [state.fieldMeta._schemaError?.errors]}>
@@ -375,52 +395,62 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
           )
         }}
       </form.Subscribe>
-      
-      {Object.entries(properties).map(([key, propSchema]) => {
-        if (typeof propSchema !== 'object') return null
 
-        const type = propSchema.type
-        const format = propSchema.format
-        const hasEnum = 'enum' in propSchema && Array.isArray((propSchema as any).enum)
-        const label = propSchema.title || key
-        const description = propSchema.description
+      <div className="grid-container">
+        <div className="grid-custom">
+          {Object.entries(properties).map(([key, propSchema]) => {
+            if (typeof propSchema !== 'object') return null
 
-        // Get inputMode from schema (defaults to 'default' if not specified)
-        let inputMode: 'default' | 'required' | 'readonly' | 'disabled' | 'hidden' = 
-          (propSchema as any).inputMode || 'default'
-        
-        // In create mode, skip fields with inputMode='readonly' or 'disabled'
-        if (formMode === 'create' && (inputMode === 'readonly' || inputMode === 'disabled')) {
-          return null
-        }
-        
-        // Form-level view mode overrides schema-level inputMode (except for hidden)
-        if (formMode === 'view' && inputMode !== 'hidden') {
-          inputMode = 'readonly'
-        }
+            const type = propSchema.type
+            const format = propSchema.format
+            const hasEnum = 'enum' in propSchema && Array.isArray((propSchema as any).enum)
+            const label = propSchema.title || key
+            const description = propSchema.description
 
-        // Use format if available, otherwise check for enum, otherwise use type as format
-        const controlKey = format || (hasEnum ? 'enum' : type) as string
-        const ControlComponent = controls[controlKey] || InputText
+            // Get inputMode from schema (defaults to 'default' if not specified)
+            let inputMode: 'default' | 'required' | 'readonly' | 'disabled' | 'hidden' = 
+              (propSchema as any).inputMode || 'default'
+            
+            // In create mode, skip fields with inputMode='readonly' or 'disabled'
+            if (formMode === 'create' && (inputMode === 'readonly' || inputMode === 'disabled')) {
+              return null
+            }
+            
+            // Form-level view mode overrides schema-level inputMode (except for hidden)
+            if (formMode === 'view' && inputMode !== 'hidden') {
+              inputMode = 'readonly'
+            }
 
-        // Skip validation for readonly, disabled, and hidden fields
-        const shouldValidate = inputMode === 'default' || inputMode === 'required'
+            // Use format if available, otherwise check for enum, otherwise use type as format
+            const controlKey = format || (hasEnum ? 'enum' : type) as string
+            const ControlComponent = controls[controlKey] || InputText
 
-        return (
-          <ControlComponent
-            key={key}
-            name={key}
-            label={label}
-            description={description}
-            inputMode={inputMode}
-            validators={shouldValidate ? {
-              // Only validate on submit, not on blur
-              // This prevents blur validation from canceling submit button clicks
-              onSubmit: ({ value }) => validateField(value, propSchema, key),
-            } : undefined}
-          />
-        )
-      })}
+            // Skip validation for readonly, disabled, and hidden fields
+            const shouldValidate = inputMode === 'default' || inputMode === 'required'
+
+            // Determine width: explicit width from schema, or default based on format
+            const schemaWidth = (propSchema as any).width
+            const effectiveWidth = schemaWidth || (format && WIDE_FORMATS.has(format as string) ? 'w' : 'm')
+            const widthClasses = getWidthClasses(effectiveWidth)
+
+            return (
+              <div key={key} className={widthClasses}>
+                <ControlComponent
+                  name={key}
+                  label={label}
+                  description={description}
+                  inputMode={inputMode}
+                  validators={shouldValidate ? {
+                    // Only validate on submit, not on blur
+                    // This prevents blur validation from canceling submit button clicks
+                    onSubmit: ({ value }) => validateField(value, propSchema, key),
+                  } : undefined}
+                />
+              </div>
+            )
+          })}
+        </div>
+      </div>
 
       {formMode !== 'view' && (
         <div className="flex gap-4">

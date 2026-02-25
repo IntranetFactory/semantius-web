@@ -52,15 +52,11 @@ function EnumFieldInner({
   // Get the actual value - prefer field.state.value, fallback to empty string
   const currentValue = field.state.value ?? ''
   
-  // Filter out empty strings from enum values to avoid Radix UI error
-  // Radix reserves empty string for "no selection" state
-  const validEnumValues = enumValues.filter((v: string) => v !== '')
-  
   // Only pass valid enum values to Select, otherwise undefined for placeholder
-  const selectValue = currentValue && validEnumValues.includes(currentValue) ? currentValue : undefined
+  const selectValue = currentValue && enumValues.includes(currentValue) ? currentValue : undefined
   
   return (
-    <div className="space-y-2">
+    <div className="pt-2 space-y-1">
       <FormLabel htmlFor={name} label={label} required={required} error={!!field.state.meta.errors?.[0]} />
       <Select
         // Key prop forces re-render when value changes - required for Radix UI Select with tanstack-form
@@ -87,10 +83,10 @@ function EnumFieldInner({
           aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
           onBlur={() => field.handleBlur()}
         >
-          <SelectValue placeholder={required ? "Select an option" : "Select an option (optional)"} />
+          <SelectValue placeholder="Select an option" />
         </SelectTrigger>
         <SelectContent>
-          {validEnumValues.map((value: string) => (
+          {enumValues.map((value: string) => (
             <SelectItem key={value} value={value}>
               {value}
             </SelectItem>

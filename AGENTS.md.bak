@@ -80,8 +80,6 @@ Branch previews deploy to Cloudflare Workers. After deployment, the preview URL 
 pnpm preview:wrangler   # deploy preview (run from repo root), writes URL to .preview-url.md
 ```
 
-> ⚠️ **If `.preview-url.md` does not exist after `pnpm preview:wrangler` completes, the deployment failed.** Writing that file is the final step of the command — its absence is a reliable failure signal. Do not proceed to browser verification or screenshots. Diagnose and fix the deployment error first.
-
 Read `.preview-url.md` to get the URL — do not guess or construct it manually.
 
 ## Browser Automation
@@ -142,24 +140,20 @@ cat .preview-url.md   # e.g. https://abc123.your-project.workers.dev
 
 ---
 
-## Pre-PR — COMPLETE THIS BEFORE report_progress
+## Pre-PR Checklist — COMPLETE THIS BEFORE report_progress
 
 > ❌ **Known failure mode:** Finishing the task and taking screenshots but submitting the PR without the preview URL or without screenshots embedded in the PR description body. Screenshots saved to disk do NOT count. They must be visible inline in the PR description using an absolute GitHub URL.
 
 > ❌ **Known failure mode:** Omitting the `CONTEXT-MEMORY.md` update status from the PR description. This section is mandatory on every PR, even when no update was made.
 
-> ❌ **Known failure mode:** Running `pnpm preview:wrangler` and proceeding as if deployment succeeded when `.preview-url.md` was not created. A missing file means the build or deploy failed — not that the URL needs to be constructed manually. Stop and fix the error before continuing.
+Before calling `report_progress`, verify every item below. **If any item is unchecked, fix it before proceeding.**
 
-Before calling `report_progress`, confirm all of the following are true:
-
-- You have run `cat .preview-url.md` and have the full Cloudflare URL in hand.
-- The full preview URL is pasted as a bare URL in the PR description (not hidden behind link text).
-- At least one screenshot was taken from the Cloudflare preview URL (not localhost).
-- That screenshot is saved under `screenshots/` with the correct filename format.
-- That screenshot is embedded in the PR description using an absolute `raw.githubusercontent.com` URL pointing to this repo and the current branch.
-- The PR description includes the `CONTEXT-MEMORY.md` section with update status and a reason.
-
-If any of the above is not true, fix it before proceeding. Do not call `report_progress` with unresolved items.
+- [ ] I have run `cat .preview-url.md` and have the full Cloudflare URL in hand
+- [ ] The full preview URL is pasted as a **bare URL** in the PR description (not hidden behind link text)
+- [ ] At least one screenshot was taken from the Cloudflare preview URL (not localhost)
+- [ ] That screenshot is saved under `screenshots/` with the correct filename format
+- [ ] That screenshot is embedded in the PR description using an absolute `raw.githubusercontent.com` URL pointing to **this repo and the current branch**
+- [ ] The PR description includes the `CONTEXT-MEMORY.md` section with update status **and a reason**
 
 ---
 

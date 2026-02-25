@@ -37,7 +37,7 @@ export function InputHtml({
   return (
     <form.Field name={name} validators={validators}>
       {(field: any) => (
-        <div className="space-y-2">
+        <div className="pt-2 space-y-1">
           <FormLabel htmlFor={name} label={label} required={required} error={!!field.state.meta.errors?.[0]} />
           <div className={`border rounded-md overflow-hidden ${field.state.meta.errors?.[0] ? 'border-destructive' : 'border-input'}`}>
             <Suspense fallback={<div className="p-4 text-muted-foreground">Loading editor...</div>}>
