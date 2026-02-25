@@ -8,7 +8,6 @@ import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
 import { buildPostgRESTSelect } from '@/lib/apiClient'
 import {
   type SortingState,
-  type ColumnFiltersState,
   type Updater,
   type PaginationState,
 } from '@tanstack/react-table'
@@ -28,7 +27,7 @@ import { DataTableToolbarSection } from '@/components/niko-table/components/data
 import { DataTableColumnHeader } from '@/components/niko-table/components/data-table-column-header'
 import { DataTableColumnTitle } from '@/components/niko-table/components/data-table-column-title'
 import { DataTableColumnSortMenu } from '@/components/niko-table/components/data-table-column-sort'
-import { FILTER_VARIANTS, type FilterVariant } from '@/components/niko-table/lib/constants'
+import { FILTER_VARIANTS, JOIN_OPERATORS, type FilterVariant } from '@/components/niko-table/lib/constants'
 import type { DataTableColumnDef, ExtendedColumnFilter } from '@/components/niko-table/types'
 import {
   DropdownMenu,
@@ -48,6 +47,7 @@ import {
 } from 'lucide-react'
 
 type RecordType = Record<string, unknown>
+type PlainFilter = Omit<ExtendedColumnFilter<RecordType>, 'filterId'>
 
 export interface DataTableViewProps {
   metadata: EntityMetadata
@@ -75,6 +75,125 @@ function getFilterVariant(property: {
   return FILTER_VARIANTS.TEXT
 }
 
+// Get text columns suitable for a global OR-search (ilike across all text fields)
+function getTextColumnsForSearch(metadata: EntityMetadata, excludeColumns: string[]): string[] {
+  if (!metadata.properties) return []
+  return Object.entries(metadata.properties)
+    .filter(([key, prop]) => {
+      if (key.startsWith('_') || key.endsWith('_at')) return false
+      if (excludeColumns.includes(key)) return false
+      if (prop.reference_table) return false // FK ID columns are not human-searchable
+      const type = Array.isArray(prop.type) ? prop.type[0] : prop.type
+      return type === 'string' || type === 'text' ||
+             (!type && !prop.enum && type !== 'integer' && type !== 'number' && type !== 'boolean')
+    })
+    .map(([key]) => key)
+}
+
+// Convert one ExtendedColumnFilter to one or more PostgREST AND query parameters.
+// Returns an array because 'between' requires two parameters.
+function filterToPostgRESTParams(filter: PlainFilter): string[] {
+  const col = filter.id as string
+  const val = filter.value
+  const op = filter.operator
+
+  if (
+    (val === undefined || val === null || val === '' ||
+      (Array.isArray(val) && val.length === 0)) &&
+    op !== 'empty' && op !== 'not.empty'
+  ) return []
+
+  const strVal = Array.isArray(val) ? (val[0] ?? '') : (val ?? '')
+
+  switch (op) {
+    case 'ilike':     return [`${col}=ilike.*${strVal}*`]
+    case 'not.ilike': return [`${col}=not.ilike.*${strVal}*`]
+    case 'eq':        return strVal !== '' ? [`${col}=eq.${strVal}`] : []
+    case 'neq':       return strVal !== '' ? [`${col}=neq.${strVal}`] : []
+    case 'in': {
+      const vals = (Array.isArray(val) ? val : String(val).split(',')).filter(v => v !== '')
+      return vals.length > 0 ? [`${col}=in.(${vals.join(',')})`] : []
+    }
+    case 'not.in': {
+      const vals = (Array.isArray(val) ? val : String(val).split(',')).filter(v => v !== '')
+      return vals.length > 0 ? [`${col}=not.in.(${vals.join(',')})`] : []
+    }
+    case 'empty':     return [`${col}=is.null`]
+    case 'not.empty': return [`${col}=not.is.null`]
+    case 'lt':        return strVal !== '' ? [`${col}=lt.${strVal}`] : []
+    case 'lte':       return strVal !== '' ? [`${col}=lte.${strVal}`] : []
+    case 'gt':        return strVal !== '' ? [`${col}=gt.${strVal}`] : []
+    case 'gte':       return strVal !== '' ? [`${col}=gte.${strVal}`] : []
+    case 'between': {
+      const arr = Array.isArray(val) ? val : []
+      const result: string[] = []
+      if (arr[0] !== undefined && arr[0] !== '') result.push(`${col}=gte.${arr[0]}`)
+      if (arr[1] !== undefined && arr[1] !== '') result.push(`${col}=lte.${arr[1]}`)
+      return result
+    }
+    default: return []
+  }
+}
+
+// Convert one filter to PostgREST dot-notation (for use inside or=(...))
+function filterToORCondition(filter: PlainFilter): string | null {
+  const col = filter.id as string
+  const val = filter.value
+  const op = filter.operator
+
+  if (
+    (val === undefined || val === null || val === '' ||
+      (Array.isArray(val) && val.length === 0)) &&
+    op !== 'empty' && op !== 'not.empty'
+  ) return null
+
+  const strVal = Array.isArray(val) ? (val[0] ?? '') : (val ?? '')
+
+  switch (op) {
+    case 'ilike':     return `${col}.ilike.*${strVal}*`
+    case 'not.ilike': return `${col}.not.ilike.*${strVal}*`
+    case 'eq':        return strVal !== '' ? `${col}.eq.${strVal}` : null
+    case 'neq':       return strVal !== '' ? `${col}.neq.${strVal}` : null
+    case 'in': {
+      const vals = (Array.isArray(val) ? val : String(val).split(',')).filter(v => v !== '')
+      return vals.length > 0 ? `${col}.in.(${vals.join(',')})` : null
+    }
+    case 'lt':        return strVal !== '' ? `${col}.lt.${strVal}` : null
+    case 'lte':       return strVal !== '' ? `${col}.lte.${strVal}` : null
+    case 'gt':        return strVal !== '' ? `${col}.gt.${strVal}` : null
+    case 'gte':       return strVal !== '' ? `${col}.gte.${strVal}` : null
+    case 'empty':     return `${col}.is.null`
+    case 'not.empty': return `${col}.not.is.null`
+    default: return null
+  }
+}
+
+// Deserialize filters from URL JSON string, regenerating filterId deterministically.
+// TanStack Router stores string search params as JSON-encoded strings (double-encoded),
+// so we unwrap one layer if needed.
+function parseFiltersFromURL(filtersParam: string | undefined): ExtendedColumnFilter<RecordType>[] {
+  if (!filtersParam) return []
+  try {
+    let parsed = JSON.parse(filtersParam)
+    // TanStack Router may have double-encoded the value: unwrap if it's still a string
+    if (typeof parsed === 'string') parsed = JSON.parse(parsed)
+    if (!Array.isArray(parsed)) return []
+    return (parsed as PlainFilter[]).map((f, i) => ({
+      ...f,
+      filterId: `url-filter-${f.id as string}-${f.operator}-${i}`,
+    }))
+  } catch {
+    return []
+  }
+}
+
+// Serialize filters for URL (strip filterId to keep URLs short)
+function serializeFiltersForURL(filters: ExtendedColumnFilter<RecordType>[]): string | undefined {
+  if (filters.length === 0) return undefined
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  return JSON.stringify(filters.map(({ filterId: _id, ...rest }) => rest))
+}
+
 export function DataTableView({
   metadata,
   onRowClick,
@@ -97,15 +216,16 @@ export function DataTableView({
   const primaryKeyColumn = tableMetadata.id_column
   const displayColumn = tableMetadata.label_column
 
-  // --- URL search params ---
+  // --- URL search params (read-only, truth comes from our state) ---
   const searchParams = useSearch({
     strict: false,
     select: (search) => ({
-      page: (search as { page?: number }).page,
-      pageSize: (search as { pageSize?: number }).pageSize,
-      sortBy: (search as { sortBy?: string }).sortBy,
+      page:      (search as { page?: number }).page,
+      pageSize:  (search as { pageSize?: number }).pageSize,
+      sortBy:    (search as { sortBy?: string }).sortBy,
       sortOrder: (search as { sortOrder?: 'asc' | 'desc' }).sortOrder,
-      search: (search as { search?: string }).search,
+      search:    (search as { search?: string }).search,
+      filters:   (search as { filters?: string }).filters,
     }),
     structuralSharing: true,
   })
@@ -119,92 +239,125 @@ export function DataTableView({
     return 10
   }
 
-  // --- Controlled pagination state (synced with URL) ---
+  // --- Controlled state: all owned here, synced to URL ---
   const [pagination, setPaginationState] = useState<PaginationState>(() => ({
     pageIndex: searchParams.page ? searchParams.page - 1 : 0,
-    pageSize: searchParams.pageSize || getDefaultPageSize(),
+    pageSize:  searchParams.pageSize || getDefaultPageSize(),
   }))
 
-  // --- Controlled sorting state (synced with URL) ---
   const [sorting, setSortingState] = useState<SortingState>(() => {
-    const sortByCol = searchParams.sortBy
-    const colExists = sortByCol && metadata.properties?.[sortByCol]
-    return colExists
-      ? [{ id: sortByCol, desc: searchParams.sortOrder === 'desc' }]
+    const col = searchParams.sortBy
+    const exists = col && metadata.properties?.[col]
+    return exists
+      ? [{ id: col, desc: searchParams.sortOrder === 'desc' }]
       : [{ id: primaryKeyColumn, desc: true }]
   })
 
-  // --- Global search state (synced with URL) ---
-  const [globalFilter, setGlobalFilterState] = useState<string>(
-    searchParams.search || ''
+  // extFilters = all niko-table filter rows (AND + OR), server-side, in URL
+  const [extFilters, setExtFilters] = useState<ExtendedColumnFilter<RecordType>[]>(
+    () => parseFiltersFromURL(searchParams.filters)
   )
 
-  // --- Column filters (client-side, NOT synced to URL for simplicity) ---
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
+  // searchText = global search box, server-side (or= ilike across text cols), in URL
+  const [searchText, setSearchText] = useState<string>(searchParams.search || '')
 
-  // Reset table state when navigating to a different table
+  // Reset state when the underlying table changes (navigation between routes)
   useEffect(() => {
     setPaginationState({
       pageIndex: searchParams.page ? searchParams.page - 1 : 0,
-      pageSize: searchParams.pageSize || getDefaultPageSize(),
+      pageSize:  searchParams.pageSize || getDefaultPageSize(),
     })
-    const sortByCol = searchParams.sortBy
-    const colExists = sortByCol && metadata.properties?.[sortByCol]
+    const col = searchParams.sortBy
+    const exists = col && metadata.properties?.[col]
     setSortingState(
-      colExists
-        ? [{ id: sortByCol, desc: searchParams.sortOrder === 'desc' }]
+      exists
+        ? [{ id: col, desc: searchParams.sortOrder === 'desc' }]
         : [{ id: primaryKeyColumn, desc: true }]
     )
-    setGlobalFilterState(searchParams.search || '')
-  }, [tableName]) // only re-run when the table changes
+    setExtFilters(parseFiltersFromURL(searchParams.filters))
+    setSearchText(searchParams.search || '')
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [tableName])
 
-  // Sync URL when pagination / sorting / search change
+  // --- Sync ALL state to URL whenever any piece changes ---
   useEffect(() => {
-    const currentPage = searchParams.page || 1
-    const currentPageSize = searchParams.pageSize || 10
-    const currentSortBy = searchParams.sortBy
-    const currentSortOrder = searchParams.sortOrder || 'asc'
-    const currentSearch = searchParams.search || ''
-
-    const targetPage = pagination.pageIndex + 1
-    const targetPageSize = pagination.pageSize
-    const targetSortBy = sorting[0]?.id
+    const targetPage      = pagination.pageIndex + 1
+    const targetPageSize  = pagination.pageSize
+    const targetSortBy    = sorting[0]?.id
     const targetSortOrder = sorting[0]?.desc ? 'desc' : 'asc'
-    const targetSearch = globalFilter
+    const targetSearch    = searchText || undefined
+    const targetFilters   = serializeFiltersForURL(extFilters)
+
+    const currentPage      = searchParams.page || 1
+    const currentPageSize  = searchParams.pageSize || 10
+    const currentSortBy    = searchParams.sortBy
+    const currentSortOrder = searchParams.sortOrder || 'asc'
+    const currentSearch    = searchParams.search
+    const currentFilters   = searchParams.filters
 
     if (
-      currentPage === targetPage &&
-      currentPageSize === targetPageSize &&
-      currentSortBy === targetSortBy &&
+      currentPage      === targetPage      &&
+      currentPageSize  === targetPageSize  &&
+      currentSortBy    === targetSortBy    &&
       currentSortOrder === targetSortOrder &&
-      currentSearch === targetSearch
+      currentSearch    === targetSearch    &&
+      currentFilters   === targetFilters
     ) return
 
     navigate({
       search: (prev: unknown) => ({
         ...(prev as object),
-        page: targetPage,
+        page:     targetPage,
         pageSize: targetPageSize,
-        ...(targetSortBy ? { sortBy: targetSortBy, sortOrder: targetSortOrder } : {}),
-        ...(targetSearch ? { search: targetSearch } : {}),
+        ...(targetSortBy    ? { sortBy: targetSortBy, sortOrder: targetSortOrder } : { sortBy: undefined, sortOrder: undefined }),
+        ...(targetSearch    ? { search:  targetSearch  } : { search:  undefined }),
+        ...(targetFilters   ? { filters: targetFilters } : { filters: undefined }),
       }),
       replace: true,
       resetScroll: false,
     } as Parameters<typeof navigate>[0])
-  }, [pagination.pageIndex, pagination.pageSize, sorting, globalFilter])
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pagination.pageIndex, pagination.pageSize, sorting, searchText, extFilters])
 
-  // --- Build PostgREST query ---
+  // --- Build the PostgREST query (every state change triggers a new API call) ---
   const query = useMemo(() => {
     const params: string[] = []
-    const selectClause = buildPostgRESTSelect(metadata)
-    params.push(`select=${selectClause}`)
+
+    params.push(`select=${buildPostgRESTSelect(metadata)}`)
     params.push(`limit=${pagination.pageSize}`)
     params.push(`offset=${pagination.pageIndex * pagination.pageSize}`)
+
     if (sorting.length > 0) {
       params.push(`order=${sorting.map(s => `${s.id}.${s.desc ? 'desc' : 'asc'}`).join(',')}`)
     }
+
+    // AND filters from filter menu
+    const andFilters = extFilters.filter(
+      f => !f.joinOperator || f.joinOperator === JOIN_OPERATORS.AND
+    )
+    for (const f of andFilters) {
+      params.push(...filterToPostgRESTParams(f))
+    }
+
+    // OR filters from filter menu → PostgREST or=(...)
+    const orFilters = extFilters.filter(f => f.joinOperator === JOIN_OPERATORS.OR)
+    if (orFilters.length > 0) {
+      const conditions = orFilters.map(filterToORCondition).filter(Boolean) as string[]
+      if (conditions.length > 0) params.push(`or=(${conditions.join(',')})`)
+    }
+
+    // Global search box → OR ilike across all text columns
+    const trimmedSearch = searchText.trim()
+    if (trimmedSearch) {
+      const textCols = getTextColumnsForSearch(metadata, excludeColumns)
+      if (textCols.length > 0) {
+        const conditions = textCols.map(col => `${col}.ilike.*${trimmedSearch}*`)
+        params.push(`or=(${conditions.join(',')})`)
+      }
+    }
+
     return params.join('&')
-  }, [pagination.pageIndex, pagination.pageSize, sorting, metadata])
+  }, [pagination.pageIndex, pagination.pageSize, sorting, extFilters, searchText, metadata, excludeColumns])
 
   const { data, totalCount, isLoading, error, refetch } = useTable<RecordType>(tableName, {
     query,
@@ -222,7 +375,7 @@ export function DataTableView({
 
   const deleteConfirm = useConfirmDelete(tableName, refetch, primaryKeyColumn)
 
-  // --- Pagination change handler ---
+  // --- Pagination change: from niko-table pagination component ---
   const handlePaginationChange = useCallback(
     (updater: Updater<PaginationState>) => {
       setPaginationState(prev =>
@@ -232,12 +385,11 @@ export function DataTableView({
     []
   )
 
-  // --- Sorting change handler ---
+  // --- Sorting change: resets to page 0 ---
   const handleSortingChange = useCallback(
     (updater: Updater<SortingState>) => {
       setSortingState(prev => {
         const next = typeof updater === 'function' ? updater(prev) : updater
-        // Reset to page 0 when sort changes
         setPaginationState(p => ({ ...p, pageIndex: 0 }))
         return next
       })
@@ -245,11 +397,18 @@ export function DataTableView({
     []
   )
 
-  // --- Global filter change handler ---
-  const handleGlobalFilterChange = useCallback((value: string | object) => {
-    const strValue = typeof value === 'string' ? value : ''
-    setGlobalFilterState(strValue)
-    // Reset to page 0 when search changes
+  // --- Controlled filter change from DataTableFilterMenu ---
+  const handleFiltersChange = useCallback(
+    (filters: ExtendedColumnFilter<RecordType>[] | null) => {
+      setExtFilters(filters ?? [])
+      setPaginationState(p => ({ ...p, pageIndex: 0 }))
+    },
+    []
+  )
+
+  // --- Controlled search change from DataTableSearchFilter ---
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchText(value)
     setPaginationState(p => ({ ...p, pageIndex: 0 }))
   }, [])
 
@@ -266,7 +425,6 @@ export function DataTableView({
       const variant = getFilterVariant(property)
       const columnTitle = property.title || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
-      // Build options for enum / reference fields
       const options = property.enum
         ? property.enum.map(v => ({ label: v, value: v }))
         : undefined
@@ -288,7 +446,6 @@ export function DataTableView({
         cell: ({ row }) => {
           const value = row.original[key]
 
-          // Foreign key reference - show label from _label embedded field
           if (property.reference_table && property.reference_table_label_column) {
             const labelKey = `${key}_label`
             const embedded = row.original[labelKey] as Record<string, unknown> | undefined
@@ -389,20 +546,10 @@ export function DataTableView({
     return cols
   }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn])
 
-  // Combine external filters (URL-based sorting/pagination) with column filters from niko-table
-  const handleColumnFiltersChange = useCallback(
-    (updater: Updater<ColumnFiltersState>) => {
-      setColumnFilters(prev =>
-        typeof updater === 'function' ? updater(prev) : updater
-      )
-    },
-    []
-  )
-
   const tableData = useMemo(() => data ?? [], [data])
 
-  // Show empty state only on first page with no data
-  if (!isLoading && tableData.length === 0 && pagination.pageIndex === 0 && !globalFilter && columnFilters.length === 0) {
+  // Show empty state when first page is empty with no active search/filters
+  if (!isLoading && tableData.length === 0 && pagination.pageIndex === 0 && !searchText && extFilters.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
         {_emptyIcon || <div className="h-12 w-12 mb-2" />}
@@ -420,17 +567,13 @@ export function DataTableView({
         state={{
           pagination,
           sorting,
-          globalFilter,
-          columnFilters,
         }}
         onPaginationChange={handlePaginationChange}
         onSortingChange={handleSortingChange}
-        onGlobalFilterChange={handleGlobalFilterChange}
-        onColumnFiltersChange={handleColumnFiltersChange}
         config={{
           manualPagination: true,
           manualSorting: true,
-          manualFiltering: false,
+          manualFiltering: true,
           enablePagination: true,
           enableFilters: true,
           enableSorting: true,
@@ -440,11 +583,18 @@ export function DataTableView({
         {/* Toolbar */}
         <DataTableToolbarSection className="justify-between">
           <div className="flex gap-2">
-            <DataTableSearchFilter placeholder={`Search ${tableMetadata.plural_label?.toLowerCase() || 'records'}...`} />
+            <DataTableSearchFilter
+              placeholder={`Search ${tableMetadata.plural_label?.toLowerCase() || 'records'}...`}
+              value={searchText}
+              onChange={handleSearchChange}
+            />
           </div>
           <div className="flex gap-2">
             <DataTableSortMenu />
-            <DataTableFilterMenu />
+            <DataTableFilterMenu
+              filters={extFilters}
+              onFiltersChange={handleFiltersChange}
+            />
             <DataTableViewMenu />
           </div>
         </DataTableToolbarSection>
