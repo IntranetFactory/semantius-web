@@ -474,7 +474,7 @@ export function DataTableView({
         const record = row.original
         const handleOpenRecord = (e: React.MouseEvent) => {
           e.stopPropagation()
-          const useModal = window.innerWidth > 900 && fieldCount > 10
+          const useModal = window.innerWidth > 900 && fieldCount >= 10
           if (useModal && onEditModal) {
             onEditModal(record)
           } else {
