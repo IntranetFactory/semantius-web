@@ -20,10 +20,10 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const routerState = useRouterState()
   const [modalMode, setModalMode] = useState<'edit' | 'create' | 'view' | null>(null)
   const [modalRecord, setModalRecord] = useState<RecordType | undefined>(undefined)
-  
+
   // Extract primary key column name from metadata (source of truth)
   const idColumn = metadata.table?.id_column || 'id'
-  
+
   // Check if user can edit - call hook unconditionally, then check if permission is required
   const hasEditPermission = useUserHasPermission(
     (metadata.table as { edit_permission?: string | null })?.edit_permission || ''
@@ -39,12 +39,12 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const module_name = pathParts[0] || ''
   const table_name = pathParts[1] || ''
   const view_name = `/${module_name}/${table_name}`
-  
+
   const isNewMode = pathname === `${view_name}/new`
   const editMatch = pathname.match(new RegExp(`^${view_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\/([^/]+)\/edit$`))
   const viewMatchResult = pathname.match(new RegExp(`^${view_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\/([^/]+)$`))
   const viewMatch = viewMatchResult && !editMatch ? viewMatchResult : null
-  
+
   const isEditMode = !!editMatch
   const recordId = editMatch?.[1] || viewMatch?.[1]
   const isOpen = isNewMode || !!recordId
@@ -85,7 +85,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {metadata.table?.plural_label || 'Records'}
+            {metadata.table?.plural_label || 'Records'} Manager
           </h1>
           <p className="text-muted-foreground">
             {metadata.table?.description || 'Manage records'}
@@ -102,7 +102,6 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
       </div>
 
       <TableView
-        key={metadata.table?.table_name}
         metadata={metadata}
         onRowClick={handleRowClick}
         onEdit={handleEdit}
@@ -119,8 +118,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         <SheetContent className="w-full sm:max-w-[540px] overflow-y-auto">
           <SheetHeader>
             <SheetTitle>
-              {isNewMode 
-                ? `New ${metadata.table?.singular_label || 'Record'}` 
+              {isNewMode
+                ? `New ${metadata.table?.singular_label || 'Record'}`
                 : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
             </SheetTitle>
           </SheetHeader>
