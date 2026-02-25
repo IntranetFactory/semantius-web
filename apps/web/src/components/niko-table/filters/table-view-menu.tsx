@@ -58,7 +58,8 @@ export function TableViewMenu<TData>({
           column =>
             typeof column.accessorFn !== "undefined" && column.getCanHide(),
         ),
-    [table],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [table, table.options.columns],
   )
 
   return (

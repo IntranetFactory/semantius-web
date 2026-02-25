@@ -2,7 +2,7 @@ import { useNavigate, useRouterState } from '@tanstack/react-router'
 import { type ViewProps } from "@/types/metadata"
 import { useTable } from '@/hooks/useTable'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
-import { TableView } from '@/components/table-view/TableView'
+import { DataTableView } from '@/components/data-table-view/DataTableView'
 import {
   Dialog,
   DialogContent,
@@ -101,7 +101,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         )}
       </div>
 
-      <TableView
+      <DataTableView
         metadata={metadata}
         onRowClick={handleRowClick}
         onEdit={handleEdit}
