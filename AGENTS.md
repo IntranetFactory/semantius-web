@@ -15,9 +15,8 @@ If you make a mistake, encounter a bug that takes more than one attempt to fix, 
     - **Specific file** → add a comment in that file explaining the _why_. Do NOT duplicate it in `CONTEXT-MEMORY.md`. If the fix is already self-evident from well-commented code, no further recording is needed.
     - **Cross-cutting / architectural / no single file home** → record in `CONTEXT-MEMORY.md`, but only if the knowledge represents a reusable principle that a future session would otherwise get wrong. Do not record one-off fixes.
     - **Rule of thumb:** if the knowledge would go stale or become wrong when the relevant code is refactored, it belongs in the code — not in a memory file.
-3.  **Record:** If `CONTEXT-MEMORY.md` is the right place (step 2), update it with a "Lesson Learned" or "Requirement."
+3.  **Record:** If `CONTEXT-MEMORY.md` is the right place (step 2), update it by integrating the knowledge into the relevant existing section, grouped by topic. **Do not append chronologically. Do not add a "discovery log" or dated entries. Edit the document so it reads as a current, structured reference — not a history.**
 4.  **Prevent:** Formulate a rule for yourself to prevent this specific issue in the future.
-5.  **Format:** Use a simple list: "- [NEW] Always run `npm test` before committing."
 
 ## Workspace
 
@@ -105,20 +104,6 @@ All verification screenshots **must** be saved to the `screenshots/` folder at t
 Filename format: `YYYYMMDDHHMMSS-<short-title>.png`
 Example: `20240315143022-checkout-flow.png`
 
-When referencing a screenshot in task results or comments, always include:
-
-- The filename/path
-- A short description of what the screenshot shows
-- A confidence score (0–100%) reflecting how well the screenshot demonstrates that the task requirements have been met
-
-Example result comment:
-
-```
-Screenshot: screenshots/20240315143022-checkout-flow.png
-Description: Cloudflare preview showing the completed checkout flow with all three steps visible and the confirm button enabled.
-Confidence: 92% — all acceptance criteria visible; minor responsive layout not tested on mobile.
-```
-
 ## Verification Workflow
 
 When asked to implement and verify a change:
@@ -136,31 +121,58 @@ When asked to implement and verify a change:
 6. `agent-browser open <url-from-.preview-url.md>` — **use this URL, not localhost**
 7. `agent-browser screenshot --full screenshots/YYYYMMDDHHMMSS-<short-title>.png`
 8. Confirm the screenshot URL/title bar reflects the Cloudflare domain, not localhost
-9. Include screenshot path, description, and confidence score in your result comment
 
-> ❌ **A screenshot taken from `localhost` or `127.0.0.1` does not count as verification.**
-> The task is not complete until a screenshot from the `.preview-url.md` URL is saved.
+---
+
+## Pre-PR Checklist — COMPLETE THIS BEFORE report_progress
+
+> ❌ **Known failure mode:** Finishing the task and taking screenshots but submitting the PR without the preview URL or without screenshots embedded in the PR description body. Screenshots saved to disk do NOT count. They must be visible inline in the PR description using an absolute GitHub URL.
+
+> ❌ **Known failure mode:** Omitting the `CONTEXT-MEMORY.md` update status from the PR description. This section is mandatory on every PR, even when no update was made.
+
+Before calling `report_progress`, verify every item below. **If any item is unchecked, fix it before proceeding.**
+
+- [ ] I have run `cat .preview-url.md` and have the full Cloudflare URL in hand
+- [ ] The full preview URL is pasted as a **bare URL** in the PR description (not hidden behind link text)
+- [ ] At least one screenshot was taken from the Cloudflare preview URL (not localhost)
+- [ ] That screenshot is saved under `screenshots/` with the correct filename format
+- [ ] That screenshot is embedded in the PR description using an absolute `raw.githubusercontent.com` URL
+- [ ] The PR description includes the `CONTEXT-MEMORY.md` section stating whether it was updated and why
+
+---
 
 ## PR Description Requirements — MANDATORY FOR EVERY PR
 
-Every PR description submitted via **report_progress** **MUST** include both of the following. No exceptions.
-
-### 1. Preview URL — show the full URL, not hidden link text
-
-Always include the Cloudflare preview URL read from `.preview-url.md` as a **bare URL** so it is fully visible to the reviewer. Do NOT hide it behind link text like "Live preview →".
+Copy the template below and fill in every placeholder. Do not paraphrase or omit sections.
 
 ```markdown
+- [x] <task summary>
+
 ## Preview
 
-https://copilot-<branch>-agbr-test.ma532.workers.dev
+<paste the full URL from .preview-url.md here — bare URL, no link text>
+
+## Screenshots
+
+![<short description of what the screenshot shows>](https://raw.githubusercontent.com/IntranetFactory/agbr-test/<branch-name>/screenshots/<YYYYMMDDHHMMSS-short-title>.png)
+
+## CONTEXT-MEMORY.md
+
+<Updated — describe which section was changed and what knowledge was added> OR <No update needed — reason>
 ```
 
-> ❌ **Wrong:** `[Live preview →](https://copilot-...)` — hides the URL behind text
-> ✅ **Correct:** `https://copilot-...` — the full URL is visible
+### Preview URL rules
 
-### 2. Screenshots embedded in the PR — use absolute raw GitHub URLs
+- Read the URL from `.preview-url.md` — never guess or construct it
+- Paste it as a bare URL so it is fully visible to reviewers
 
-Relative paths like `screenshots/file.png` do **not** render in GitHub PR descriptions because GitHub resolves images from the default branch (`main`), not the PR branch. Always use the absolute `raw.githubusercontent.com` URL.
+> ❌ Wrong: `[Live preview →](https://copilot-...)` — URL is hidden behind link text
+> ✅ Correct: `https://copilot-...` — full URL visible
+
+### Screenshot rules
+
+- Screenshots must come from the Cloudflare preview URL, not localhost
+- Embed screenshots using absolute `raw.githubusercontent.com` URLs — relative paths do not render in GitHub PRs before the branch is merged
 
 URL format:
 
@@ -168,49 +180,15 @@ URL format:
 https://raw.githubusercontent.com/IntranetFactory/agbr-test/<branch-name>/screenshots/YYYYMMDDHHMMSS-short-title.png
 ```
 
-```markdown
-## Screenshots
+> ❌ Wrong: `![alt](screenshots/file.png)` — broken image in PR (relative path, branch not yet merged)
+> ✅ Correct: `![alt](https://raw.githubusercontent.com/IntranetFactory/agbr-test/<branch>/screenshots/file.png)`
 
-![description](https://raw.githubusercontent.com/IntranetFactory/agbr-test/<branch-name>/screenshots/YYYYMMDDHHMMSS-short-title.png)
-```
+### CONTEXT-MEMORY.md update status rules
 
-> ❌ **Wrong:** `![alt](screenshots/file.png)` — broken image in PR (relative path, not merged yet)
-> ✅ **Correct:** `![alt](https://raw.githubusercontent.com/IntranetFactory/agbr-test/<branch>/screenshots/file.png)`
+This section is **required on every PR without exception**, even when no update was made.
 
-> ⚠️ Screenshots mentioned only in comments do NOT satisfy this requirement. They must be **visible inline** in the PR description itself so reviewers can see them without clicking.
+When updating `CONTEXT-MEMORY.md`, integrate new knowledge into the relevant existing section grouped by topic. Do not append entries chronologically, do not create a "discovery log", and do not add dated entries. The file must always read as a structured, current reference — not a history.
 
-### 3. CONTEXT-MEMORY.md update status
-
-Every PR description **must** state whether `CONTEXT-MEMORY.md` was updated and why (or why not). This ensures reviewers know if new architectural insights, tech-stack changes, or discovery-log entries were captured.
-
-```markdown
-## CONTEXT-MEMORY.md
-
-Updated — added discovery log entry for new auth flow.
-```
-
-or
-
-```markdown
-## CONTEXT-MEMORY.md
-
-No update needed — change was a cosmetic CSS fix with no architectural impact.
-```
-
-### Example `prDescription` for report_progress
-
-```markdown
-- [x] Changed heading to show URL
-
-## Preview
-
-https://copilot-my-branch-agbr-test.ma532.workers.dev
-
-## Screenshots
-
-![Home page heading showing window.location.href](https://raw.githubusercontent.com/IntranetFactory/agbr-test/copilot/my-branch/screenshots/20240315143022-checkout-flow.png)
-
-## CONTEXT-MEMORY.md
-
-No update needed — cosmetic heading change only.
-```
+> ❌ Wrong: omitting the section entirely
+> ✅ Correct: `Updated — added constraint to the Authentication section: tokens must be refreshed before deploy`
+> ✅ Correct: `No update needed — change was a cosmetic CSS fix with no architectural impact`
