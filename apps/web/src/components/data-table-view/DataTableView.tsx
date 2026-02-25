@@ -75,21 +75,6 @@ function getFilterVariant(property: {
   return FILTER_VARIANTS.TEXT
 }
 
-// Get text columns suitable for a global OR-search (ilike across all text fields)
-function getTextColumnsForSearch(metadata: EntityMetadata, excludeColumns: string[]): string[] {
-  if (!metadata.properties) return []
-  return Object.entries(metadata.properties)
-    .filter(([key, prop]) => {
-      if (key.startsWith('_') || key.endsWith('_at')) return false
-      if (excludeColumns.includes(key)) return false
-      if (prop.reference_table) return false // FK ID columns are not human-searchable
-      const type = Array.isArray(prop.type) ? prop.type[0] : prop.type
-      return type === 'string' || type === 'text' ||
-             (!type && !prop.enum && type !== 'integer' && type !== 'number' && type !== 'boolean')
-    })
-    .map(([key]) => key)
-}
-
 // Convert one ExtendedColumnFilter to one or more PostgREST AND query parameters.
 // Returns an array because 'between' requires two parameters.
 function filterToPostgRESTParams(filter: PlainFilter): string[] {
@@ -346,18 +331,14 @@ export function DataTableView({
       if (conditions.length > 0) params.push(`or=(${conditions.join(',')})`)
     }
 
-    // Global search box → OR ilike across all text columns
+    // Global search box → wfts (full-text search) on search_vector column
     const trimmedSearch = searchText.trim()
     if (trimmedSearch) {
-      const textCols = getTextColumnsForSearch(metadata, excludeColumns)
-      if (textCols.length > 0) {
-        const conditions = textCols.map(col => `${col}.ilike.*${trimmedSearch}*`)
-        params.push(`or=(${conditions.join(',')})`)
-      }
+      params.push(`search_vector=wfts.${encodeURIComponent(trimmedSearch)}`)
     }
 
     return params.join('&')
-  }, [pagination.pageIndex, pagination.pageSize, sorting, extFilters, searchText, metadata, excludeColumns])
+  }, [pagination.pageIndex, pagination.pageSize, sorting, extFilters, searchText, metadata])
 
   const { data, totalCount, isLoading, error, refetch } = useTable<RecordType>(tableName, {
     query,
@@ -583,11 +564,13 @@ export function DataTableView({
         {/* Toolbar */}
         <DataTableToolbarSection className="justify-between">
           <div className="flex gap-2">
-            <DataTableSearchFilter
-              placeholder={`Search ${tableMetadata.plural_label?.toLowerCase() || 'records'}...`}
-              value={searchText}
-              onChange={handleSearchChange}
-            />
+            {tableMetadata.searchable && (
+              <DataTableSearchFilter
+                placeholder={`Search ${tableMetadata.plural_label || 'records'}...`}
+                value={searchText}
+                onChange={handleSearchChange}
+              />
+            )}
           </div>
           <div className="flex gap-2">
             <DataTableSortMenu />

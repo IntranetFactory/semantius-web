@@ -33,6 +33,8 @@ export interface SemSchemaTable {
   edit_permission?: string | null
   id_column: string
   label_column: string
+  managed?: boolean
+  searchable?: boolean
   created_at?: string
   updated_at?: string
 }
