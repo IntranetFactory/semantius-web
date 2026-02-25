@@ -37,18 +37,17 @@ export function TableViewMenu<TData>({
   onColumnVisibilityChange,
 }: TableViewMenuProps<TData>) {
   /**
-   * PERFORMANCE: Memoize filtered columns to avoid recalculating on every render
+   * PERFORMANCE: Memoize filtered columns to avoid recalculating on every render.
    *
-   * WHY: `getAllColumns().filter()` iterates through all columns and checks properties.
-   * Without memoization, this runs on every render, even when columns haven't changed.
+   * WHY `table.options.columns` is in the dep array:
+   * TanStack Table mutates the same `table` object reference across renders — so
+   * `[table]` alone never triggers a recompute when navigating to a different table
+   * (e.g. Products → Product Categories). `table.options.columns` is the ColumnDef
+   * array passed to `useReactTable`; DataTableRoot recreates this array (via its own
+   * `useMemo`) whenever the active table changes, giving us a new reference here.
    *
-   * IMPACT: Prevents unnecessary column filtering operations.
-   * With 20 columns: saves ~0.2-0.5ms per render.
-   *
-   * NOTE: Column visibility changes are tracked via table state in context,
-   * so this memoization correctly updates when visibility changes.
-   *
-   * WHAT: Only recalculates when table instance changes (rare).
+   * NOTE: TanStack's `Table` type has no `table_name` or similar identity property —
+   * `options.columns` is the correct API-stable way to detect a column set change.
    */
   const columns = React.useMemo(
     () =>
