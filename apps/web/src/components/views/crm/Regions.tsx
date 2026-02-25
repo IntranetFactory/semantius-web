@@ -85,7 +85,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
-            {metadata.table?.plural_label || 'Records'} Manager
+            {metadata.table?.plural_label || 'Records'}
           </h1>
           <p className="text-muted-foreground">
             {metadata.table?.description || 'Manage records'}
