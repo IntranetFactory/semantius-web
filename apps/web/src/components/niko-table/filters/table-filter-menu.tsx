@@ -873,11 +873,17 @@ export function TableFilterMenu<TData>({
     console.warn(ERROR_MESSAGES.DEPRECATED_GLOBAL_JOIN_OPERATOR)
   }, [])
 
+  // `table.options.columns` is included so this recomputes when the active table
+  // changes (e.g. Products → Product Categories). TanStack Table mutates the same
+  // `table` object reference, so `[table]` alone never fires. `options.columns` is
+  // a new array reference each time DataTableRoot's processedColumns memo runs.
+  // TanStack's Table type has no `table_name` property — this is the correct API.
   const columns = React.useMemo(() => {
     return table
       .getAllColumns()
       .filter(column => column.columnDef.enableColumnFilter)
-  }, [table])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [table, table.options.columns])
 
   const onFilterAdd = React.useCallback(() => {
     const column = columns[0]

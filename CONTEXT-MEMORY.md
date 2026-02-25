@@ -68,6 +68,31 @@ Combine with `&`: `?select=id,name&status=eq.active&order=created_at.desc&limit=
 
 - Never use `alert()`, `confirm()`, `prompt()` — use shadcn Dialog/AlertDialog instead
 
+### PR Description — Screenshot URL (CRITICAL)
+
+The AGENTS.md template uses `IntranetFactory/agbr-test` in the `raw.githubusercontent.com` URL — **both `IntranetFactory` and `agbr-test` are placeholders** (just like `<branch-name>`). The file is shared across dozens of repos, so it cannot hard-code owner or repo. Every agent must substitute the real values for the repo it is working in.
+
+Derive the correct owner and repo at task time:
+
+```bash
+git remote get-url origin
+# e.g. https://github.com/IntranetFactory/semantius-web
+#                         ^^^^^^^^^^^^^^  ^^^^^^^^^^^^^
+#                         <owner>         <repo>
+```
+
+Correct URL format for a screenshot:
+
+```
+https://raw.githubusercontent.com/<owner>/<repo>/<branch>/screenshots/YYYYMMDDHHMMSS-title.png
+```
+
+For this repo (`IntranetFactory/semantius-web`) on branch `copilot/fix-datatableview-state-issues`:
+
+```
+https://raw.githubusercontent.com/IntranetFactory/semantius-web/copilot/fix-datatableview-state-issues/screenshots/...
+```
+
 ## Testing
 
 ### Test Accounts
