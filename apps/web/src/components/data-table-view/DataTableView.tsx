@@ -42,8 +42,8 @@ import { Badge } from '@/components/ui/badge'
 import {
   MoreHorizontal,
   Pencil,
+  Eye,
   Trash2,
-  ExternalLink,
 } from 'lucide-react'
 
 type RecordType = Record<string, unknown>
@@ -460,6 +460,7 @@ export function DataTableView({
     }
 
     // Actions column
+    const fieldCount = Object.keys(metadata.properties || {}).length
     cols.push({
       id: 'actions',
       header: '',
@@ -471,6 +472,16 @@ export function DataTableView({
         const recordId = row.original[primaryKeyColumn]
         const displayValue = row.original[displayColumn]
         const record = row.original
+        const handleOpenRecord = (e: React.MouseEvent) => {
+          e.stopPropagation()
+          const useModal = window.innerWidth > 900 && fieldCount > 10
+          if (useModal && onEditModal) {
+            onEditModal(record)
+          } else {
+            (onEdit || onEditModal)?.(record)
+          }
+        }
+        const hasOpenHandler = !!(onEdit || onEditModal)
         return (
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -486,36 +497,38 @@ export function DataTableView({
             <DropdownMenuContent align="end" className="w-48" sideOffset={5}>
               <DropdownMenuLabel>Actions</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {effectiveCanEdit ? (
-                <>
-                  {onEdit && editRoute && (
-                    <DropdownMenuItem onClick={e => { e.stopPropagation(); onEdit(record) }}>
+              {hasOpenHandler && (
+                <DropdownMenuItem onClick={handleOpenRecord}>
+                  {effectiveCanEdit ? (
+                    <>
                       <Pencil className="mr-2 h-4 w-4" />
-                      Edit in Sidebar
-                    </DropdownMenuItem>
+                      Edit
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="mr-2 h-4 w-4" />
+                      View
+                    </>
                   )}
-                  {onEditModal && (
-                    <DropdownMenuItem onClick={e => { e.stopPropagation(); onEditModal(record) }}>
-                      <ExternalLink className="mr-2 h-4 w-4" />
-                      Edit in Modal
-                    </DropdownMenuItem>
-                  )}
-                  {(onEdit || onEditModal) && <DropdownMenuSeparator />}
-                  <DropdownMenuItem
-                    className="text-destructive focus:text-destructive focus:bg-destructive/10"
-                    onClick={e => {
-                      e.stopPropagation()
-                      deleteConfirm.showConfirmation(
-                        recordId as string | number,
-                        String(displayValue || recordId || 'this record')
-                      )
-                    }}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Delete
-                  </DropdownMenuItem>
-                </>
-              ) : (
+                </DropdownMenuItem>
+              )}
+              {effectiveCanEdit && hasOpenHandler && <DropdownMenuSeparator />}
+              {effectiveCanEdit && (
+                <DropdownMenuItem
+                  className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                  onClick={e => {
+                    e.stopPropagation()
+                    deleteConfirm.showConfirmation(
+                      recordId as string | number,
+                      String(displayValue || recordId || 'this record')
+                    )
+                  }}
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Delete
+                </DropdownMenuItem>
+              )}
+              {!hasOpenHandler && !effectiveCanEdit && (
                 <div className="px-2 py-1.5 text-sm text-muted-foreground">No actions available</div>
               )}
             </DropdownMenuContent>
