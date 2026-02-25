@@ -68,6 +68,23 @@ Combine with `&`: `?select=id,name&status=eq.active&order=created_at.desc&limit=
 
 - Never use `alert()`, `confirm()`, `prompt()` — use shadcn Dialog/AlertDialog instead
 
+### PR Description — Screenshot URL (CRITICAL)
+
+AGENTS.md contains a template with the **wrong repo name** (`agbr-test`). Always use `semantius-web`:
+
+```
+# ❌ WRONG (copied from AGENTS.md template — do not use)
+https://raw.githubusercontent.com/IntranetFactory/agbr-test/<branch>/screenshots/...
+
+# ✅ CORRECT — this repo
+https://raw.githubusercontent.com/IntranetFactory/semantius-web/<branch>/screenshots/...
+```
+
+The full correct format for this repo:
+```
+![description](https://raw.githubusercontent.com/IntranetFactory/semantius-web/copilot/<branch-slug>/screenshots/YYYYMMDDHHMMSS-title.png)
+```
+
 ## Testing
 
 ### Test Accounts
