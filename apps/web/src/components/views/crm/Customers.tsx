@@ -66,12 +66,17 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
     })
   }
 
+  const fieldCount = Object.keys(metadata.properties || {}).length
+
   const handleRowClick = (record: RecordType) => {
-    // Navigate to view/edit based on permissions - form will be editable if user has permission
-    navigate({
-      to: `${view_name}/$id`,
-      params: { id: String(record[idColumn]) },
-    })
+    if (window.innerWidth > 900 && fieldCount >= 10) {
+      handleModalOpen(canEdit ? 'edit' : 'view', record)
+    } else {
+      navigate({
+        to: `${view_name}/$id`,
+        params: { id: String(record[idColumn]) },
+      })
+    }
   }
 
   const handleSheetClose = () => {
@@ -115,7 +120,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
       {/* Sheet for viewing/editing record - responsive: full screen on mobile */}
       <Sheet open={isOpen} onOpenChange={(open) => !open && handleSheetClose()}>
-        <SheetContent className="w-full sm:max-w-[540px] overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-[540px] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
             <SheetTitle>
               {isNewMode
@@ -134,7 +139,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
       {/* Modal for editing record - responsive: full screen on mobile */}
       <Dialog open={!!modalMode} onOpenChange={(open) => !open && handleModalClose()}>
-        <DialogContent className="w-full max-w-[90vw] sm:max-w-[540px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
           <TableForm
             schema={metadata}
             recordId={modalRecord?.[idColumn] ? String(modalRecord[idColumn]) : undefined}
