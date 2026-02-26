@@ -76,9 +76,6 @@ export function DateTimePicker({
   return (
     <div className={cn("flex gap-2", className)}>
       <div className="grid gap-2 flex-1">
-        <div className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-          Date
-        </div>
         <Popover>
           <PopoverTrigger asChild>
             <Button
@@ -107,9 +104,6 @@ export function DateTimePicker({
         </Popover>
       </div>
       <div className="grid gap-2 flex-1">
-        <div className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
-          Time
-        </div>
         <Input
           type="time"
           value={timeValue}

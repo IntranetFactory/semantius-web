@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor, fireEvent } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { SchemaForm } from '../SchemaForm'
 import type { SchemaObject } from 'ajv'
@@ -159,9 +159,15 @@ describe('SchemaForm', () => {
       const onSubmit = vi.fn()
       render(<SchemaForm schema={basicSchema} onSubmit={onSubmit} />)
 
-      // Fill in required fields
-      await user.type(screen.getByLabelText(/name/i), 'John Doe')
-      await user.type(screen.getByLabelText(/email/i), 'john@example.com')
+      // Fill in required fields.
+      // fireEvent.change is used for the email field to avoid a jsdom + userEvent
+      // focus-tracking bug where the '@' character can cause focus to drift when
+      // user.type() is called on a type="email" input after typing in another field.
+      const nameInput = screen.getByLabelText(/name/i)
+      const emailInput = screen.getByLabelText(/email/i)
+      await user.clear(nameInput)
+      await user.type(nameInput, 'John Doe')
+      fireEvent.change(emailInput, { target: { value: 'john@example.com' } })
 
       const submitButton = screen.getByRole('button', { name: /submit/i })
       await user.click(submitButton)
