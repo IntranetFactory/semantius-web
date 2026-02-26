@@ -90,31 +90,31 @@ export function TableForm({ schema, recordId, onClose, formMode }: TableFormProp
   const recordData = recordId && data && data.length > 0 ? data[0] : undefined
 
   return (
-    <div className="p-6">
+    <>
       <SchemaForm
         schema={schema}
         initialValue={recordData}
         onSubmit={handleSubmit}
         formMode={resolvedFormMode}
       />
-      
+
       {/* Display mutation errors */}
       {createRecord.error && (
         <div className="mt-4">
-          <ApiErrorDisplay 
-            error={createRecord.error} 
-            title="Error creating record" 
+          <ApiErrorDisplay
+            error={createRecord.error}
+            title="Error creating record"
           />
         </div>
       )}
       {updateRecord.error && (
         <div className="mt-4">
-          <ApiErrorDisplay 
-            error={updateRecord.error} 
-            title="Error updating record" 
+          <ApiErrorDisplay
+            error={updateRecord.error}
+            title="Error updating record"
           />
         </div>
       )}
-    </div>
+    </>
   )
 }

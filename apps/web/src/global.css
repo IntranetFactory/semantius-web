@@ -148,3 +148,62 @@
     cursor: pointer !important;
   }
 }
+
+
+
+/* Responsive grid for SchemaForm fields */
+.grid-container {
+  container-type: inline-size;
+}
+
+.grid-custom {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 1.5rem;
+}
+
+.span-1 {
+  grid-column: span 1;
+}
+
+.span-2 {
+  grid-column: span 2;
+}
+
+.span-4 {
+  grid-column: span 4;
+}
+
+.span-8 {
+  grid-column: span 4;
+}
+
+.span-1.start-1 {
+  grid-column: 1 / span 1;
+}
+
+.span-2.start-1 {
+  grid-column: 1 / span 2;
+}
+
+.span-4.start-1 {
+  grid-column: 1 / span 4;
+}
+
+.span-8.start-1 {
+  grid-column: 1 / span 4;
+}
+
+@container (min-width: 640px) {
+  .grid-custom {
+    grid-template-columns: repeat(8, minmax(0, 1fr));
+  }
+
+  .span-8 {
+    grid-column: span 8;
+  }
+
+  .span-8.start-1 {
+    grid-column: 1 / span 8;
+  }
+}

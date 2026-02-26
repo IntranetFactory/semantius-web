@@ -6,6 +6,8 @@ import { DataTableView } from '@/components/data-table-view/DataTableView'
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Plus, Users } from 'lucide-react'
@@ -120,7 +122,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
       {/* Sheet for viewing/editing record - responsive: full screen on mobile */}
       <Sheet open={isOpen} onOpenChange={(open) => !open && handleSheetClose()}>
-        <SheetContent className="w-full sm:max-w-[540px] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <SheetContent className="w-full sm:max-w-[540px]" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
             <SheetTitle>
               {isNewMode
@@ -128,18 +130,27 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
                 : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
             </SheetTitle>
           </SheetHeader>
-          <TableForm
-            schema={metadata}
-            recordId={isNewMode ? null : recordId}
-            onClose={handleSheetClose}
-            formMode={isNewMode ? 'create' : (canEdit ? 'edit' : 'view')}
-          />
+          <div className="flex-1 overflow-y-auto p-6 pt-0">
+            <TableForm
+              schema={metadata}
+              recordId={isNewMode ? null : recordId}
+              onClose={handleSheetClose}
+              formMode={isNewMode ? 'create' : (canEdit ? 'edit' : 'view')}
+            />
+          </div>
         </SheetContent>
       </Sheet>
 
       {/* Modal for editing record - responsive: full screen on mobile */}
       <Dialog open={!!modalMode} onOpenChange={(open) => !open && handleModalClose()}>
         <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle>
+              {modalMode === 'create'
+                ? `New ${metadata.table?.singular_label || 'Record'}`
+                : `${metadata.table?.singular_label || 'Record'} ${modalRecord?.[idColumn] ?? ''}`}
+            </DialogTitle>
+          </DialogHeader>
           <TableForm
             schema={metadata}
             recordId={modalRecord?.[idColumn] ? String(modalRecord[idColumn]) : undefined}
