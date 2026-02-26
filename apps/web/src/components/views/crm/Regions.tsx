@@ -66,12 +66,17 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
     })
   }
 
+  const fieldCount = Object.keys(metadata.properties || {}).length
+
   const handleRowClick = (record: RecordType) => {
-    // Navigate to view/edit based on permissions - form will be editable if user has permission
-    navigate({
-      to: `${view_name}/$id`,
-      params: { id: String(record[idColumn]) },
-    })
+    if (window.innerWidth > 900 && fieldCount >= 10) {
+      handleModalOpen(canEdit ? 'edit' : 'view', record)
+    } else {
+      navigate({
+        to: `${view_name}/$id`,
+        params: { id: String(record[idColumn]) },
+      })
+    }
   }
 
   const handleSheetClose = () => {
