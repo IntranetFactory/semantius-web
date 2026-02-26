@@ -24,10 +24,10 @@ Path alias: `@` → `apps/web/src` (configured in `vite.config.ts` and `tsconfig
 ### Auth Routing
 
 - `/login` — always calls `logIn()` unconditionally on mount (clears stale state, redirects to OAuth). Shows spinner only.
-- `/callback` — the OAuth `redirectUri`. Handles `loginInProgress` + `?code=` (library exchanges token here) and shows errors. Redirects to `/` (or `?redirect=`) on success, or to `/login` if landed here without an active flow.
+- `/callback` — the OAuth `redirectUri`. Detects an active callback via `hadOAuthCode` (frozen at mount via `useState(() => new URLSearchParams(window.location.search).has('code'))`). **Do NOT use `loginInProgress` here** — the library clears it before the token exchange completes, creating a false "no active flow" signal on the first login. Redirect to `/login` only when `!hadOAuthCode && !error`.
 - `/_app` (`beforeLoad`) — redirects to `/login` if not authenticated; does NOT check `loginInProgress`.
 - Default `redirectUri`: `${window.location.origin}/callback` (override with `VITE_OAUTH_REDIRECT_URI`).
-- **`loginInProgress`** is stored in **localStorage** (library default) — persists across tabs and sessions. Stale state is harmless: `/login` always calls `logIn()` which resets it via `clearStorage()`.
+- **`loginInProgress`** is stored in **localStorage** (library default) — persists across tabs and sessions. It is cleared by the library *before* the token exchange completes, so it is **not a reliable indicator** in `/callback`. Stale state is harmless: `/login` always calls `logIn()` which resets it via `clearStorage()`.
 - **Must register `/callback` as allowed redirect URI** in your OAuth provider (Auth0, Keycloak, etc.).
 - **`useLayoutEffect` for `router.update()`** — `RouterContextUpdater` uses `useLayoutEffect` (not `useEffect`) to call `router.update()`. Layout effects run synchronously before paint and before any passive effects, ensuring the router context is always up-to-date before navigation fires. Using `useEffect` causes a race condition where `CallbackComponent`'s navigate fires before `isAuthenticated: true` is visible to `_app.tsx` `beforeLoad`.
 

@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -9,18 +9,25 @@ export const Route = createFileRoute('/callback')({
 })
 
 function CallbackComponent() {
-  const { token, loginInProgress, error, logIn } = useAuth()
+  const { token, error, logIn } = useAuth()
   const navigate = useNavigate()
   const search = Route.useSearch()
+
+  // Freeze whether an OAuth code was present at mount time. The library may
+  // strip ?code= from the URL before the token exchange completes, so we
+  // capture this once instead of re-reading window.location.search on every
+  // render. loginInProgress is not reliable here because the library clears
+  // it before the token is set, causing a false "no active flow" signal.
+  const [hadOAuthCode] = useState(() => new URLSearchParams(window.location.search).has('code'))
 
   useEffect(() => {
     if (token) {
       navigate({ to: (search as any).redirect || '/' })
-    } else if (!loginInProgress && !error) {
-      // Arrived at /callback without an active OAuth flow — send to login
+    } else if (!hadOAuthCode && !error) {
+      // Arrived at /callback without an OAuth code — no active flow, send to login
       navigate({ to: '/login' })
     }
-  }, [token, loginInProgress, error, navigate, search])
+  }, [token, hadOAuthCode, error, navigate, search])
 
   if (error) {
     return (

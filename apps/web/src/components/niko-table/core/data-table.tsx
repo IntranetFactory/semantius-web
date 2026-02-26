@@ -2,7 +2,7 @@
 
 import React from "react"
 import { cn } from "@/lib/utils"
-import { TableComponent } from "@/components/ui/table"
+import { Table } from "@/components/ui/table"
 
 /**
  * Extracts height from Tailwind arbitrary values (e.g., h-[600px], max-h-[400px]).
@@ -132,7 +132,7 @@ export function DataTable({
         maxHeight: finalMaxHeight,
       }}
     >
-      <TableComponent>{children}</TableComponent>
+      <Table>{children}</Table>
     </div>
   )
 }
