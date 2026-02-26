@@ -2,7 +2,7 @@
 
 import React from "react"
 import { cn } from "@/lib/utils"
-import { TableComponent } from "@/components/ui/table"
+import { Table as TableComponent } from "@/components/ui/table"
 
 /**
  * Extracts height from Tailwind arbitrary values (e.g., h-[600px], max-h-[400px]).

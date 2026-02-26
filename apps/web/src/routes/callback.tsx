@@ -1,6 +1,6 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
@@ -11,16 +11,24 @@ export const Route = createFileRoute('/callback')({
 function CallbackComponent() {
   const { token, loginInProgress, error, logIn } = useAuth()
   const navigate = useNavigate()
-  const search = Route.useSearch()
+
+  // Capture the redirect target once on mount from the raw URL.
+  // Route.useSearch() without validateSearch returns a new {} reference on
+  // every router state change (no structural sharing), causing the effect to
+  // re-fire spuriously — which can trigger a premature redirect to /login
+  // while the OAuth code exchange is still in progress.
+  const redirectTo = useRef(
+    new URLSearchParams(window.location.search).get('redirect') || '/'
+  )
 
   useEffect(() => {
     if (token) {
-      navigate({ to: (search as any).redirect || '/' })
+      navigate({ to: redirectTo.current })
     } else if (!loginInProgress && !error) {
       // Arrived at /callback without an active OAuth flow — send to login
       navigate({ to: '/login' })
     }
-  }, [token, loginInProgress, error, navigate, search])
+  }, [token, loginInProgress, error, navigate])
 
   if (error) {
     return (

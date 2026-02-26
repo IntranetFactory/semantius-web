@@ -146,8 +146,11 @@ function RouterContextUpdater({
   // so the router context is always up-to-date when CallbackComponent's
   // useEffect calls navigate() — preventing the race condition where
   // _app.tsx's beforeLoad would see isAuthenticated=false on first login.
+  //
+  // Use !!token as the auth check (not tokenData.exp) so that opaque
+  // (non-JWT) access tokens also work. Token expiry is managed by the library.
   useLayoutEffect(() => {
-    const isAuthenticated = !!token && !!tokenData && tokenData.exp * 1000 > Date.now()
+    const isAuthenticated = !!token
     
     router.update({
       context: {
@@ -157,10 +160,13 @@ function RouterContextUpdater({
         },
       } satisfies RouterContext,
     })
-    
-    // Invalidate router to re-run loaders and beforeLoad checks
-    router.invalidate()
-  }, [token, tokenData, router])
+    // Note: router.invalidate() is intentionally NOT called here.
+    // Calling it causes a concurrent router.load() that runs cancelMatches()
+    // and can race with the navigate() triggered by CallbackComponent's
+    // useEffect, leading to the first login being redirected back to /login.
+    // Protected-route enforcement relies on beforeLoad (triggered by navigate)
+    // and ProtectedRoute's useEffect (for mid-session token expiry).
+  }, [token, router])
   
   // Fetch user info from both userinfo endpoint and /rpc/get_userinfo in parallel
   useEffect(() => {
