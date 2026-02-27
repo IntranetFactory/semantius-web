@@ -11,6 +11,7 @@ export function InputBoolean({
   description,
   inputMode = 'default',
   validators,
+  schema,
 }: FormControlProps) {
   const { form } = useFormContext()
   
@@ -48,7 +49,7 @@ export function InputBoolean({
               aria-invalid={!!field.state.meta.errors?.[0]}
               aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : description ? `${name}-description` : undefined}
             />
-            <FormDescription description={description} />
+            <FormDescription description={description} error={field.state.meta.errors?.[0]} />
           </div>
           <FormError name={name} error={field.state.meta.errors?.[0]} />
         </div>

@@ -11,6 +11,7 @@ export function InputDate({
   description,
   inputMode = 'default',
   validators,
+  schema,
 }: FormControlProps) {
   const { form } = useFormContext()
   
@@ -58,7 +59,7 @@ export function InputDate({
               disabled={disabled || readonly}
             />
             {readonly && <input type="hidden" name={name} value={field.state.value || ''} />}
-            <FormDescription description={description} />
+            <FormDescription description={description} error={field.state.meta.errors?.[0]} />
             <FormError name={name} error={field.state.meta.errors?.[0]} />
           </div>
         )

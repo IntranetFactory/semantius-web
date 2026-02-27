@@ -31,9 +31,12 @@ function generateDefaultValue(schema: SchemaObject): Record<string, any> {
       } else {
         // Generate default based on type
         const type = (propSchema as any).type || ((propSchema as any).format ? 'string' : undefined)
+        const format = (propSchema as any).format
         
         if (type === 'boolean') {
           defaults[key] = false
+        } else if (format === 'reference') {
+          defaults[key] = null
         } else if (type === 'number' || type === 'integer') {
           defaults[key] = undefined
         } else if (type === 'string') {
@@ -153,7 +156,10 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
           continue
         }
         
-        cleanedValue[key] = value[key]
+        // Reference fields set null when cleared; treat as undefined (absent) to avoid AJV type errors
+        const format = (propSchema as any).format
+        const fieldValue = value[key]
+        cleanedValue[key] = (format === 'reference' && fieldValue === null) ? undefined : fieldValue
       }
       
       // DEFENSIVE: This should never happen because view mode has no submit button
@@ -440,6 +446,7 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
                   label={label}
                   description={description}
                   inputMode={inputMode}
+                  schema={propSchema as Record<string, unknown>}
                   validators={shouldValidate ? {
                     // Only validate on submit, not on blur
                     // This prevents blur validation from canceling submit button clicks

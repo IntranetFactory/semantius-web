@@ -11,6 +11,7 @@ export function InputRelativeJsonPointer({
   description,
   inputMode = 'default',
   validators,
+  schema,
 }: FormControlProps) {
   const { form } = useFormContext()
   
@@ -51,7 +52,7 @@ export function InputRelativeJsonPointer({
                 aria-invalid={!!field.state.meta.errors?.[0]}
                 aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
               />
-              <FormDescription description={description} />
+              <FormDescription description={description} error={field.state.meta.errors?.[0]} />
               <FormError name={name} error={field.state.meta.errors?.[0]} />
             </div>
           )}

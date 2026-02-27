@@ -13,6 +13,7 @@ export interface FormControlProps {
   label?: string
   description?: string
   inputMode?: InputMode
+  schema?: Record<string, unknown>
   validators?: {
     onChange?: ({ value }: { value: any }) => string | undefined
     onBlur?: ({ value }: { value: any }) => string | undefined

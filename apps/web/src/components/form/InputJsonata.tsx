@@ -14,6 +14,7 @@ export function InputJsonata({
   description,
   inputMode = 'default',
   validators,
+  schema,
 }: FormControlProps) {
   const { form } = useFormContext()
   
@@ -49,7 +50,7 @@ export function InputJsonata({
               />
             </Suspense>
           </div>
-          <FormDescription description={description} />
+          <FormDescription description={description} error={field.state.meta.errors?.[0]} />
           <FormError name={name} error={field.state.meta.errors?.[0]} />
         </div>
       )}

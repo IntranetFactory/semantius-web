@@ -14,6 +14,7 @@ export function InputJson({
   description,
   inputMode = 'default',
   validators,
+  schema,
 }: FormControlProps) {
   const { form } = useFormContext()
   
@@ -62,7 +63,7 @@ export function InputJson({
                 />
               </Suspense>
             </div>
-            <FormDescription description={description} />
+            <FormDescription description={description} error={field.state.meta.errors?.[0]} />
             <FormError name={name} error={field.state.meta.errors?.[0]} />
           </div>
         )

@@ -24,9 +24,12 @@ function generateDefaultValue(schema: SchemaObject): Record<string, any> {
       } else {
         // Generate default based on type
         const type = (propSchema as any).type || ((propSchema as any).format ? 'string' : undefined)
+        const format = (propSchema as any).format
         
         if (type === 'boolean') {
           defaults[key] = false
+        } else if (format === 'reference') {
+          defaults[key] = null
         } else if (type === 'string') {
           defaults[key] = ''
         } else if (type === 'array') {
@@ -34,7 +37,7 @@ function generateDefaultValue(schema: SchemaObject): Record<string, any> {
         } else if (type === 'object') {
           defaults[key] = {}
         }
-        // For number/integer, omit from defaults (undefined values are not included in JSON output)
+        // For number/integer (non-reference), omit from defaults (undefined values are not included in JSON output)
       }
     }
   }

@@ -93,7 +93,7 @@ function EnumFieldInner({
           ))}
         </SelectContent>
       </Select>
-      <FormDescription description={description} />
+      <FormDescription description={description} error={field.state.meta.errors?.[0]} />
       <FormError name={name} error={field.state.meta.errors?.[0]} />
     </div>
   )
@@ -105,18 +105,18 @@ export function InputEnum({
   description,
   inputMode = 'default',
   validators,
+  schema,
 }: FormControlProps) {
-  const { form, schema } = useFormContext()
-  
+  const { form } = useFormContext()
+
   // Derive props from inputMode
   const required = inputMode === 'required'
   const readonly = inputMode === 'readonly'
   const disabled = inputMode === 'disabled'
   const hidden = inputMode === 'hidden'
-  
-  // Get enum values from schema
-  const fieldSchema = schema.properties?.[name] as any
-  const enumValues = fieldSchema?.enum || []
+
+  // Get enum values from schema prop
+  const enumValues = (schema as any)?.enum || []
   
   return (
     <form.Field 

@@ -1,8 +1,10 @@
 interface FormDescriptionProps {
   description?: string
+  error?: string
 }
 
-export function FormDescription({ description }: FormDescriptionProps) {
+export function FormDescription({ description, error }: FormDescriptionProps) {
+  if (!description && error) return null
   return (
     <p className="text-[0.8rem] text-muted-foreground">{description || '\u00A0'}</p>
   )
