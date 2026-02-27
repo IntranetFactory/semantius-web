@@ -150,14 +150,38 @@ cat .preview-url.md   # e.g. https://abc123.your-project.workers.dev
 
 > ❌ **Known failure mode:** Running `pnpm preview:wrangler` and proceeding as if deployment succeeded when `.preview-url.md` was not created. A missing file means the build or deploy failed — not that the URL needs to be constructed manually. Stop and fix the error before continuing.
 
+> ❌ **Known failure mode:** Creating a PR without running `workplace/approve-pr.sh` first. The script is a mandatory gate — no PR may be created until it exits 0.
+
+> ❌ **Known failure mode:** Calling `gh pr create` with `--body` instead of `--body-file .pr-comment.md`. The PR body MUST be written to `.pr-comment.md` first so that `approve-pr.sh` can validate it.
+
+### Mandatory PR approval gate
+
+> **🔒 HARD REQUIREMENT — NO EXCEPTIONS**
+>
+> You MUST NOT call `gh pr create` until `workplace/approve-pr.sh` has exited with code 0 in the current session. There is no shortcut, no override, no "I'll do it after". The gate exists because the human cannot trust that process steps will be followed without enforcement.
+
+**Steps (must be followed in exact order):**
+
+1. Write the complete PR description to `.pr-comment.md` at the repo root.
+2. Run `bash workplace/approve-pr.sh` and confirm it exits 0.
+3. If it exits non-zero, read its output, fix the issues, and re-run until it passes.
+4. Only after exit 0: create the PR with `gh pr create --title "..." --body-file .pr-comment.md`.
+
+**Never do any of the following:**
+- Call `gh pr create` before `approve-pr.sh` exits 0
+- Pass the PR body inline with `--body` — always use `--body-file .pr-comment.md`
+- Skip writing `.pr-comment.md` and go straight to `gh pr create`
+
 Before calling `report_progress`, confirm all of the following are true:
 
+- `workplace/approve-pr.sh` exited 0 in this session (this is the first check — stop here if not done).
 - You have run `cat .preview-url.md` and have the full Cloudflare URL in hand.
 - The full preview URL is pasted as a bare URL in the PR description (not hidden behind link text).
 - At least one screenshot was taken from the Cloudflare preview URL (not localhost).
 - That screenshot is saved under `screenshots/` with the correct filename format.
 - That screenshot is embedded in the PR description using an absolute `raw.githubusercontent.com` URL pointing to this repo and the current branch.
 - The PR description includes the `CONTEXT-MEMORY.md` section with update status and a reason.
+- The PR was created using `--body-file .pr-comment.md` (not `--body`).
 
 If any of the above is not true, fix it before proceeding. Do not call `report_progress` with unresolved items.
 
@@ -165,7 +189,7 @@ If any of the above is not true, fix it before proceeding. Do not call `report_p
 
 ## PR Description Requirements — MANDATORY FOR EVERY PR
 
-Copy the template below and fill in every placeholder. Do not paraphrase or omit sections.
+Copy the template below and fill in every placeholder. Do not paraphrase or omit sections. Write the completed template to `.pr-comment.md` — do NOT pass it directly to `gh pr create --body`.
 
 ```markdown
 - [x] <task summary>
@@ -181,6 +205,21 @@ Copy the template below and fill in every placeholder. Do not paraphrase or omit
 ## CONTEXT-MEMORY.md
 
 <Updated — describe which section was changed and what knowledge was added> OR <No update needed — reason>
+```
+
+### PR creation sequence (copy-paste this — no deviations)
+
+```bash
+# 1. Write PR description to file
+cat > .pr-comment.md << 'EOF'
+<filled-in PR template here>
+EOF
+
+# 2. Run approval gate — MUST exit 0 before step 3
+bash workplace/approve-pr.sh
+
+# 3. Only after step 2 succeeds — create the PR
+gh pr create --title "..." --body-file .pr-comment.md
 ```
 
 > ⚠️ **The org, repo, and branch in the screenshot URL must be the actual values for this repository and PR branch — not placeholders, not examples, not values from memory.** This file is shared across many repos and orgs; you must derive the correct values from git every time. Run `git remote get-url origin` and `git branch --show-current` to get them.
