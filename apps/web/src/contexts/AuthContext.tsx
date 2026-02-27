@@ -2,7 +2,7 @@ import { type ReactNode, useEffect, useLayoutEffect, useContext, useState, useRe
 import { AuthProvider, AuthContext as OAuthContext } from 'react-oauth2-code-pkce'
 import type { IAuthContext } from 'react-oauth2-code-pkce'
 import { ConfigErrorPage } from '@/components/ConfigErrorPage'
-import { getApiConfig, createApiHeaders } from '@/lib/apiClient'
+import { getApiConfig, createApiHeaders, setInterceptorToken } from '@/lib/apiClient'
 import type { AnyRouter } from '@tanstack/react-router'
 import type { RouterContext } from '@/routes/__root'
 
@@ -147,8 +147,11 @@ function RouterContextUpdater({
   // useEffect calls navigate() — preventing the race condition where
   // _app.tsx's beforeLoad would see isAuthenticated=false on first login.
   useLayoutEffect(() => {
+    // Keep the fetch interceptor token in sync
+    setInterceptorToken(token || null)
+
     const isAuthenticated = !!token && !!tokenData && tokenData.exp * 1000 > Date.now()
-    
+
     router.update({
       context: {
         auth: {

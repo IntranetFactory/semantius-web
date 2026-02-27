@@ -15,8 +15,6 @@ export function InputReference({
 }: FormControlProps) {
   const { form } = useFormContext()
 
-  console.log('InputReference schema', name, schema)
-
   // Derive props from inputMode
   const required = inputMode === 'required'
   const readonly = inputMode === 'readonly'
@@ -24,13 +22,40 @@ export function InputReference({
   const hidden = inputMode === 'hidden'
 
   // Get reference-specific config from schema prop
-  const fieldType = (schema as any)?.type
-  const searchUrl = (schema as any)?.searchUrl
-  const idUrl = (schema as any)?.idUrl
-  const getRecords = (schema as any)?.getRecords
-  const getRecordId = (schema as any)?.getRecordId ?? '${id}'
-  const renderItem = (schema as any)?.renderItem ?? '${label}'
-  const placeholder = (schema as any)?.placeholder || (label ? `Search ${label.toLowerCase()}...` : 'Search...')
+  let fieldType = (schema as any)?.type
+  let searchUrl = (schema as any)?.searchUrl
+  let idUrl = (schema as any)?.idUrl
+  let getRecords = (schema as any)?.getRecords
+  let getRecordId = (schema as any)?.getRecordId ?? '${id}'
+  let renderItem = (schema as any)?.renderItem ?? '${label}'
+  let placeholder = (schema as any)?.placeholder || (label ? `Search ${label.toLowerCase()}...` : 'Search...')
+
+  // generate default props based on schema.reference_* properties
+  if (schema?.reference_table_id_column) getRecordId = schema.reference_table_id_column;
+  if (schema?.reference_table_label_column) renderItem = "${" + schema.reference_table_label_column + "}";
+
+  if (!searchUrl && schema?.reference_table) {
+    const table = schema.reference_table;
+    const idCol = schema.reference_table_id_column || 'id';
+    const labelCol = schema.reference_table_label_column || 'label';
+    searchUrl = `/${table}?select=${idCol},${labelCol}&limit=21&offset=0&order=${idCol}.desc&search_vector=wfts.\${query}`;
+  }
+
+  if (!idUrl && schema?.reference_table) {
+    const table = schema.reference_table;
+    const idCol = schema.reference_table_id_column || 'id';
+    idUrl = `/${table}?${idCol}=eq.\${id}`;
+  }
+
+  console.log('InputReference derived props', {
+    fieldType,
+    searchUrl,
+    idUrl,
+    getRecords,
+    getRecordId,
+    renderItem,
+    placeholder
+  })
 
   // Convert the numeric form value to a string for APISelect, and back on change
   const isNumeric = fieldType === 'integer' || fieldType === 'number'

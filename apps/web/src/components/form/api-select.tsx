@@ -176,11 +176,14 @@ export function APISelect<T>({
         const url = idUrl.replace("${id}", encodeURIComponent(id));
         const res = await fetch(url);
         if (!res.ok) return null;
-        return res.json();
+        const data = await res.json();
+        const records = resolvedGetRecords ? resolvedGetRecords(data) : data;
+        const result = Array.isArray(records) && records.length === 1 ? records[0] : data;
+        return result;
       }
       return null;
     },
-    [recordFetcher, idUrl]
+    [recordFetcher, idUrl, resolvedGetRecords]
   );
 
   // TanStack Query for search results

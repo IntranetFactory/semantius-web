@@ -7,6 +7,53 @@
 
 import { type EntityMetadata } from "@/types/metadata"
 
+// --- Fetch interceptor ---
+// Module-level token store for the fetch interceptor
+let _currentToken: string | null = null
+
+/** Update the token used by the fetch interceptor */
+export function setInterceptorToken(token: string | null) {
+  _currentToken = token
+}
+
+const _originalFetch = globalThis.fetch
+
+/**
+ * Intercepted fetch: relative URLs (starting with "/") are prefixed with
+ * VITE_API_BASE_URL and automatically receive authorization headers from
+ * createApiHeaders(). Absolute URLs pass through unchanged.
+ */
+globalThis.fetch = function interceptedFetch(
+  input: RequestInfo | URL,
+  init?: RequestInit
+): Promise<Response> {
+  const url = typeof input === 'string' ? input : input instanceof URL ? input.href : (input as Request).url
+
+  // Only intercept relative paths (starting with "/")
+  if (url.startsWith('/')) {
+    const { baseUrl } = getApiConfig()
+    // Strip trailing slash from baseUrl to avoid double slashes
+    const resolvedUrl = baseUrl.replace(/\/+$/, '') + url
+
+    if (_currentToken) {
+      const authHeaders = createApiHeaders(_currentToken)
+      const existingHeaders = init?.headers
+      const merged = new Headers(existingHeaders)
+      // Auth headers are set only if not already provided by the caller
+      for (const [key, value] of Object.entries(authHeaders)) {
+        if (!merged.has(key)) {
+          merged.set(key, value)
+        }
+      }
+      return _originalFetch(resolvedUrl, { ...init, headers: merged })
+    }
+
+    return _originalFetch(resolvedUrl, init)
+  }
+
+  return _originalFetch(input, init)
+}
+
 export interface ApiConfig {
   baseUrl: string
   type?: string
