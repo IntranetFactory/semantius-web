@@ -48,6 +48,11 @@ function StandaloneFormView({
     ? (labelData?.[0]?.[labelColumn] as string) || String(recordId)
     : undefined
 
+  const singularLabel = metadata.table?.singular_label || 'Record'
+  const pageTitle = recordId
+    ? recordLabel || singularLabel
+    : `New ${singularLabel}`
+
   const handleSave = () => {
     navigate({ to: viewName })
   }
@@ -58,12 +63,10 @@ function StandaloneFormView({
         moduleId={moduleId}
         entityLabel={metadata.table?.plural_label || 'Records'}
         entityPath={viewName}
-        recordLabel={recordId ? recordLabel : `New ${metadata.table?.singular_label || 'Record'}`}
+        recordLabel={pageTitle}
       />
       <h1 className="text-3xl font-bold tracking-tight">
-        {recordId
-          ? recordLabel || `${metadata.table?.singular_label || 'Record'}`
-          : `New ${metadata.table?.singular_label || 'Record'}`}
+        {pageTitle}
       </h1>
       <TableForm
         schema={metadata}

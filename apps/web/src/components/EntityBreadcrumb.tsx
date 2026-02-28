@@ -25,7 +25,10 @@ export function EntityBreadcrumb({
   entityPath,
   recordLabel,
 }: EntityBreadcrumbProps) {
-  const moduleLabel = moduleId.charAt(0).toUpperCase() + moduleId.slice(1)
+  const moduleLabel = moduleId
+    .split('-')
+    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+    .join(' ')
 
   return (
     <Breadcrumb>
