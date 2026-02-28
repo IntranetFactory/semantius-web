@@ -117,7 +117,6 @@ Secrets are managed with [dotenvx](https://dotenvx.com/). The encrypted `.env` f
 | `VITE_OAUTH_CLIENT_ID` | OAuth client ID |
 | `VITE_OAUTH_AUTH_ENDPOINT` | Authorization endpoint |
 | `VITE_OAUTH_TOKEN_ENDPOINT` | Token endpoint |
-| `VITE_OAUTH_REDIRECT_URI` | Redirect URI (e.g., `http://localhost:5173`) |
 | `VITE_OAUTH_SCOPE` | OAuth scopes (e.g., `openid profile email`) |
 | `VITE_OAUTH_USERINFO_ENDPOINT` | OIDC userinfo endpoint |
 | `VITE_OAUTH_LOGOUT_ENDPOINT` | Logout endpoint |

@@ -4,14 +4,13 @@ import { useEffect, useState } from 'react'
 import { AlertCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
-export const Route = createFileRoute('/callback')({
+export const Route = createFileRoute('/oauth2_callback')({
   component: CallbackComponent,
 })
 
 function CallbackComponent() {
   const { token, error, logIn } = useAuth()
   const navigate = useNavigate()
-  const search = Route.useSearch()
 
   // Freeze whether an OAuth code was present at mount time. The library may
   // strip ?code= from the URL before the token exchange completes, so we
@@ -20,14 +19,19 @@ function CallbackComponent() {
   // it before the token is set, causing a false "no active flow" signal.
   const [hadOAuthCode] = useState(() => new URLSearchParams(window.location.search).has('code'))
 
+  // The redirect target is passed through the OAuth state parameter (stored in
+  // localStorage by the library before the redirect). Read it once at mount so
+  // it's available after the token exchange completes.
+  const [redirectTarget] = useState(() => localStorage.getItem('ROCP_auth_state'))
+
   useEffect(() => {
     if (token) {
-      navigate({ to: (search as any).redirect || '/' })
+      navigate({ to: redirectTarget || '/' })
     } else if (!hadOAuthCode && !error) {
-      // Arrived at /callback without an OAuth code — no active flow, send to login
+      // Arrived at /oauth2_callback without an OAuth code — no active flow, send to login
       navigate({ to: '/login' })
     }
-  }, [token, hadOAuthCode, error, navigate, search])
+  }, [token, hadOAuthCode, error, navigate, redirectTarget])
 
   if (error) {
     return (

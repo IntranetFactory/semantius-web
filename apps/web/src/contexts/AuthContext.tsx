@@ -107,7 +107,7 @@ const authConfig = isConfigValid ? {
   clientId: import.meta.env.VITE_OAUTH_CLIENT_ID!,
   authorizationEndpoint: import.meta.env.VITE_OAUTH_AUTH_ENDPOINT!,
   tokenEndpoint: import.meta.env.VITE_OAUTH_TOKEN_ENDPOINT!,
-  redirectUri: import.meta.env.VITE_OAUTH_REDIRECT_URI || `${window.location.origin}/callback`,
+  redirectUri: `${window.location.origin}/oauth2_callback`,
   scope: import.meta.env.VITE_OAUTH_SCOPE || 'openid profile email',
   logoutEndpoint: import.meta.env.VITE_OAUTH_LOGOUT_ENDPOINT,
   autoLogin: false,

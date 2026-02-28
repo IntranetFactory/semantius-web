@@ -57,7 +57,6 @@ export function ConfigErrorPage({ missingVars }: ConfigErrorPageProps) {
               <code>{`VITE_OAUTH_CLIENT_ID=your-actual-client-id
 VITE_OAUTH_AUTH_ENDPOINT=https://auth.example.com/oauth/authorize
 VITE_OAUTH_TOKEN_ENDPOINT=https://auth.example.com/oauth/token
-VITE_OAUTH_REDIRECT_URI=http://localhost:5173
 VITE_OAUTH_SCOPE=openid profile email
 VITE_OAUTH_USERINFO_ENDPOINT=https://auth.example.com/oauth/userinfo
 VITE_OAUTH_LOGOUT_ENDPOINT=https://auth.example.com/oauth/logout

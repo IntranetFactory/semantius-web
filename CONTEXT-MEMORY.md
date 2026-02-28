@@ -23,13 +23,12 @@ Path alias: `@` → `apps/web/src` (configured in `vite.config.ts` and `tsconfig
 
 ### Auth Routing
 
-- `/login` — always calls `logIn()` unconditionally on mount (clears stale state, redirects to OAuth). Shows spinner only.
-- `/callback` — the OAuth `redirectUri`. Detects an active callback via `hadOAuthCode` (frozen at mount via `useState(() => new URLSearchParams(window.location.search).has('code'))`). **Do NOT use `loginInProgress` here** — the library clears it before the token exchange completes, creating a false "no active flow" signal on the first login. Redirect to `/login` only when `!hadOAuthCode && !error`.
+- `/login` — always calls `logIn(redirectTarget)` on mount (clears stale state, redirects to OAuth). Passes the `?redirect=` search param as OAuth `state` so it survives the round-trip. Shows spinner only.
+- `/oauth2_callback` — the OAuth `redirectUri` (hardcoded to `${origin}/oauth2_callback` — no env var). Detects an active callback via `hadOAuthCode` (frozen at mount via `useState(() => new URLSearchParams(window.location.search).has('code'))`). After token exchange, reads the redirect target from `localStorage.getItem('ROCP_auth_state')` and navigates there. **Do NOT use `loginInProgress` here** — the library clears it before the token exchange completes.
 - `/_app` (`beforeLoad`) — redirects to `/login` if not authenticated; does NOT check `loginInProgress`.
-- Default `redirectUri`: `${window.location.origin}/callback` (override with `VITE_OAUTH_REDIRECT_URI`).
-- **`loginInProgress`** is stored in **localStorage** (library default) — persists across tabs and sessions. It is cleared by the library *before* the token exchange completes, so it is **not a reliable indicator** in `/callback`. Stale state is harmless: `/login` always calls `logIn()` which resets it via `clearStorage()`.
-- **Must register `/callback` as allowed redirect URI** in your OAuth provider (Auth0, Keycloak, etc.).
-- **`useLayoutEffect` for `router.update()`** — `RouterContextUpdater` uses `useLayoutEffect` (not `useEffect`) to call `router.update()`. Layout effects run synchronously before paint and before any passive effects, ensuring the router context is always up-to-date before navigation fires. Using `useEffect` causes a race condition where `CallbackComponent`'s navigate fires before `isAuthenticated: true` is visible to `_app.tsx` `beforeLoad`.
+- **`loginInProgress`** is stored in **localStorage** (library default) — persists across tabs and sessions. It is cleared by the library *before* the token exchange completes, so it is **not a reliable indicator** in `/oauth2_callback`. Stale state is harmless: `/login` always calls `logIn()` which resets it via `clearStorage()`.
+- **Must register `/oauth2_callback` as allowed redirect URI** in your OAuth provider (Auth0, Keycloak, etc.).
+- **`useLayoutEffect` for `router.update()`** — `RouterContextUpdater` uses `useLayoutEffect` (not `useEffect`) to call `router.update()`. Layout effects run synchronously before paint and before any passive effects, ensuring the router context is always up-to-date before navigation fires. Using `useEffect` causes a race condition where the callback's navigate fires before `isAuthenticated: true` is visible to `_app.tsx` `beforeLoad`.
 
 ### Routing Conventions
 

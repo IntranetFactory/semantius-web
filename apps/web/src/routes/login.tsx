@@ -1,6 +1,6 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/useAuth'
-import { useEffect } from 'react'
+import { useEffect, useRef } from 'react'
 import { Loader2 } from 'lucide-react'
 
 export const Route = createFileRoute('/login')({
@@ -16,11 +16,17 @@ export const Route = createFileRoute('/login')({
 
 function LoginComponent() {
   const { logIn } = useAuth()
+  const search = Route.useSearch()
+  const calledRef = useRef(false)
 
   useEffect(() => {
-    // Always start a fresh OAuth flow. logIn() calls clearStorage() first,
-    // so any stale loginInProgress state is reset before redirecting.
-    logIn()
+    // Guard against React strict mode calling the effect twice — the second
+    // logIn() would clearStorage() and clobber the first PKCE code verifier.
+    if (calledRef.current) return
+    calledRef.current = true
+
+    const redirectTarget = (search as any).redirect
+    logIn(redirectTarget || undefined)
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (

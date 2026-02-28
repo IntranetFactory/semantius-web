@@ -11,11 +11,11 @@
 import { createFileRoute } from '@tanstack/react-router'
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as Oauth2_callbackRouteImport } from './routes/oauth2_callback'
 import { Route as LogoutSuccessRouteImport } from './routes/logout-success'
 import { Route as LogoutRouteImport } from './routes/logout'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as FormPlaygroundRouteImport } from './routes/form-playground'
-import { Route as CallbackRouteImport } from './routes/callback'
 import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppXcustomersRouteImport } from './routes/_app.xcustomers'
@@ -35,6 +35,11 @@ const AppModuleIdTable_nameKeyLazyRouteImport = createFileRoute(
   '/_app/$moduleId/$table_name/$key',
 )()
 
+const Oauth2_callbackRoute = Oauth2_callbackRouteImport.update({
+  id: '/oauth2_callback',
+  path: '/oauth2_callback',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const LogoutSuccessRoute = LogoutSuccessRouteImport.update({
   id: '/logout-success',
   path: '/logout-success',
@@ -53,11 +58,6 @@ const LoginRoute = LoginRouteImport.update({
 const FormPlaygroundRoute = FormPlaygroundRouteImport.update({
   id: '/form-playground',
   path: '/form-playground',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CallbackRoute = CallbackRouteImport.update({
-  id: '/callback',
-  path: '/callback',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AppRoute = AppRouteImport.update({
@@ -134,11 +134,11 @@ const AppXcustomersIdEditRoute = AppXcustomersIdEditRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
-  '/callback': typeof CallbackRoute
   '/form-playground': typeof FormPlaygroundRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/logout-success': typeof LogoutSuccessRoute
+  '/oauth2_callback': typeof Oauth2_callbackRoute
   '/documents': typeof AppDocumentsRoute
   '/modules': typeof AppModulesRoute
   '/settings': typeof AppSettingsRoute
@@ -152,11 +152,11 @@ export interface FileRoutesByFullPath {
   '/crm/home/detail': typeof AppCrmHomeDetailLazyRoute
 }
 export interface FileRoutesByTo {
-  '/callback': typeof CallbackRoute
   '/form-playground': typeof FormPlaygroundRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/logout-success': typeof LogoutSuccessRoute
+  '/oauth2_callback': typeof Oauth2_callbackRoute
   '/documents': typeof AppDocumentsRoute
   '/modules': typeof AppModulesRoute
   '/settings': typeof AppSettingsRoute
@@ -173,11 +173,11 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/_app': typeof AppRouteWithChildren
-  '/callback': typeof CallbackRoute
   '/form-playground': typeof FormPlaygroundRoute
   '/login': typeof LoginRoute
   '/logout': typeof LogoutRoute
   '/logout-success': typeof LogoutSuccessRoute
+  '/oauth2_callback': typeof Oauth2_callbackRoute
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/modules': typeof AppModulesRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -195,11 +195,11 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
-    | '/callback'
     | '/form-playground'
     | '/login'
     | '/logout'
     | '/logout-success'
+    | '/oauth2_callback'
     | '/documents'
     | '/modules'
     | '/settings'
@@ -213,11 +213,11 @@ export interface FileRouteTypes {
     | '/crm/home/detail'
   fileRoutesByTo: FileRoutesByTo
   to:
-    | '/callback'
     | '/form-playground'
     | '/login'
     | '/logout'
     | '/logout-success'
+    | '/oauth2_callback'
     | '/documents'
     | '/modules'
     | '/settings'
@@ -233,11 +233,11 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/_app'
-    | '/callback'
     | '/form-playground'
     | '/login'
     | '/logout'
     | '/logout-success'
+    | '/oauth2_callback'
     | '/_app/documents'
     | '/_app/modules'
     | '/_app/settings'
@@ -254,15 +254,22 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   AppRoute: typeof AppRouteWithChildren
-  CallbackRoute: typeof CallbackRoute
   FormPlaygroundRoute: typeof FormPlaygroundRoute
   LoginRoute: typeof LoginRoute
   LogoutRoute: typeof LogoutRoute
   LogoutSuccessRoute: typeof LogoutSuccessRoute
+  Oauth2_callbackRoute: typeof Oauth2_callbackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/oauth2_callback': {
+      id: '/oauth2_callback'
+      path: '/oauth2_callback'
+      fullPath: '/oauth2_callback'
+      preLoaderRoute: typeof Oauth2_callbackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/logout-success': {
       id: '/logout-success'
       path: '/logout-success'
@@ -289,13 +296,6 @@ declare module '@tanstack/react-router' {
       path: '/form-playground'
       fullPath: '/form-playground'
       preLoaderRoute: typeof FormPlaygroundRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/callback': {
-      id: '/callback'
-      path: '/callback'
-      fullPath: '/callback'
-      preLoaderRoute: typeof CallbackRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_app': {
@@ -467,11 +467,11 @@ const AppRouteWithChildren = AppRoute._addFileChildren(AppRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   AppRoute: AppRouteWithChildren,
-  CallbackRoute: CallbackRoute,
   FormPlaygroundRoute: FormPlaygroundRoute,
   LoginRoute: LoginRoute,
   LogoutRoute: LogoutRoute,
   LogoutSuccessRoute: LogoutSuccessRoute,
+  Oauth2_callbackRoute: Oauth2_callbackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
