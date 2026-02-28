@@ -280,7 +280,7 @@ export function APISelect<T>({
               <span>Loading...</span>
             </div>
           ) : (
-            placeholder
+            <span className="text-muted-foreground">{placeholder}</span>
           )}
           <div className="flex items-center gap-1 ml-auto shrink-0 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-aria-expanded:opacity-100 transition-opacity">
             {clearable && selectedValue && (
