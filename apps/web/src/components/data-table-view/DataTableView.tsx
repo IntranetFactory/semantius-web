@@ -432,9 +432,11 @@ export function DataTableView({
             const embedded = row.original[labelKey] as Record<string, unknown> | undefined
             if (embedded && typeof embedded === 'object' && !Array.isArray(embedded)) {
               const labelValue = embedded[property.reference_table_label_column]
-              return <div>{String(labelValue || value || '-')}</div>
+              const text = String(labelValue || value || '-')
+              return <div className="max-w-[200px] truncate" title={text}>{text}</div>
             }
-            return <div>{String(value || '-')}</div>
+            const text = String(value || '-')
+            return <div className="max-w-[200px] truncate" title={text}>{text}</div>
           }
 
           if (property.type === 'boolean') {
@@ -454,7 +456,8 @@ export function DataTableView({
             return <div className="text-right">{String(value ?? '0')}</div>
           }
 
-          return <div>{String(value ?? '-')}</div>
+          const text = String(value ?? '-')
+          return <div className="max-w-[200px] truncate" title={text}>{text}</div>
         },
       })
     }
@@ -555,6 +558,7 @@ export function DataTableView({
   return (
     <>
       <DataTableRoot<RecordType, unknown>
+        key={tableName}
         data={tableData}
         columns={columns}
         isLoading={isLoading}
