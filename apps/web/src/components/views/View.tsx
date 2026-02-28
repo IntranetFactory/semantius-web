@@ -123,13 +123,21 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
   // --- Overlay mode: list + sheet/dialog ---
 
+  // Inline create mode: /module/entity/create opens a blank form in the overlay
+  const CREATE_SEGMENT = 'create'
+  const isCreateMode = pathname === `${view_name}/${CREATE_SEGMENT}`
+
   const editMatch = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)\/edit$`))
   const viewMatchResult = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)$`))
-  const viewMatch = viewMatchResult && !editMatch ? viewMatchResult : null
+  // Exclude 'create' from being treated as a record ID
+  const viewMatch =
+    viewMatchResult && !editMatch && viewMatchResult[1] !== CREATE_SEGMENT
+      ? viewMatchResult
+      : null
 
   const isEditMode = !!editMatch
   const recordId = editMatch?.[1] || viewMatch?.[1]
-  const isOpen = !!recordId
+  const isOpen = isCreateMode || !!recordId
 
   const fieldCount = Object.keys(metadata.properties || {}).length
   // Determine display mode: modal for entities with many fields on wide screens
@@ -161,6 +169,11 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
   return (
     <div className="space-y-6">
+      <EntityBreadcrumb
+        moduleId={module_name}
+        entityLabel={metadata.table?.plural_label || 'Records'}
+        entityPath={view_name}
+      />
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
@@ -172,10 +185,10 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         </div>
         {canEdit && (
           <Button
-            onClick={() => navigate({ to: `${view_name}/new` })}
+            onClick={() => navigatePreservingSearch({ to: `${view_name}/${CREATE_SEGMENT}` })}
           >
             <Plus className="mr-2 h-4 w-4" />
-            New {metadata.table?.singular_label || 'Record'}
+            Add {metadata.table?.singular_label || 'Record'}
           </Button>
         )}
       </div>
@@ -202,33 +215,37 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         <SheetContent className="w-full sm:max-w-[540px]" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
             <SheetTitle>
-              {`${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
+              {isCreateMode
+                ? `New ${metadata.table?.singular_label || 'Record'}`
+                : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
             </SheetTitle>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto p-6 pt-0">
             <TableForm
               schema={metadata}
-              recordId={recordId}
+              recordId={isCreateMode ? null : recordId}
               onClose={handleClose}
-              formMode={isEditMode ? 'edit' : (canEdit ? 'edit' : 'view')}
+              formMode={isCreateMode ? 'create' : (isEditMode ? 'edit' : (canEdit ? 'edit' : 'view'))}
             />
           </div>
         </SheetContent>
       </Sheet>
 
       {/* Modal for viewing/editing record - used when field count >= 10 on wide screens */}
-      <Dialog open={useModal && !!recordId} onOpenChange={(open) => !open && handleClose()}>
+      <Dialog open={useModal && isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
-              {`${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
+              {isCreateMode
+                ? `New ${metadata.table?.singular_label || 'Record'}`
+                : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
             </DialogTitle>
           </DialogHeader>
           <TableForm
             schema={metadata}
-            recordId={recordId}
+            recordId={isCreateMode ? null : recordId}
             onClose={handleClose}
-            formMode={canEdit ? 'edit' : 'view'}
+            formMode={isCreateMode ? 'create' : (canEdit ? 'edit' : 'view')}
           />
         </DialogContent>
       </Dialog>

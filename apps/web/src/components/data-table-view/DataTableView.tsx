@@ -576,12 +576,13 @@ export function DataTableView({
       >
         {/* Toolbar */}
         <DataTableToolbarSection className="justify-between">
-          <div className="flex gap-2">
+          <div className="flex flex-1 gap-2">
             {tableMetadata.searchable && (
               <DataTableSearchFilter
                 placeholder={`Search ${tableMetadata.plural_label || 'records'}...`}
                 value={searchText}
                 onChange={handleSearchChange}
+                className="max-w-[200px]"
               />
             )}
           </div>

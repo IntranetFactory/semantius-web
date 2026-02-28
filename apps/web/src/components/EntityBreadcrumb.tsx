@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { Link } from '@tanstack/react-router'
 import {
   Breadcrumb,
@@ -7,6 +8,7 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
+import { useAuth } from '@/hooks/useAuth'
 
 interface EntityBreadcrumbProps {
   /** Module name (first URL segment, e.g. "crm") */
@@ -25,10 +27,27 @@ export function EntityBreadcrumb({
   entityPath,
   recordLabel,
 }: EntityBreadcrumbProps) {
-  const moduleLabel = moduleId
-    .split('-')
-    .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-    .join(' ')
+  const { rpcUserInfo } = useAuth()
+
+  // Look up the actual module name (e.g. "CRM") from user's module list
+  const moduleLabel = useMemo(() => {
+    const moduleIdLower = moduleId.toLowerCase()
+    const found = rpcUserInfo?.modules?.find((m) => {
+      const nameLower = m.module_name.toLowerCase()
+      const aliasLower = m.alias?.toLowerCase()
+      return (
+        nameLower === moduleIdLower ||
+        (aliasLower && aliasLower.trim() !== '' && aliasLower === moduleIdLower)
+      )
+    })
+    return (
+      found?.module_name ||
+      moduleId
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
+    )
+  }, [moduleId, rpcUserInfo?.modules])
 
   return (
     <Breadcrumb>
