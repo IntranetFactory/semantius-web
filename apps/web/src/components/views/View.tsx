@@ -13,15 +13,12 @@ import { Button } from '@/components/ui/button'
 import { Plus, Users } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { TableForm } from '@/components/form/TableForm'
-import { useState } from 'react'
 
 type RecordType = Record<string, unknown>
 
 export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _recordId, metadata }: ViewProps) {
   const navigate = useNavigate()
   const routerState = useRouterState()
-  const [modalMode, setModalMode] = useState<'edit' | 'create' | 'view' | null>(null)
-  const [modalRecord, setModalRecord] = useState<RecordType | undefined>(undefined)
 
   // Extract primary key column name from metadata (source of truth)
   const idColumn = metadata.table?.id_column || 'id'
@@ -51,15 +48,9 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const recordId = editMatch?.[1] || viewMatch?.[1]
   const isOpen = isNewMode || !!recordId
 
-  const handleModalOpen = (mode: 'edit' | 'create' | 'view', record?: RecordType) => {
-    setModalMode(mode)
-    setModalRecord(record)
-  }
-
-  const handleModalClose = () => {
-    setModalMode(null)
-    setModalRecord(undefined)
-  }
+  const fieldCount = Object.keys(metadata.properties || {}).length
+  // Determine display mode: modal for entities with many fields on wide screens
+  const useModal = typeof window !== 'undefined' && window.innerWidth > 900 && fieldCount >= 10
 
   const handleEdit = (record: RecordType) => {
     navigate({
@@ -68,20 +59,15 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
     })
   }
 
-  const fieldCount = Object.keys(metadata.properties || {}).length
-
+  // Both sidebar and modal use URL-based deep links
   const handleRowClick = (record: RecordType) => {
-    if (window.innerWidth > 900 && fieldCount >= 10) {
-      handleModalOpen(canEdit ? 'edit' : 'view', record)
-    } else {
-      navigate({
-        to: `${view_name}/$id`,
-        params: { id: String(record[idColumn]) },
-      })
-    }
+    navigate({
+      to: `${view_name}/$id`,
+      params: { id: String(record[idColumn]) },
+    })
   }
 
-  const handleSheetClose = () => {
+  const handleClose = () => {
     navigate({ to: view_name })
   }
 
@@ -112,7 +98,12 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         metadata={metadata}
         onRowClick={handleRowClick}
         onEdit={handleEdit}
-        onEditModal={(record) => handleModalOpen('edit', record)}
+        onEditModal={(record) => {
+          navigate({
+            to: `${view_name}/$id`,
+            params: { id: String(record[idColumn]) },
+          })
+        }}
         editRoute={`${view_name}/$id/edit`}
         canEdit={canEdit}
         emptyMessage={`No ${metadata.table?.plural_label?.toLowerCase() || 'records'} found`}
@@ -120,8 +111,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         excludeColumns={['created_at', 'updated_at']}
       />
 
-      {/* Sheet for viewing/editing record - responsive: full screen on mobile */}
-      <Sheet open={isOpen} onOpenChange={(open) => !open && handleSheetClose()}>
+      {/* Sheet for viewing/editing record - used when field count < 10 or narrow screen */}
+      <Sheet open={isOpen && !useModal} onOpenChange={(open) => !open && handleClose()}>
         <SheetContent className="w-full sm:max-w-[540px]" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
             <SheetTitle>
@@ -134,28 +125,26 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
             <TableForm
               schema={metadata}
               recordId={isNewMode ? null : recordId}
-              onClose={handleSheetClose}
+              onClose={handleClose}
               formMode={isNewMode ? 'create' : (canEdit ? 'edit' : 'view')}
             />
           </div>
         </SheetContent>
       </Sheet>
 
-      {/* Modal for editing record - responsive: full screen on mobile */}
-      <Dialog open={!!modalMode} onOpenChange={(open) => !open && handleModalClose()}>
+      {/* Modal for viewing/editing record - used when field count >= 10 on wide screens */}
+      <Dialog open={useModal && !!recordId} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
-              {modalMode === 'create'
-                ? `New ${metadata.table?.singular_label || 'Record'}`
-                : `${metadata.table?.singular_label || 'Record'} ${modalRecord?.[idColumn] ?? ''}`}
+              {`${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
             </DialogTitle>
           </DialogHeader>
           <TableForm
             schema={metadata}
-            recordId={modalRecord?.[idColumn] ? String(modalRecord[idColumn]) : undefined}
-            onClose={handleModalClose}
-            formMode={!canEdit || modalMode === 'view' ? 'view' : 'edit'}
+            recordId={recordId}
+            onClose={handleClose}
+            formMode={canEdit ? 'edit' : 'view'}
           />
         </DialogContent>
       </Dialog>
