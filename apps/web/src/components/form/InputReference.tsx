@@ -31,8 +31,9 @@ export function InputReference({
   let placeholder = (schema as any)?.placeholder || (label ? `Search ${label.toLowerCase()}...` : 'Search...')
 
   // generate default props based on schema.reference_* properties
-  if (schema?.reference_table_id_column) getRecordId = schema.reference_table_id_column;
+  if (schema?.reference_table_id_column) getRecordId = "${" + schema.reference_table_id_column + "}";
   if (schema?.reference_table_label_column) renderItem = "${" + schema.reference_table_label_column + "}";
+  if (schema?.reference_table_plural_label) placeholder = `Search ${String(schema.reference_table_plural_label)}...`;
 
   if (!searchUrl && schema?.reference_table) {
     const table = schema.reference_table;
@@ -90,7 +91,7 @@ export function InputReference({
                 getRecords={getRecords}
                 getRecordId={getRecordId}
                 renderItem={renderItem}
-                label={label ?? name}
+                label={schema?.reference_table_plural_label ? String(schema.reference_table_plural_label) : (label ?? name)}
                 placeholder={placeholder}
                 value={toSelectValue(field.state.value)}
                 onChange={(value) => field.handleChange(toFormValue(value))}

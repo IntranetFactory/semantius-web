@@ -231,7 +231,7 @@ export function APISelect<T>({
   // Update selectedOption when options are loaded and value exists
   useEffect(() => {
     if (value && options.length > 0) {
-      const option = options.find((opt) => getRecordId(opt) === value);
+      const option = options.find((opt) => String(getRecordId(opt)) === String(value));
       if (option) {
         setSelectedOption(option);
       }
@@ -240,11 +240,16 @@ export function APISelect<T>({
 
   const handleSelect = useCallback(
     (currentValue: string) => {
+      // cmdk lowercases the value passed to onSelect, so match case-insensitively
+      const matchedOption = options.find(
+        (option) => getRecordId(option).toLowerCase() === currentValue.toLowerCase()
+      );
+      const originalValue = matchedOption ? getRecordId(matchedOption) : currentValue;
       const newValue =
-        clearable && currentValue === selectedValue ? "" : currentValue;
+        clearable && String(originalValue) === String(selectedValue) ? "" : originalValue;
       setSelectedValue(newValue);
       setSelectedOption(
-        options.find((option) => getRecordId(option) === newValue) || null
+        newValue ? (matchedOption || null) : null
       );
       onChange(newValue);
       setOpen(false);
@@ -260,7 +265,7 @@ export function APISelect<T>({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "justify-between font-normal",
+            "group justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
             disabled && "opacity-50 cursor-not-allowed",
             triggerClassName
           )}
@@ -277,7 +282,7 @@ export function APISelect<T>({
           ) : (
             placeholder
           )}
-          <div className="flex items-center gap-1 ml-auto shrink-0">
+          <div className="flex items-center gap-1 ml-auto shrink-0 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-aria-expanded:opacity-100 transition-opacity">
             {clearable && selectedValue && (
               <span
                 role="button"
@@ -306,7 +311,7 @@ export function APISelect<T>({
         <Command shouldFilter={false}>
           <div className="relative border-b w-full">
             <CommandInput
-              placeholder={`Search ${label.toLowerCase()}...`}
+              placeholder={`Search ${label}...`}
               value={searchTerm}
               onValueChange={(value) => {
                 setSearchTerm(value);
@@ -331,21 +336,22 @@ export function APISelect<T>({
               notFound || <CommandEmpty>{noResultsMessage ?? `No ${label.toLowerCase()} found.`}</CommandEmpty>
             )}
             <CommandGroup>
-              {options.map((option) => (
-                <CommandItem
-                  key={getRecordId(option)}
-                  value={getRecordId(option)}
-                  onSelect={handleSelect}
-                >
-                  <div className={listItemClassName}>{(renderListItem ?? renderItem)(option)}</div>
-                  <Check
-                    className={cn(
-                      "ml-auto h-3 w-3",
-                      selectedValue === getRecordId(option) ? "opacity-100" : "opacity-0"
+              {options.map((option) => {
+                const isSelected = String(selectedValue) === String(getRecordId(option));
+                return (
+                  <CommandItem
+                    key={getRecordId(option)}
+                    value={getRecordId(option)}
+                    onSelect={handleSelect}
+                    className="cursor-pointer bg-transparent! hover:bg-accent!"
+                  >
+                    <div className={listItemClassName}>{(renderListItem ?? renderItem)(option)}</div>
+                    {isSelected && (
+                      <Check className="ml-auto size-3 shrink-0 text-foreground" />
                     )}
-                  />
-                </CommandItem>
-              ))}
+                  </CommandItem>
+                );
+              })}
             </CommandGroup>
           </CommandList>
         </Command>

@@ -91,10 +91,10 @@ function filterToPostgRESTParams(filter: PlainFilter): string[] {
   const strVal = Array.isArray(val) ? (val[0] ?? '') : (val ?? '')
 
   switch (op) {
-    case 'ilike':     return [`${col}=ilike.*${strVal}*`]
+    case 'ilike': return [`${col}=ilike.*${strVal}*`]
     case 'not.ilike': return [`${col}=not.ilike.*${strVal}*`]
-    case 'eq':        return strVal !== '' ? [`${col}=eq.${strVal}`] : []
-    case 'neq':       return strVal !== '' ? [`${col}=neq.${strVal}`] : []
+    case 'eq': return strVal !== '' ? [`${col}=eq.${strVal}`] : []
+    case 'neq': return strVal !== '' ? [`${col}=neq.${strVal}`] : []
     case 'in': {
       const vals = (Array.isArray(val) ? val : String(val).split(',')).filter(v => v !== '')
       return vals.length > 0 ? [`${col}=in.(${vals.join(',')})`] : []
@@ -103,12 +103,12 @@ function filterToPostgRESTParams(filter: PlainFilter): string[] {
       const vals = (Array.isArray(val) ? val : String(val).split(',')).filter(v => v !== '')
       return vals.length > 0 ? [`${col}=not.in.(${vals.join(',')})`] : []
     }
-    case 'empty':     return [`${col}=is.null`]
+    case 'empty': return [`${col}=is.null`]
     case 'not.empty': return [`${col}=not.is.null`]
-    case 'lt':        return strVal !== '' ? [`${col}=lt.${strVal}`] : []
-    case 'lte':       return strVal !== '' ? [`${col}=lte.${strVal}`] : []
-    case 'gt':        return strVal !== '' ? [`${col}=gt.${strVal}`] : []
-    case 'gte':       return strVal !== '' ? [`${col}=gte.${strVal}`] : []
+    case 'lt': return strVal !== '' ? [`${col}=lt.${strVal}`] : []
+    case 'lte': return strVal !== '' ? [`${col}=lte.${strVal}`] : []
+    case 'gt': return strVal !== '' ? [`${col}=gt.${strVal}`] : []
+    case 'gte': return strVal !== '' ? [`${col}=gte.${strVal}`] : []
     case 'between': {
       const arr = Array.isArray(val) ? val : []
       const result: string[] = []
@@ -135,19 +135,19 @@ function filterToORCondition(filter: PlainFilter): string | null {
   const strVal = Array.isArray(val) ? (val[0] ?? '') : (val ?? '')
 
   switch (op) {
-    case 'ilike':     return `${col}.ilike.*${strVal}*`
+    case 'ilike': return `${col}.ilike.*${strVal}*`
     case 'not.ilike': return `${col}.not.ilike.*${strVal}*`
-    case 'eq':        return strVal !== '' ? `${col}.eq.${strVal}` : null
-    case 'neq':       return strVal !== '' ? `${col}.neq.${strVal}` : null
+    case 'eq': return strVal !== '' ? `${col}.eq.${strVal}` : null
+    case 'neq': return strVal !== '' ? `${col}.neq.${strVal}` : null
     case 'in': {
       const vals = (Array.isArray(val) ? val : String(val).split(',')).filter(v => v !== '')
       return vals.length > 0 ? `${col}.in.(${vals.join(',')})` : null
     }
-    case 'lt':        return strVal !== '' ? `${col}.lt.${strVal}` : null
-    case 'lte':       return strVal !== '' ? `${col}.lte.${strVal}` : null
-    case 'gt':        return strVal !== '' ? `${col}.gt.${strVal}` : null
-    case 'gte':       return strVal !== '' ? `${col}.gte.${strVal}` : null
-    case 'empty':     return `${col}.is.null`
+    case 'lt': return strVal !== '' ? `${col}.lt.${strVal}` : null
+    case 'lte': return strVal !== '' ? `${col}.lte.${strVal}` : null
+    case 'gt': return strVal !== '' ? `${col}.gt.${strVal}` : null
+    case 'gte': return strVal !== '' ? `${col}.gte.${strVal}` : null
+    case 'empty': return `${col}.is.null`
     case 'not.empty': return `${col}.not.is.null`
     default: return null
   }
@@ -205,12 +205,12 @@ export function DataTableView({
   const searchParams = useSearch({
     strict: false,
     select: (search) => ({
-      page:      (search as { page?: number }).page,
-      pageSize:  (search as { pageSize?: number }).pageSize,
-      sortBy:    (search as { sortBy?: string }).sortBy,
+      page: (search as { page?: number }).page,
+      pageSize: (search as { pageSize?: number }).pageSize,
+      sortBy: (search as { sortBy?: string }).sortBy,
       sortOrder: (search as { sortOrder?: 'asc' | 'desc' }).sortOrder,
-      search:    (search as { search?: string }).search,
-      filters:   (search as { filters?: string }).filters,
+      search: (search as { search?: string }).search,
+      filters: (search as { filters?: string }).filters,
     }),
     structuralSharing: true,
   })
@@ -227,7 +227,7 @@ export function DataTableView({
   // --- Controlled state: all owned here, synced to URL ---
   const [pagination, setPaginationState] = useState<PaginationState>(() => ({
     pageIndex: searchParams.page ? searchParams.page - 1 : 0,
-    pageSize:  searchParams.pageSize || getDefaultPageSize(),
+    pageSize: searchParams.pageSize || getDefaultPageSize(),
   }))
 
   const [sorting, setSortingState] = useState<SortingState>(() => {
@@ -250,7 +250,7 @@ export function DataTableView({
   useEffect(() => {
     setPaginationState({
       pageIndex: searchParams.page ? searchParams.page - 1 : 0,
-      pageSize:  searchParams.pageSize || getDefaultPageSize(),
+      pageSize: searchParams.pageSize || getDefaultPageSize(),
     })
     const col = searchParams.sortBy
     const exists = col && metadata.properties?.[col]
@@ -261,47 +261,47 @@ export function DataTableView({
     )
     setExtFilters(parseFiltersFromURL(searchParams.filters))
     setSearchText(searchParams.search || '')
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [tableName])
 
   // --- Sync ALL state to URL whenever any piece changes ---
   useEffect(() => {
-    const targetPage      = pagination.pageIndex + 1
-    const targetPageSize  = pagination.pageSize
-    const targetSortBy    = sorting[0]?.id
+    const targetPage = pagination.pageIndex + 1
+    const targetPageSize = pagination.pageSize
+    const targetSortBy = sorting[0]?.id
     const targetSortOrder = sorting[0]?.desc ? 'desc' : 'asc'
-    const targetSearch    = searchText || undefined
-    const targetFilters   = serializeFiltersForURL(extFilters)
+    const targetSearch = searchText || undefined
+    const targetFilters = serializeFiltersForURL(extFilters)
 
-    const currentPage      = searchParams.page || 1
-    const currentPageSize  = searchParams.pageSize || 10
-    const currentSortBy    = searchParams.sortBy
+    const currentPage = searchParams.page || 1
+    const currentPageSize = searchParams.pageSize || 10
+    const currentSortBy = searchParams.sortBy
     const currentSortOrder = searchParams.sortOrder || 'asc'
-    const currentSearch    = searchParams.search
-    const currentFilters   = searchParams.filters
+    const currentSearch = searchParams.search
+    const currentFilters = searchParams.filters
 
     if (
-      currentPage      === targetPage      &&
-      currentPageSize  === targetPageSize  &&
-      currentSortBy    === targetSortBy    &&
+      currentPage === targetPage &&
+      currentPageSize === targetPageSize &&
+      currentSortBy === targetSortBy &&
       currentSortOrder === targetSortOrder &&
-      currentSearch    === targetSearch    &&
-      currentFilters   === targetFilters
+      currentSearch === targetSearch &&
+      currentFilters === targetFilters
     ) return
 
     navigate({
       search: (prev: unknown) => ({
         ...(prev as object),
-        page:     targetPage,
+        page: targetPage,
         pageSize: targetPageSize,
-        ...(targetSortBy    ? { sortBy: targetSortBy, sortOrder: targetSortOrder } : { sortBy: undefined, sortOrder: undefined }),
-        ...(targetSearch    ? { search:  targetSearch  } : { search:  undefined }),
-        ...(targetFilters   ? { filters: targetFilters } : { filters: undefined }),
+        ...(targetSortBy ? { sortBy: targetSortBy, sortOrder: targetSortOrder } : { sortBy: undefined, sortOrder: undefined }),
+        ...(targetSearch ? { search: targetSearch } : { search: undefined }),
+        ...(targetFilters ? { filters: targetFilters } : { filters: undefined }),
       }),
       replace: true,
       resetScroll: false,
     } as Parameters<typeof navigate>[0])
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.pageIndex, pagination.pageSize, sorting, searchText, extFilters])
 
   // --- Build the PostgREST query (every state change triggers a new API call) ---
@@ -582,7 +582,7 @@ export function DataTableView({
                 placeholder={`Search ${tableMetadata.plural_label || 'records'}...`}
                 value={searchText}
                 onChange={handleSearchChange}
-                className="max-w-[200px]"
+                className="max-w-[400px]"
               />
             )}
           </div>
