@@ -80,13 +80,11 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
   // We don't need to fetch the selected record anymore since TableForm does it
 
-  // Build breadcrumb labels from metadata
-  const breadcrumbLabels: Record<string, string> = {}
-  if (module_name) breadcrumbLabels[module_name] = module_name.toUpperCase()
-  if (table_name && metadata.table?.plural_label) breadcrumbLabels[table_name] = metadata.table.plural_label
-
   // Standalone view mode: render form as a full page with breadcrumbs
   if (isStandaloneView && recordId) {
+    const breadcrumbLabels: Record<string, string> = {}
+    if (module_name) breadcrumbLabels[module_name] = module_name.toUpperCase()
+    if (table_name && metadata.table?.plural_label) breadcrumbLabels[table_name] = metadata.table.plural_label
     const segments = buildBreadcrumbSegments(pathname, breadcrumbLabels)
 
     return (

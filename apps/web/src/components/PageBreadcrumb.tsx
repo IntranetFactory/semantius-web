@@ -39,15 +39,20 @@ export function PageBreadcrumb({ segments, currentPage }: PageBreadcrumbProps) {
 
           return (
             <BreadcrumbItem key={index}>
-              {index > 0 && <BreadcrumbSeparator />}
               {isLast ? (
                 <BreadcrumbPage>{label}</BreadcrumbPage>
               ) : segment.href ? (
-                <BreadcrumbLink asChild>
-                  <Link to={segment.href}>{label}</Link>
-                </BreadcrumbLink>
+                <>
+                  <BreadcrumbLink asChild>
+                    <Link to={segment.href}>{label}</Link>
+                  </BreadcrumbLink>
+                  <BreadcrumbSeparator />
+                </>
               ) : (
-                <BreadcrumbPage>{label}</BreadcrumbPage>
+                <>
+                  <BreadcrumbPage>{label}</BreadcrumbPage>
+                  <BreadcrumbSeparator />
+                </>
               )}
             </BreadcrumbItem>
           )
