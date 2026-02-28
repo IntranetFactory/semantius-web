@@ -264,7 +264,8 @@ function CustomersComponent() {
                       navigate({
                         to: '/xcustomers/$id/edit',
                         params: { id: String(customerId) },
-                      })
+                        search: (prev: unknown) => ({ ...(prev as object) }),
+                      } as unknown as Parameters<typeof navigate>[0])
                     }}
                   >
                     <Pencil className="mr-2 h-4 w-4" />
@@ -327,11 +328,15 @@ function CustomersComponent() {
     navigate({
       to: '/xcustomers/$id',
       params: { id: String(customer.id) },
-    })
+      search: (prev: unknown) => ({ ...(prev as object) }),
+    } as unknown as Parameters<typeof navigate>[0])
   }
 
   const handleSheetClose = () => {
-    navigate({ to: '/xcustomers' })
+    navigate({
+      to: '/xcustomers',
+      search: (prev: unknown) => ({ ...(prev as object) }),
+    } as unknown as Parameters<typeof navigate>[0])
     // Refresh the grid
     refetch()
   }
@@ -353,7 +358,10 @@ function CustomersComponent() {
         </div>
         {canEdit && (
           <Button
-            onClick={() => navigate({ to: '/xcustomers/new' })}
+            onClick={() => navigate({
+              to: '/xcustomers/new',
+              search: (prev: unknown) => ({ ...(prev as object) }),
+            } as unknown as Parameters<typeof navigate>[0])}
           >
             <Plus className="mr-2 h-4 w-4" />
             Add Customer
@@ -393,7 +401,10 @@ function CustomersComponent() {
                 <Button
                   variant="outline"
                   className="mt-4"
-                  onClick={() => navigate({ to: '/xcustomers/new' })}
+                  onClick={() => navigate({
+                    to: '/xcustomers/new',
+                    search: (prev: unknown) => ({ ...(prev as object) }),
+                  } as unknown as Parameters<typeof navigate>[0])}
                 >
                   <Plus className="mr-2 h-4 w-4" />
                   Add your first customer

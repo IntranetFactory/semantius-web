@@ -34,6 +34,9 @@ const AppCrmHomeDetailLazyRouteImport = createFileRoute(
 const AppModuleIdTable_nameKeyLazyRouteImport = createFileRoute(
   '/_app/$moduleId/$table_name/$key',
 )()
+const AppModuleIdTable_nameKeyViewLazyRouteImport = createFileRoute(
+  '/_app/$moduleId/$table_name/$key/view',
+)()
 
 const Oauth2_callbackRoute = Oauth2_callbackRouteImport.update({
   id: '/oauth2_callback',
@@ -131,6 +134,16 @@ const AppXcustomersIdEditRoute = AppXcustomersIdEditRouteImport.update({
   path: '/edit',
   getParentRoute: () => AppXcustomersIdRoute,
 } as any)
+const AppModuleIdTable_nameKeyViewLazyRoute =
+  AppModuleIdTable_nameKeyViewLazyRouteImport.update({
+    id: '/view',
+    path: '/view',
+    getParentRoute: () => AppModuleIdTable_nameKeyLazyRoute,
+  } as any).lazy(() =>
+    import('./routes/_app.$moduleId.$table_name.$key.view.lazy').then(
+      (d) => d.Route,
+    ),
+  )
 
 export interface FileRoutesByFullPath {
   '/': typeof AppIndexRoute
@@ -148,8 +161,9 @@ export interface FileRoutesByFullPath {
   '/xcustomers/new': typeof AppXcustomersNewRoute
   '/crm/home': typeof AppCrmHomeLazyRouteWithChildren
   '/xcustomers/$id/edit': typeof AppXcustomersIdEditRoute
-  '/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRoute
+  '/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRouteWithChildren
   '/crm/home/detail': typeof AppCrmHomeDetailLazyRoute
+  '/$moduleId/$table_name/$key/view': typeof AppModuleIdTable_nameKeyViewLazyRoute
 }
 export interface FileRoutesByTo {
   '/form-playground': typeof FormPlaygroundRoute
@@ -167,8 +181,9 @@ export interface FileRoutesByTo {
   '/xcustomers/new': typeof AppXcustomersNewRoute
   '/crm/home': typeof AppCrmHomeLazyRouteWithChildren
   '/xcustomers/$id/edit': typeof AppXcustomersIdEditRoute
-  '/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRoute
+  '/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRouteWithChildren
   '/crm/home/detail': typeof AppCrmHomeDetailLazyRoute
+  '/$moduleId/$table_name/$key/view': typeof AppModuleIdTable_nameKeyViewLazyRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -188,8 +203,9 @@ export interface FileRoutesById {
   '/_app/xcustomers/new': typeof AppXcustomersNewRoute
   '/_app/crm/home': typeof AppCrmHomeLazyRouteWithChildren
   '/_app/xcustomers/$id/edit': typeof AppXcustomersIdEditRoute
-  '/_app/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRoute
+  '/_app/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRouteWithChildren
   '/_app/crm/home/detail': typeof AppCrmHomeDetailLazyRoute
+  '/_app/$moduleId/$table_name/$key/view': typeof AppModuleIdTable_nameKeyViewLazyRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -211,6 +227,7 @@ export interface FileRouteTypes {
     | '/xcustomers/$id/edit'
     | '/$moduleId/$table_name/$key'
     | '/crm/home/detail'
+    | '/$moduleId/$table_name/$key/view'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/form-playground'
@@ -230,6 +247,7 @@ export interface FileRouteTypes {
     | '/xcustomers/$id/edit'
     | '/$moduleId/$table_name/$key'
     | '/crm/home/detail'
+    | '/$moduleId/$table_name/$key/view'
   id:
     | '__root__'
     | '/_app'
@@ -250,6 +268,7 @@ export interface FileRouteTypes {
     | '/_app/xcustomers/$id/edit'
     | '/_app/$moduleId/$table_name/$key'
     | '/_app/crm/home/detail'
+    | '/_app/$moduleId/$table_name/$key/view'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -389,6 +408,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppXcustomersIdEditRouteImport
       parentRoute: typeof AppXcustomersIdRoute
     }
+    '/_app/$moduleId/$table_name/$key/view': {
+      id: '/_app/$moduleId/$table_name/$key/view'
+      path: '/view'
+      fullPath: '/$moduleId/$table_name/$key/view'
+      preLoaderRoute: typeof AppModuleIdTable_nameKeyViewLazyRouteImport
+      parentRoute: typeof AppModuleIdTable_nameKeyLazyRoute
+    }
   }
 }
 
@@ -418,12 +444,28 @@ const AppXcustomersRouteWithChildren = AppXcustomersRoute._addFileChildren(
   AppXcustomersRouteChildren,
 )
 
+interface AppModuleIdTable_nameKeyLazyRouteChildren {
+  AppModuleIdTable_nameKeyViewLazyRoute: typeof AppModuleIdTable_nameKeyViewLazyRoute
+}
+
+const AppModuleIdTable_nameKeyLazyRouteChildren: AppModuleIdTable_nameKeyLazyRouteChildren =
+  {
+    AppModuleIdTable_nameKeyViewLazyRoute:
+      AppModuleIdTable_nameKeyViewLazyRoute,
+  }
+
+const AppModuleIdTable_nameKeyLazyRouteWithChildren =
+  AppModuleIdTable_nameKeyLazyRoute._addFileChildren(
+    AppModuleIdTable_nameKeyLazyRouteChildren,
+  )
+
 interface AppModuleIdTable_nameRouteChildren {
-  AppModuleIdTable_nameKeyLazyRoute: typeof AppModuleIdTable_nameKeyLazyRoute
+  AppModuleIdTable_nameKeyLazyRoute: typeof AppModuleIdTable_nameKeyLazyRouteWithChildren
 }
 
 const AppModuleIdTable_nameRouteChildren: AppModuleIdTable_nameRouteChildren = {
-  AppModuleIdTable_nameKeyLazyRoute: AppModuleIdTable_nameKeyLazyRoute,
+  AppModuleIdTable_nameKeyLazyRoute:
+    AppModuleIdTable_nameKeyLazyRouteWithChildren,
 }
 
 const AppModuleIdTable_nameRouteWithChildren =
