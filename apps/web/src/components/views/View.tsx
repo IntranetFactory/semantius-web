@@ -247,6 +247,21 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const OVERLAY_FORM_ID = 'overlay-record-form'
   const children: ChildRelation[] = metadata.children || []
 
+  const childButtons = !isCreateMode && children.length > 0 && (
+    <div className="flex gap-2 flex-wrap justify-end">
+      {children.map((child) => (
+        <Button
+          key={child.id}
+          type="submit"
+          form={OVERLAY_FORM_ID}
+          data-child-id={child.id}
+        >
+          {child.plural_label}...
+        </Button>
+      ))}
+    </div>
+  )
+
   const handleOverlayBeforeSubmit = (submitter: Element | null) => {
     const childId = submitter instanceof HTMLElement ? submitter.dataset.childId : undefined
     if (childId && recordId) {
@@ -317,20 +332,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
                   ? `New ${metadata.table?.singular_label || 'Record'}`
                   : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
               </SheetTitle>
-              {!isCreateMode && children.length > 0 && (
-                <div className="flex gap-2 flex-wrap justify-end">
-                  {children.map((child) => (
-                    <Button
-                      key={child.id}
-                      type="submit"
-                      form={OVERLAY_FORM_ID}
-                      data-child-id={child.id}
-                    >
-                      {child.plural_label}...
-                    </Button>
-                  ))}
-                </div>
-              )}
+              {childButtons}
             </div>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto p-6 pt-0">
@@ -356,20 +358,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
                   ? `New ${metadata.table?.singular_label || 'Record'}`
                   : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
               </DialogTitle>
-              {!isCreateMode && children.length > 0 && (
-                <div className="flex gap-2 flex-wrap justify-end">
-                  {children.map((child) => (
-                    <Button
-                      key={child.id}
-                      type="submit"
-                      form={OVERLAY_FORM_ID}
-                      data-child-id={child.id}
-                    >
-                      {child.plural_label}...
-                    </Button>
-                  ))}
-                </div>
-              )}
+              {childButtons}
             </div>
           </DialogHeader>
           <TableForm
