@@ -23,6 +23,10 @@ interface EntityBreadcrumbProps {
   parentLabel?: string
   /** Optional link target for the parent entity breadcrumb item */
   parentPath?: string
+  /** Optional specific parent record label (e.g. "sales@test.com") */
+  parentRecordLabel?: string
+  /** Optional link target for the specific parent record breadcrumb item */
+  parentRecordPath?: string
 }
 
 export function EntityBreadcrumb({
@@ -32,6 +36,8 @@ export function EntityBreadcrumb({
   recordLabel,
   parentLabel,
   parentPath,
+  parentRecordLabel,
+  parentRecordPath,
 }: EntityBreadcrumbProps) {
   const { rpcUserInfo } = useAuth()
 
@@ -69,6 +75,16 @@ export function EntityBreadcrumb({
             <BreadcrumbItem>
               <BreadcrumbLink asChild>
                 <Link to={parentPath || '/'}>{parentLabel}</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+          </>
+        )}
+        {parentRecordLabel && parentRecordPath && (
+          <>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to={parentRecordPath}>{parentRecordLabel}</Link>
               </BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />

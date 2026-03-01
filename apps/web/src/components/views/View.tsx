@@ -21,7 +21,7 @@ type RecordType = Record<string, unknown>
 
 /** Minimal shape of a get_schema response needed for parent breadcrumb */
 interface ParentEntitySchema {
-  table?: { plural_label?: string }
+  table?: { plural_label?: string; id_column?: string; label_column?: string }
 }
 
 /**
@@ -47,6 +47,8 @@ function StandaloneFormView({
   canEdit,
   parentLabel,
   parentPath,
+  parentRecordLabel,
+  parentRecordPath,
 }: {
   metadata: ViewProps['metadata']
   recordId: string | null
@@ -55,6 +57,8 @@ function StandaloneFormView({
   canEdit: boolean
   parentLabel?: string
   parentPath?: string
+  parentRecordLabel?: string
+  parentRecordPath?: string
 }) {
   const navigate = useNavigate()
   const router = useRouter()
@@ -108,6 +112,8 @@ function StandaloneFormView({
         recordLabel={pageTitle}
         parentLabel={parentLabel}
         parentPath={parentPath}
+        parentRecordLabel={parentRecordLabel}
+        parentRecordPath={parentRecordPath}
       />
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">
@@ -196,6 +202,18 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const parentLabel = parentEntitySchema?.table?.plural_label
   const parentPath = refTable ? `/${module_name}/${refTable}` : undefined
 
+  // Fetch the specific parent record to get its label value (e.g. "sales@test.com" for user 1002)
+  const refIdCol = parentEntitySchema?.table?.id_column
+  const refLabelCol = parentEntitySchema?.table?.label_column
+  const { data: parentRecordData } = useTable(refTable || '', {
+    query: refIdCol && _pv ? `select=${refLabelCol}&${refIdCol}=eq.${_pv}` : '',
+    enabled: !!refTable && !!refIdCol && !!refLabelCol && !!_pv,
+  })
+  const parentRecordLabel = refLabelCol
+    ? (parentRecordData?.[0]?.[refLabelCol] as string | undefined)
+    : undefined
+  const parentRecordPath = refTable && _pv ? `/${module_name}/${refTable}/${_pv}/view` : undefined
+
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigatePreservingSearch = (opts: Record<string, unknown>) => {
     ;(navigate as any)({ ...opts, search: (prev: Record<string, unknown>) => prev })
@@ -248,6 +266,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         canEdit={canEdit}
         parentLabel={parentLabel}
         parentPath={parentPath}
+        parentRecordLabel={parentRecordLabel}
+        parentRecordPath={parentRecordPath}
       />
     )
   }
@@ -337,6 +357,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         entityPath={view_name}
         parentLabel={parentLabel}
         parentPath={parentPath}
+        parentRecordLabel={parentRecordLabel}
+        parentRecordPath={parentRecordPath}
       />
       <div className="flex items-center justify-between">
         <div>
