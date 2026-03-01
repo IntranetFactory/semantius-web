@@ -1,5 +1,6 @@
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { type ViewProps } from "@/types/metadata"
+import { useRef } from 'react'
+import { type ViewProps, type ChildRelation } from "@/types/metadata"
 import { useTable } from '@/hooks/useTable'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
 import { DataTableView } from '@/components/data-table-view/DataTableView'
@@ -37,6 +38,8 @@ function StandaloneFormView({
   const navigate = useNavigate()
   const idColumn = metadata.table?.id_column || 'id'
   const labelColumn = metadata.table?.label_column || ''
+  const postSaveTargetRef = useRef<string | null>(null)
+  const FORM_ID = 'standalone-record-form'
 
   // Fetch just the label column value for the breadcrumb display name
   const { data: labelData } = useTable(metadata.table?.table_name || '', {
@@ -53,9 +56,18 @@ function StandaloneFormView({
     ? recordLabel || singularLabel
     : `New ${singularLabel}`
 
-  const handleSave = () => {
-    navigate({ to: viewName })
+  const handleBeforeSubmit = (submitter: Element | null) => {
+    const childId = submitter instanceof HTMLElement ? submitter.dataset.childId : undefined
+    postSaveTargetRef.current = childId ? '/' : null
   }
+
+  const handleSave = () => {
+    const target = postSaveTargetRef.current
+    postSaveTargetRef.current = null
+    navigate({ to: target || viewName })
+  }
+
+  const children: ChildRelation[] = metadata.children || []
 
   return (
     <div className="space-y-6">
@@ -65,14 +77,32 @@ function StandaloneFormView({
         entityPath={viewName}
         recordLabel={pageTitle}
       />
-      <h1 className="text-3xl font-bold tracking-tight">
-        {pageTitle}
-      </h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-3xl font-bold tracking-tight">
+          {pageTitle}
+        </h1>
+        {children.length > 0 && (
+          <div className="flex gap-2 flex-wrap justify-end">
+            {children.map((child) => (
+              <Button
+                key={child.id}
+                type="submit"
+                form={FORM_ID}
+                data-child-id={child.id}
+              >
+                {child.plural_label}...
+              </Button>
+            ))}
+          </div>
+        )}
+      </div>
       <TableForm
         schema={metadata}
         recordId={recordId}
         onClose={handleSave}
         formMode={recordId ? (canEdit ? 'edit' : 'view') : 'create'}
+        formId={FORM_ID}
+        onBeforeSubmit={handleBeforeSubmit}
       />
     </div>
   )
@@ -101,6 +131,38 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const table_name = pathParts[1] || ''
   const view_name = `/${module_name}/${table_name}`
   const escapedViewName = view_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+
+  const editMode = metadata.table?.edit_mode || 'auto'
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const navigatePreservingSearch = (opts: Record<string, unknown>) => {
+    ;(navigate as any)({ ...opts, search: (prev: Record<string, unknown>) => prev })
+  }
+
+  /**
+   * Single navigation function for all record interactions.
+   * mode 'new'  → create form  (page: /new,       overlay: /create)
+   * mode 'open' → view/edit form (page: /$id/view, overlay: /$id)
+   */
+  const navigateForEditMode = (mode: 'new' | 'open', record?: RecordType) => {
+    if (mode === 'new') {
+      if (editMode === 'page') {
+        navigate({ to: `${view_name}/new` })
+      } else {
+        navigatePreservingSearch({ to: `${view_name}/create` })
+      }
+    } else {
+      const id = record ? String(record[idColumn]) : undefined
+      if (editMode === 'page') {
+        navigate({ to: `${view_name}/${id}/view` })
+      } else {
+        navigatePreservingSearch({
+          to: `${view_name}/$id`,
+          params: { id: id! },
+        })
+      }
+    }
+  }
 
   // Standalone mode detection: /module/entity/id/view or /module/entity/new
   const standaloneViewMatch = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)\/view$`))
@@ -141,12 +203,12 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
   const fieldCount = Object.keys(metadata.properties || {}).length
 
-  // Determine display mode based on edit_mode from schema metadata.
+  // Determine overlay display mode based on edit_mode from schema metadata.
   // 'auto' (or unset): decide by field count and screen width.
   // 'modal': always use modal.
   // 'sidebar': always use sidebar.
+  // 'page': not applicable here (handled by isStandalone above).
   const resolveDisplayMode = (): 'modal' | 'sidebar' => {
-    const editMode = metadata.table?.edit_mode || 'auto'
     if (editMode === 'modal') return 'modal'
     if (editMode === 'sidebar') return 'sidebar'
     // auto: wide screen + many fields → modal
@@ -157,29 +219,14 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const displayMode = resolveDisplayMode()
   const useModal = displayMode === 'modal'
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const navigatePreservingSearch = (opts: Record<string, unknown>) => {
-    ;(navigate as any)({ ...opts, search: (prev: Record<string, unknown>) => prev })
-  }
-
-  const handleEdit = (record: RecordType) => {
-    navigatePreservingSearch({
-      to: `${view_name}/$id/edit`,
-      params: { id: String(record[idColumn]) },
-    })
-  }
-
-  // Both sidebar and modal use URL-based deep links — preserve search params
-  const handleRowClick = (record: RecordType) => {
-    navigatePreservingSearch({
-      to: `${view_name}/$id`,
-      params: { id: String(record[idColumn]) },
-    })
-  }
-
   const handleClose = () => {
     navigatePreservingSearch({ to: view_name })
   }
+
+  // Edit route template for DataTableView (used for keyboard/link navigation)
+  const editRoute = editMode === 'page'
+    ? `${view_name}/$id/view`
+    : `${view_name}/$id/edit`
 
   return (
     <div className="space-y-6">
@@ -198,9 +245,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
           </p>
         </div>
         {canEdit && (
-          <Button
-            onClick={() => navigatePreservingSearch({ to: `${view_name}/${CREATE_SEGMENT}` })}
-          >
+          <Button onClick={() => navigateForEditMode('new')}>
             <Plus className="mr-2 h-4 w-4" />
             Add {metadata.table?.singular_label || 'Record'}
           </Button>
@@ -209,15 +254,10 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
       <DataTableView
         metadata={metadata}
-        onRowClick={handleRowClick}
-        onEdit={handleEdit}
-        onEditModal={(record) => {
-          navigatePreservingSearch({
-            to: `${view_name}/$id`,
-            params: { id: String(record[idColumn]) },
-          })
-        }}
-        editRoute={`${view_name}/$id/edit`}
+        onRowClick={(record) => navigateForEditMode('open', record)}
+        onEdit={(record) => navigateForEditMode('open', record)}
+        onEditModal={(record) => navigateForEditMode('open', record)}
+        editRoute={editRoute}
         canEdit={canEdit}
         emptyMessage={`No ${metadata.table?.plural_label?.toLowerCase() || 'records'} found`}
         emptyIcon={<Users className="h-12 w-12 mb-2" />}
