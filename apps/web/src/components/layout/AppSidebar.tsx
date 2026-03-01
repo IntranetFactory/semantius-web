@@ -170,7 +170,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavApps moduleId={selectedModuleId} moduleName={selectedModuleName} />
-        <NavMain items={staticData.navMain} />
+        {/* <NavMain items={staticData.navMain} /> */}
       </SidebarContent>
       <SidebarFooter>
         <NavUser user={userData} />

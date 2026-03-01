@@ -102,10 +102,10 @@ export function NavApps({
                   navigate({ to: url, search: {}, replace: true })
                 }}
               >
-                <Folder />
+                {table.icon_url && <img src={String(table.icon_url)} alt="" className="size-4 shrink-0" />}
                 <span>{label}</span>
               </SidebarMenuButton>
-              <DropdownMenu>
+              {/* <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <SidebarMenuAction showOnHover>
                     <MoreHorizontal />
@@ -131,7 +131,7 @@ export function NavApps({
                     <span>Delete App</span>
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu> */}
             </SidebarMenuItem>
           )
         })}
