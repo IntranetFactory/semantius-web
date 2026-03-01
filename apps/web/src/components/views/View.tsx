@@ -58,7 +58,7 @@ function StandaloneFormView({
 
   const handleBeforeSubmit = (submitter: Element | null) => {
     const childId = submitter instanceof HTMLElement ? submitter.dataset.childId : undefined
-    postSaveTargetRef.current = childId ? '/' : null
+    postSaveTargetRef.current = childId ? `/${moduleId}/${childId.split('.')[0]}` : null
   }
 
   const handleSave = () => {
@@ -219,8 +219,23 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const displayMode = resolveDisplayMode()
   const useModal = displayMode === 'modal'
 
+  const overlayPostSaveTargetRef = useRef<string | null>(null)
+  const OVERLAY_FORM_ID = 'overlay-record-form'
+  const children: ChildRelation[] = metadata.children || []
+
+  const handleOverlayBeforeSubmit = (submitter: Element | null) => {
+    const childId = submitter instanceof HTMLElement ? submitter.dataset.childId : undefined
+    overlayPostSaveTargetRef.current = childId ? `/${module_name}/${childId.split('.')[0]}` : null
+  }
+
   const handleClose = () => {
-    navigatePreservingSearch({ to: view_name })
+    const target = overlayPostSaveTargetRef.current
+    overlayPostSaveTargetRef.current = null
+    if (target) {
+      navigate({ to: target })
+    } else {
+      navigatePreservingSearch({ to: view_name })
+    }
   }
 
   // Edit route template for DataTableView (used for keyboard/link navigation)
@@ -268,11 +283,27 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
       <Sheet open={isOpen && !useModal} onOpenChange={(open) => !open && handleClose()}>
         <SheetContent className="w-full sm:max-w-[540px] border-l-0" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
-            <SheetTitle>
-              {isCreateMode
-                ? `New ${metadata.table?.singular_label || 'Record'}`
-                : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
-            </SheetTitle>
+            <div className="flex items-start justify-between gap-4">
+              <SheetTitle>
+                {isCreateMode
+                  ? `New ${metadata.table?.singular_label || 'Record'}`
+                  : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
+              </SheetTitle>
+              {!isCreateMode && children.length > 0 && (
+                <div className="flex gap-2 flex-wrap justify-end">
+                  {children.map((child) => (
+                    <Button
+                      key={child.id}
+                      type="submit"
+                      form={OVERLAY_FORM_ID}
+                      data-child-id={child.id}
+                    >
+                      {child.plural_label}...
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto p-6 pt-0">
             <TableForm
@@ -280,6 +311,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
               recordId={isCreateMode ? null : recordId}
               onClose={handleClose}
               formMode={isCreateMode ? 'create' : (isEditMode ? 'edit' : (canEdit ? 'edit' : 'view'))}
+              formId={OVERLAY_FORM_ID}
+              onBeforeSubmit={handleOverlayBeforeSubmit}
             />
           </div>
         </SheetContent>
@@ -289,17 +322,35 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
       <Dialog open={useModal && isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
-            <DialogTitle>
-              {isCreateMode
-                ? `New ${metadata.table?.singular_label || 'Record'}`
-                : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
-            </DialogTitle>
+            <div className="flex items-start justify-between gap-4">
+              <DialogTitle>
+                {isCreateMode
+                  ? `New ${metadata.table?.singular_label || 'Record'}`
+                  : `${metadata.table?.singular_label || 'Record'} ${recordId || ''}`}
+              </DialogTitle>
+              {!isCreateMode && children.length > 0 && (
+                <div className="flex gap-2 flex-wrap justify-end">
+                  {children.map((child) => (
+                    <Button
+                      key={child.id}
+                      type="submit"
+                      form={OVERLAY_FORM_ID}
+                      data-child-id={child.id}
+                    >
+                      {child.plural_label}...
+                    </Button>
+                  ))}
+                </div>
+              )}
+            </div>
           </DialogHeader>
           <TableForm
             schema={metadata}
             recordId={isCreateMode ? null : recordId}
             onClose={handleClose}
             formMode={isCreateMode ? 'create' : (canEdit ? 'edit' : 'view')}
+            formId={OVERLAY_FORM_ID}
+            onBeforeSubmit={handleOverlayBeforeSubmit}
           />
         </DialogContent>
       </Dialog>
