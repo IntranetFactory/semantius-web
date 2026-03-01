@@ -65,7 +65,7 @@ Combine with `&`: `?select=id,name&status=eq.active&order=created_at.desc&limit=
 - Always install via CLI: `npx shadcn@latest add <component> -y` — never create manually
 - Never modify files in `src/components/ui/` — they are CLI-managed and upgradable
 - Config: `components.json` (points to `src/global.css`)
-- To customize: create wrapper components or use className props in parent components
+- To customize: use `className` props at the call site (e.g., `<SheetContent className="border-l-0">`) — never modify `src/components/ui/*` or `src/global.css`
 
 ### UI Rules
 

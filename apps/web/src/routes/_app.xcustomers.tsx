@@ -520,7 +520,7 @@ function CustomersComponent() {
 
       {/* Sheet for viewing/editing customer - responsive: full screen on mobile */}
       <Sheet open={isOpen} onOpenChange={(open) => !open && handleSheetClose()}>
-        <SheetContent className="w-full sm:max-w-[540px] overflow-y-auto">
+        <SheetContent className="w-full sm:max-w-[540px] overflow-y-auto border-l-0">
           <CustomerForm
             customer={selectedCustomer}
             mode={isNewMode ? 'create' : isEditMode ? 'edit' : 'view'}

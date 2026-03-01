@@ -33,7 +33,7 @@ function RouteComponent() {
       <Button onClick={handleOpenSidebar}>Open Sidebar</Button>
 
       <Sheet open={isDetailOpen} onOpenChange={(open) => !open && handleCloseSidebar()}>
-        <SheetContent>
+        <SheetContent className="border-l-0">
           <SheetHeader>
             <SheetTitle>Detail View</SheetTitle>
             <SheetDescription>

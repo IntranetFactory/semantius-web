@@ -226,7 +226,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
       {/* Sheet for viewing/editing record - used when field count < 10 or narrow screen */}
       <Sheet open={isOpen && !useModal} onOpenChange={(open) => !open && handleClose()}>
-        <SheetContent className="w-full sm:max-w-[540px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <SheetContent className="w-full sm:max-w-[540px] border-l-0" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
             <SheetTitle>
               {isCreateMode
