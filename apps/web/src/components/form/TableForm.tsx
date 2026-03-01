@@ -1,3 +1,4 @@
+import { useSearch } from '@tanstack/react-router'
 import { useTable } from '@/hooks/useTable'
 import { useCreateRecord, useUpdateRecord } from '@/hooks/useTableMutations'
 import { SchemaForm } from './SchemaForm'
@@ -17,6 +18,26 @@ interface TableFormProps {
 export function TableForm({ schema, recordId, onClose, formMode, formId, onBeforeSubmit }: TableFormProps) {
   const tableName = schema.table?.table_name
   const idColumn = schema.table?.id_column
+
+  // Read parent-filter params from URL (_pf = "{tableName}.{columnName}", _pv = value)
+  const { _pf, _pv } = useSearch({
+    strict: false,
+    select: (s: Record<string, unknown>) => ({
+      _pf: s._pf as string | undefined,
+      _pv: s._pv as string | undefined,
+    }),
+  })
+
+  // Derive parent column from _pf (format: "tableName.columnName")
+  const pfTable = _pf?.includes('.') ? _pf.split('.')[0] : undefined
+  const pfColumn = _pf?.includes('.') ? _pf.split('.')[1] : _pf
+  // Only apply if column exists in schema and table name matches (or no table prefix)
+  const parentField =
+    pfColumn &&
+    (schema.properties as Record<string, unknown>)?.[pfColumn] !== undefined &&
+    (!pfTable || pfTable === tableName)
+      ? pfColumn
+      : undefined
 
   // Determine formMode: 'create' if no recordId, 'edit' if recordId provided, or use explicit formMode
   const resolvedFormMode = formMode || (recordId ? 'edit' : 'create')
@@ -91,15 +112,34 @@ export function TableForm({ schema, recordId, onClose, formMode, formId, onBefor
   // Get the record data (first item in array)
   const recordData = recordId && data && data.length > 0 ? data[0] : undefined
 
+  // Inject parent field value from _pv into the initial data (for both create and edit modes)
+  // Convert to number if the field type is integer/number
+  const parentFieldSchema = parentField
+    ? (schema.properties as unknown as Record<string, Record<string, unknown>>)?.[parentField]
+    : undefined
+  const isNumericParent =
+    parentFieldSchema?.type === 'integer' || parentFieldSchema?.type === 'number'
+  const parentValue =
+    parentField && _pv !== undefined
+      ? isNumericParent
+        ? (Number.isNaN(Number(_pv)) ? _pv : Number(_pv))
+        : _pv
+      : undefined
+  const effectiveInitialValue =
+    parentField && parentValue !== undefined
+      ? { ...(recordData || {}), [parentField]: parentValue }
+      : recordData
+
   return (
     <>
       <SchemaForm
         id={formId}
         onBeforeSubmit={onBeforeSubmit}
         schema={schema}
-        initialValue={recordData}
+        initialValue={effectiveInitialValue}
         onSubmit={handleSubmit}
         formMode={resolvedFormMode}
+        parentField={parentField}
       />
 
       {/* Display mutation errors */}

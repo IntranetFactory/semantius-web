@@ -19,6 +19,10 @@ interface EntityBreadcrumbProps {
   entityPath: string
   /** Display label for the current record, or "New" for creation */
   recordLabel?: string
+  /** Optional parent entity label shown between module and entity (e.g. "Users") */
+  parentLabel?: string
+  /** Optional link target for the parent entity breadcrumb item */
+  parentPath?: string
 }
 
 export function EntityBreadcrumb({
@@ -26,6 +30,8 @@ export function EntityBreadcrumb({
   entityLabel,
   entityPath,
   recordLabel,
+  parentLabel,
+  parentPath,
 }: EntityBreadcrumbProps) {
   const { rpcUserInfo } = useAuth()
 
@@ -58,6 +64,16 @@ export function EntityBreadcrumb({
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
+        {parentLabel && (
+          <>
+            <BreadcrumbItem>
+              <BreadcrumbLink asChild>
+                <Link to={parentPath || '/'}>{parentLabel}</Link>
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+          </>
+        )}
         <BreadcrumbItem>
           {recordLabel ? (
             <BreadcrumbLink asChild>

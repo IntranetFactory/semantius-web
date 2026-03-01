@@ -1,7 +1,8 @@
-import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
+import { useNavigate, useRouter, useRouterState, useSearch } from '@tanstack/react-router'
 import { useRef } from 'react'
 import { type ViewProps, type ChildRelation } from "@/types/metadata"
 import { useTable } from '@/hooks/useTable'
+import { useRpc } from '@/hooks/useRpc'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
 import { DataTableView } from '@/components/data-table-view/DataTableView'
 import { EntityBreadcrumb } from '@/components/EntityBreadcrumb'
@@ -17,6 +18,11 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { TableForm } from '@/components/form/TableForm'
 
 type RecordType = Record<string, unknown>
+
+/** Minimal shape of a get_schema response needed for parent breadcrumb */
+interface ParentEntitySchema {
+  table?: { plural_label?: string }
+}
 
 /**
  * Build the URL for navigating to a child relation table, pre-filtered to the parent record.
@@ -39,12 +45,16 @@ function StandaloneFormView({
   moduleId,
   viewName,
   canEdit,
+  parentLabel,
+  parentPath,
 }: {
   metadata: ViewProps['metadata']
   recordId: string | null
   moduleId: string
   viewName: string
   canEdit: boolean
+  parentLabel?: string
+  parentPath?: string
 }) {
   const navigate = useNavigate()
   const router = useRouter()
@@ -96,6 +106,8 @@ function StandaloneFormView({
         entityLabel={metadata.table?.plural_label || 'Records'}
         entityPath={viewName}
         recordLabel={pageTitle}
+        parentLabel={parentLabel}
+        parentPath={parentPath}
       />
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">
@@ -153,7 +165,36 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const view_name = `/${module_name}/${table_name}`
   const escapedViewName = view_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
+  const children: ChildRelation[] = metadata.children || []
   const editMode = metadata.table?.edit_mode || 'auto'
+
+  // When edit_mode is 'auto' and the entity has child relations, treat it as 'page'
+  // so that child navigation buttons work correctly (child tables need a stable parent URL)
+  const effectiveEditMode = editMode === 'auto' && children.length > 0 ? 'page' : editMode
+
+  // Read parent-filter params from URL
+  const { _pf, _pv } = useSearch({
+    strict: false,
+    select: (s: Record<string, unknown>) => ({
+      _pf: s._pf as string | undefined,
+      _pv: s._pv as string | undefined,
+    }),
+  })
+
+  // Derive reference table for parent breadcrumb from the _pf field's schema
+  const pfColumn = _pf?.includes('.') ? _pf.split('.')[1] : _pf
+  const pfFieldSchema = pfColumn
+    ? (metadata.properties?.[pfColumn] as Record<string, unknown> | undefined)
+    : undefined
+  const refTable = pfFieldSchema?.reference_table as string | undefined
+
+  // Fetch parent entity schema to get label_plural for breadcrumb
+  const { data: parentEntitySchema } = useRpc<ParentEntitySchema>('get_schema', {
+    params: { p_table_name: refTable || '' },
+    enabled: !!refTable,
+  })
+  const parentLabel = parentEntitySchema?.table?.plural_label
+  const parentPath = refTable ? `/${module_name}/${refTable}` : undefined
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigatePreservingSearch = (opts: Record<string, unknown>) => {
@@ -167,14 +208,15 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
    */
   const navigateForEditMode = (mode: 'new' | 'open', record?: RecordType) => {
     if (mode === 'new') {
-      if (editMode === 'page') {
-        navigate({ to: `${view_name}/new` })
+      if (effectiveEditMode === 'page') {
+        // Preserve _pf/_pv so the create form can pre-fill parent field
+        navigatePreservingSearch({ to: `${view_name}/new` })
       } else {
         navigatePreservingSearch({ to: `${view_name}/create` })
       }
     } else {
       const id = record ? String(record[idColumn]) : undefined
-      if (editMode === 'page') {
+      if (effectiveEditMode === 'page') {
         navigate({ to: `${view_name}/${id}/view` })
       } else {
         navigatePreservingSearch({
@@ -204,6 +246,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         moduleId={module_name}
         viewName={view_name}
         canEdit={canEdit}
+        parentLabel={parentLabel}
+        parentPath={parentPath}
       />
     )
   }
@@ -234,8 +278,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   // 'sidebar': always use sidebar.
   // 'page': not applicable here (handled by isStandalone above).
   const resolveDisplayMode = (): 'modal' | 'sidebar' => {
-    if (editMode === 'modal') return 'modal'
-    if (editMode === 'sidebar') return 'sidebar'
+    if (effectiveEditMode === 'modal') return 'modal'
+    if (effectiveEditMode === 'sidebar') return 'sidebar'
     // auto: wide screen + many fields → modal
     return typeof window !== 'undefined' && window.innerWidth > 900 && fieldCount >= 10
       ? 'modal'
@@ -245,7 +289,6 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const useModal = displayMode === 'modal'
 
   const OVERLAY_FORM_ID = 'overlay-record-form'
-  const children: ChildRelation[] = metadata.children || []
 
   const childButtons = !isCreateMode && children.length > 0 && (
     <div className="flex gap-2 flex-wrap justify-end">
@@ -282,7 +325,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   }
 
   // Edit route template for DataTableView (used for keyboard/link navigation)
-  const editRoute = editMode === 'page'
+  const editRoute = effectiveEditMode === 'page'
     ? `${view_name}/$id/view`
     : `${view_name}/$id/edit`
 
@@ -292,6 +335,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         moduleId={module_name}
         entityLabel={metadata.table?.plural_label || 'Records'}
         entityPath={view_name}
+        parentLabel={parentLabel}
+        parentPath={parentPath}
       />
       <div className="flex items-center justify-between">
         <div>
