@@ -12,6 +12,7 @@ export interface JsonSchemaProperty {
   pattern?: string
   items?: JsonSchemaProperty
   additionalProperties?: boolean | JsonSchemaProperty
+  width?: string
   // Foreign key reference fields (Sem Schema extension)
   reference_table?: string
   reference_table_id_column?: string
@@ -35,6 +36,8 @@ export interface SemSchemaTable {
   label_column: string
   managed?: boolean
   searchable?: boolean
+  is_child?: boolean
+  edit_mode?: 'auto' | 'page' | 'modal' | 'sidebar'
   created_at?: string
   updated_at?: string
 }

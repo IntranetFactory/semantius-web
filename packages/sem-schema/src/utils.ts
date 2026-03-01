@@ -144,6 +144,23 @@ export function validateSchemaStructure(schema: SchemaObject, path: string = '#'
 }
 
 /**
+ * Returns the default grid width bucket for a field based on its format and type.
+ *
+ * Width buckets and their corresponding max-widths in the data grid:
+ *  's' → 100 px  (short: booleans, numbers)
+ *  'm' → 200 px  (medium: default text, references)
+ *  'w' → 400 px  (wide: long-form content – json, html, code, etc.)
+ */
+export function getDefaultWidthForGrid(format?: string, type?: string): 's' | 'm' | 'w' {
+  if (format === 'json' || format === 'html' || format === 'text' || format === 'code' || format === 'jsonata') {
+    return 'w';
+  }
+  if (type === 'boolean') return 's';
+  if (type === 'integer' || type === 'number') return 's';
+  return 'm';
+}
+
+/**
  * Preprocess schema to handle default type as string and enum empty string handling
  * 
  * When a schema has a format but no type, this function adds type: "string"

@@ -1,5 +1,6 @@
+import { useMemo } from 'react'
 import { useNavigate, useRouterState } from '@tanstack/react-router'
-import { type ViewProps } from "@/types/metadata"
+import { type ViewProps, type EntityMetadata } from "@/types/metadata"
 import { useTable } from '@/hooks/useTable'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
 import { DataTableView } from '@/components/data-table-view/DataTableView'
@@ -16,6 +17,30 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sh
 import { TableForm } from '@/components/form/TableForm'
 
 type RecordType = Record<string, unknown>
+type EditDisplayMode = 'page' | 'modal' | 'sidebar'
+
+/**
+ * Determine how the record form should be displayed.
+ * Respects `edit_mode` from the table metadata; falls back to auto-detection.
+ */
+function resolveEditMode(metadata: EntityMetadata): EditDisplayMode {
+  const editMode = metadata.table?.edit_mode
+  const isChild = metadata.table?.is_child
+  const fieldCount = Object.keys(metadata.properties || {}).length
+  const referenceFieldCount = Object.values(metadata.properties || {}).filter(
+    (p) => p.format === 'reference' || !!p.reference_table
+  ).length
+
+  if (editMode && editMode !== 'auto') {
+    return editMode as EditDisplayMode
+  }
+
+  // auto mode
+  if (isChild) return 'page'
+  if (referenceFieldCount > 0) return 'page'
+  if (fieldCount > 10) return 'modal'
+  return 'sidebar'
+}
 
 /**
  * Standalone view for a single record (/module/entity/id/view) or new record creation (/module/entity/new).
@@ -93,6 +118,9 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
     ? hasEditPermission
     : true
 
+  // Resolve how the form should be displayed (must be before any early return – Rules of Hooks)
+  const resolvedMode = useMemo(() => resolveEditMode(metadata), [metadata])
+
   // Parse URL to determine mode
   const pathname = routerState.location.pathname
   // Extract module_name and table_name from pathname (e.g., /crm/customers)
@@ -139,28 +167,38 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const recordId = editMatch?.[1] || viewMatch?.[1]
   const isOpen = isCreateMode || !!recordId
 
-  const fieldCount = Object.keys(metadata.properties || {}).length
-  // Determine display mode: modal for entities with many fields on wide screens
-  const useModal = typeof window !== 'undefined' && window.innerWidth > 900 && fieldCount >= 10
-
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigatePreservingSearch = (opts: Record<string, unknown>) => {
     ;(navigate as any)({ ...opts, search: (prev: Record<string, unknown>) => prev })
   }
 
   const handleEdit = (record: RecordType) => {
-    navigatePreservingSearch({
-      to: `${view_name}/$id/edit`,
-      params: { id: String(record[idColumn]) },
-    })
+    if (resolvedMode === 'page') {
+      navigatePreservingSearch({
+        to: `${view_name}/$id/view`,
+        params: { id: String(record[idColumn]) },
+      })
+    } else {
+      navigatePreservingSearch({
+        to: `${view_name}/$id/edit`,
+        params: { id: String(record[idColumn]) },
+      })
+    }
   }
 
-  // Both sidebar and modal use URL-based deep links — preserve search params
+  // Row click: open the record in the resolved display mode
   const handleRowClick = (record: RecordType) => {
-    navigatePreservingSearch({
-      to: `${view_name}/$id`,
-      params: { id: String(record[idColumn]) },
-    })
+    if (resolvedMode === 'page') {
+      navigatePreservingSearch({
+        to: `${view_name}/$id/view`,
+        params: { id: String(record[idColumn]) },
+      })
+    } else {
+      navigatePreservingSearch({
+        to: `${view_name}/$id`,
+        params: { id: String(record[idColumn]) },
+      })
+    }
   }
 
   const handleClose = () => {
@@ -185,7 +223,9 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         </div>
         {canEdit && (
           <Button
-            onClick={() => navigatePreservingSearch({ to: `${view_name}/${CREATE_SEGMENT}` })}
+            onClick={() => navigatePreservingSearch({
+              to: resolvedMode === 'page' ? `${view_name}/new` : `${view_name}/${CREATE_SEGMENT}`,
+            })}
           >
             <Plus className="mr-2 h-4 w-4" />
             Add {metadata.table?.singular_label || 'Record'}
@@ -197,12 +237,6 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         metadata={metadata}
         onRowClick={handleRowClick}
         onEdit={handleEdit}
-        onEditModal={(record) => {
-          navigatePreservingSearch({
-            to: `${view_name}/$id`,
-            params: { id: String(record[idColumn]) },
-          })
-        }}
         editRoute={`${view_name}/$id/edit`}
         canEdit={canEdit}
         emptyMessage={`No ${metadata.table?.plural_label?.toLowerCase() || 'records'} found`}
@@ -210,8 +244,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         excludeColumns={['created_at', 'updated_at']}
       />
 
-      {/* Sheet for viewing/editing record - used when field count < 10 or narrow screen */}
-      <Sheet open={isOpen && !useModal} onOpenChange={(open) => !open && handleClose()}>
+      {/* Sheet for viewing/editing record - used in sidebar mode */}
+      <Sheet open={isOpen && resolvedMode === 'sidebar'} onOpenChange={(open) => !open && handleClose()}>
         <SheetContent className="w-full sm:max-w-[540px]" onOpenAutoFocus={(e) => e.preventDefault()}>
           <SheetHeader>
             <SheetTitle>
@@ -231,8 +265,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         </SheetContent>
       </Sheet>
 
-      {/* Modal for viewing/editing record - used when field count >= 10 on wide screens */}
-      <Dialog open={useModal && isOpen} onOpenChange={(open) => !open && handleClose()}>
+      {/* Modal for viewing/editing record - used in modal mode */}
+      <Dialog open={resolvedMode === 'modal' && isOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
           <DialogHeader>
             <DialogTitle>
