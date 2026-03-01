@@ -15,6 +15,13 @@ interface SchemaFormProps {
   formMode?: FormMode
   id?: string
   onBeforeSubmit?: (submitter: Element | null) => void
+  /**
+   * Field name injected via _pf/_pv URL params (parent relationship pre-fill).
+   * Unlike regular readonly fields that are skipped in create mode, this field is
+   * always rendered as readonly AND always included in form submission — it carries
+   * the foreign key value that ties the new child record to its parent.
+   */
+  parentField?: string
 }
 
 /**
@@ -121,7 +128,7 @@ function getWidthClasses(width: string): string {
   }
 }
 
-export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', id, onBeforeSubmit }: SchemaFormProps) {
+export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', id, onBeforeSubmit, parentField }: SchemaFormProps) {
   // Generate initial value if not provided
   const defaultValue = initialValue && Object.keys(initialValue).length > 0
     ? initialValue
@@ -150,7 +157,8 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
         }
         
         // In create mode, skip readonly fields (they're not rendered and usually don't exist yet)
-        if (formMode === 'create' && inputMode === 'readonly') {
+        // Exception: parentField is always included (it was injected via _pf/_pv and must be submitted)
+        if (formMode === 'create' && inputMode === 'readonly' && key !== parentField) {
           continue
         }
         
@@ -179,7 +187,8 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
           if (inputMode === 'disabled') return false
           
           // In create mode, readonly fields are not rendered, so not required
-          if (formMode === 'create' && inputMode === 'readonly') return false
+          // Exception: parentField is always included
+          if (formMode === 'create' && inputMode === 'readonly' && fieldName !== parentField) return false
           
           return true
         })
@@ -421,8 +430,16 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
             let inputMode: 'default' | 'required' | 'readonly' | 'disabled' | 'hidden' = 
               (propSchema as any).inputMode || 'default'
             
+            // parentField (injected via _pf/_pv) is always forced to readonly —
+            // it carries the foreign key that links this child record to its parent
+            // and must not be editable by the user
+            if (key === parentField) {
+              inputMode = 'readonly'
+            }
+            
             // In create mode, skip fields with inputMode='readonly' or 'disabled'
-            if (formMode === 'create' && (inputMode === 'readonly' || inputMode === 'disabled')) {
+            // Exception: parentField (injected via _pf/_pv) is always rendered
+            if (formMode === 'create' && (inputMode === 'readonly' || inputMode === 'disabled') && key !== parentField) {
               return null
             }
             
