@@ -1,4 +1,4 @@
-import { useNavigate, useRouter, useRouterState, useSearch } from '@tanstack/react-router'
+import { useNavigate, useRouter, useRouterState, useSearch, Link } from '@tanstack/react-router'
 import { useRef } from 'react'
 import { type ViewProps, type ChildRelation } from "@/types/metadata"
 import { useTable } from '@/hooks/useTable'
@@ -363,6 +363,12 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">
+            {parentRecordLabel && parentRecordPath && (
+              <>
+                <Link to={parentRecordPath} className="text-muted-foreground font-normal hover:underline">{parentRecordLabel}</Link>
+                <span className="text-muted-foreground font-normal mx-2" aria-hidden="true">›</span>
+              </>
+            )}
             {metadata.table?.plural_label || 'Records'}
           </h1>
           <p className="text-muted-foreground">
@@ -386,7 +392,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         canEdit={canEdit}
         emptyMessage={`No ${metadata.table?.plural_label?.toLowerCase() || 'records'} found`}
         emptyIcon={<Users className="h-12 w-12 mb-2" />}
-        excludeColumns={['created_at', 'updated_at']}
+        excludeColumns={['created_at', 'updated_at', ...(pfColumn ? [pfColumn] : [])]}
       />
 
       {/* Sheet for viewing/editing record - used when field count < 10 or narrow screen */}
