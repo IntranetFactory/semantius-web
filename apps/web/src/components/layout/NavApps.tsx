@@ -102,7 +102,7 @@ export function NavApps({
                   navigate({ to: url, search: {}, replace: true })
                 }}
               >
-                {table.icon_url && <img src={String(table.icon_url)} alt="" className="size-4 shrink-0" />}
+                {!!table.icon_url && <img src={String(table.icon_url)} alt="" className="size-4 shrink-0" />}
                 <span>{label}</span>
               </SidebarMenuButton>
               {/* <DropdownMenu>

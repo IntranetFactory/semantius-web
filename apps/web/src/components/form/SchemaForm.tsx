@@ -13,6 +13,8 @@ interface SchemaFormProps {
   initialValue?: Record<string, any>
   onSubmit?: (value: Record<string, any>) => void
   formMode?: FormMode
+  id?: string
+  onBeforeSubmit?: (submitter: Element | null) => void
 }
 
 /**
@@ -119,7 +121,7 @@ function getWidthClasses(width: string): string {
   }
 }
 
-export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }: SchemaFormProps) {
+export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', id, onBeforeSubmit }: SchemaFormProps) {
   // Generate initial value if not provided
   const defaultValue = initialValue && Object.keys(initialValue).length > 0
     ? initialValue
@@ -319,10 +321,12 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
   return (
     <FormProvider value={formContextValue}>
       <form
+        id={id}
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
           e.stopPropagation()
+          onBeforeSubmit?.((e.nativeEvent as SubmitEvent).submitter)
           form.handleSubmit()
           
           // After validation, scroll to first error field if any

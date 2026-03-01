@@ -38,12 +38,22 @@ export interface SemSchemaTable {
   managed?: boolean
   searchable?: boolean
   is_child?: boolean
-  edit_mode?: 'auto' | 'modal' | 'sidebar'
+  edit_mode?: 'auto' | 'modal' | 'sidebar' | 'page'
   created_at?: string
   updated_at?: string
 }
 
 export type { SemSchemaTable as TableMetadata }
+
+// Child relation metadata (from get_schema children array)
+export interface ChildRelation {
+  id: string
+  title: string
+  singular_label: string
+  plural_label: string
+  id_column: string
+  label_column: string
+}
 
 // Entity metadata with JSON Schema support
 export interface EntityMetadata {
@@ -57,6 +67,7 @@ export interface EntityMetadata {
   properties?: Record<string, JsonSchemaProperty>
   required?: string[]
   table?: SemSchemaTable
+  children?: ChildRelation[]
   
   // Legacy fields for backward compatibility
   table_name?: string

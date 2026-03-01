@@ -10,9 +10,11 @@ interface TableFormProps {
   recordId?: string | null
   onClose?: () => void
   formMode?: 'edit' | 'create' | 'view'
+  formId?: string
+  onBeforeSubmit?: (submitter: Element | null) => void
 }
 
-export function TableForm({ schema, recordId, onClose, formMode }: TableFormProps) {
+export function TableForm({ schema, recordId, onClose, formMode, formId, onBeforeSubmit }: TableFormProps) {
   const tableName = schema.table?.table_name
   const idColumn = schema.table?.id_column
 
@@ -92,6 +94,8 @@ export function TableForm({ schema, recordId, onClose, formMode }: TableFormProp
   return (
     <>
       <SchemaForm
+        id={formId}
+        onBeforeSubmit={onBeforeSubmit}
         schema={schema}
         initialValue={recordData}
         onSubmit={handleSubmit}
