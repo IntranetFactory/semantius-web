@@ -11,6 +11,7 @@ const KNOWN_FORMATS = new Set([
   'code',
   'jsonata',
   'reference',
+  'parent',
   // Standard JSON Schema formats (missing from ajv-formats, implemented by us)
   'iri',
   'iri-reference',
@@ -141,6 +142,39 @@ export function validateSchemaStructure(schema: SchemaObject, path: string = '#'
   }
 
   return errors;
+}
+
+/**
+ * Maps a field's format/type to its default display width for **form** renderers.
+ *
+ * - text, json, html, jsonata → 'w' (wide)
+ * - number, integer (without a format) → 's' (small)
+ * - everything else → 'm' (medium)
+ *
+ * Format takes priority over type — e.g. a number with format "reference" gets 'm', not 's'.
+ */
+export function getDefaultWidthForForm(format?: string, type?: string): 's' | 'm' | 'w' {
+  if (format === 'text' || format === 'json' || format === 'html' || format === 'jsonata') {
+    return 'w'
+  }
+  // Only default to small for bare number/integer (no format override)
+  if (!format && (type === 'number' || type === 'integer')) {
+    return 's'
+  }
+  return 'm'
+}
+
+/**
+ * Maps a field's format/type to its default display width for **grid** renderers.
+ *
+ * Same rules as {@link getDefaultWidthForForm}, with the addition:
+ * - boolean → 's' (small, fits a toggle/checkbox column)
+ */
+export function getDefaultWidthForGrid(format?: string, type?: string): 's' | 'm' | 'w' {
+  if (type === 'boolean') {
+    return 's'
+  }
+  return getDefaultWidthForForm(format, type)
 }
 
 /**

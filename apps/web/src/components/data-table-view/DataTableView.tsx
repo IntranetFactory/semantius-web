@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { type EntityMetadata, type TableMetadata } from '@/types/metadata'
+import { getDefaultWidthForGrid } from 'sem-schema'
 import { useTable } from '@/hooks/useTable'
 import { useConfirmDelete } from '@/hooks/useConfirmDelete'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
@@ -427,16 +428,24 @@ export function DataTableView({
         cell: ({ row }) => {
           const value = row.original[key]
 
+          // Compute max-width from property.width; fall back to getDefaultWidthForGrid
+          const explicitBucket = property.width === 's' || property.width === 'm' || property.width === 'w'
+            ? property.width
+            : null
+          const widthBucket = explicitBucket
+            ?? getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type)
+          const maxWidthPx = widthBucket === 's' ? 100 : widthBucket === 'w' ? 400 : 200
+
           if (property.reference_table && property.reference_table_label_column) {
             const labelKey = `${key}_label`
             const embedded = row.original[labelKey] as Record<string, unknown> | undefined
             if (embedded && typeof embedded === 'object' && !Array.isArray(embedded)) {
               const labelValue = embedded[property.reference_table_label_column]
               const text = String(labelValue || value || '-')
-              return <div className="max-w-[200px] truncate" title={text}>{text}</div>
+              return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
             }
             const text = String(value || '-')
-            return <div className="max-w-[200px] truncate" title={text}>{text}</div>
+            return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
           }
 
           if (property.type === 'boolean') {
@@ -457,13 +466,12 @@ export function DataTableView({
           }
 
           const text = String(value ?? '-')
-          return <div className="max-w-[200px] truncate" title={text}>{text}</div>
+          return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
         },
       })
     }
 
     // Actions column
-    const fieldCount = Object.keys(metadata.properties || {}).length
     cols.push({
       id: 'actions',
       header: '',
@@ -477,12 +485,7 @@ export function DataTableView({
         const record = row.original
         const handleOpenRecord = (e: React.MouseEvent) => {
           e.stopPropagation()
-          const useModal = window.innerWidth > 900 && fieldCount >= 10
-          if (useModal && onEditModal) {
-            onEditModal(record)
-          } else {
-            (onEdit || onEditModal)?.(record)
-          }
+            ; (onEdit || onEditModal)?.(record)
         }
         const hasOpenHandler = !!(onEdit || onEditModal)
         return (

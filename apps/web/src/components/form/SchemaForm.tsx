@@ -1,5 +1,5 @@
 import { useForm } from '@tanstack/react-form'
-import { validateData } from 'sem-schema'
+import { validateData, getDefaultWidthForForm } from 'sem-schema'
 import { controls } from './controls'
 import { Button } from '@/components/ui/button'
 import type { SchemaObject } from 'ajv'
@@ -35,7 +35,7 @@ function generateDefaultValue(schema: SchemaObject): Record<string, any> {
         
         if (type === 'boolean') {
           defaults[key] = false
-        } else if (format === 'reference') {
+        } else if (format === 'reference' || format === 'parent') {
           defaults[key] = null
         } else if (type === 'number' || type === 'integer') {
           defaults[key] = undefined
@@ -103,10 +103,6 @@ function validateField(value: any, fieldSchema: SchemaObject, fieldName: string)
   return undefined
 }
 
-/**
- * Formats that default to wide (span-8) width
- */
-const WIDE_FORMATS = new Set(['json', 'html', 'text', 'code', 'jsonata'])
 
 /**
  * Map a width value to CSS grid column class names
@@ -156,10 +152,10 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
           continue
         }
         
-        // Reference fields set null when cleared; treat as undefined (absent) to avoid AJV type errors
+        // Reference and parent fields (foreign keys) set null when cleared; treat as undefined (absent) to avoid AJV type errors
         const format = (propSchema as any).format
         const fieldValue = value[key]
-        cleanedValue[key] = (format === 'reference' && fieldValue === null) ? undefined : fieldValue
+        cleanedValue[key] = ((format === 'reference' || format === 'parent') && fieldValue === null) ? undefined : fieldValue
       }
       
       // DEFENSIVE: This should never happen because view mode has no submit button
@@ -312,6 +308,7 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
   const formContextValue = {
     form,
     schema,
+    formMode,
     validateField: (value: any, fieldName: string) => {
       const fieldSchema = properties[fieldName]
       if (!fieldSchema) return undefined
@@ -348,7 +345,10 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
             }
           }, 100)
         }}
-        className="space-y-4"
+        className={formMode === 'view'
+          ? "space-y-4 [&_[data-slot=input]]:border-transparent [&_[data-slot=input]]:shadow-none [&_[data-slot=combobox-trigger]]:border-transparent [&_[data-slot=combobox-trigger]]:shadow-none [&_textarea]:border-transparent [&_textarea]:shadow-none [&_.cm-editor]:border-transparent [&_input::placeholder]:text-transparent [&_textarea::placeholder]:text-transparent"
+          : "space-y-4"
+        }
       >
       {/* Display schema validation errors */}
       <form.Subscribe selector={(state) => [state.fieldMeta._schemaError?.errors]}>
@@ -434,9 +434,11 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
             // Skip validation for readonly, disabled, and hidden fields
             const shouldValidate = inputMode === 'default' || inputMode === 'required'
 
-            // Determine width: explicit width from schema, or default based on format
+            // Determine width: explicit width from schema (excluding 'default'), or computed from format/type
             const schemaWidth = (propSchema as any).width
-            const effectiveWidth = schemaWidth || (format && WIDE_FORMATS.has(format as string) ? 'w' : 'm')
+            const effectiveWidth = (!schemaWidth || schemaWidth === 'default')
+              ? getDefaultWidthForForm(format as string | undefined, type as string | undefined)
+              : schemaWidth
             const widthClasses = getWidthClasses(effectiveWidth)
 
             return (

@@ -265,7 +265,7 @@ export function APISelect<T>({
           role="combobox"
           aria-expanded={open}
           className={cn(
-            "group justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
+            "group cursor-pointer justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
             disabled && "opacity-50 cursor-not-allowed",
             triggerClassName
           )}
@@ -283,7 +283,7 @@ export function APISelect<T>({
             <span className="text-muted-foreground">{placeholder}</span>
           )}
           <div className="flex items-center gap-1 ml-auto shrink-0 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-aria-expanded:opacity-100 transition-opacity">
-            {clearable && selectedValue && (
+            {!disabled && clearable && selectedValue && (
               <span
                 role="button"
                 aria-label="Clear selection"
@@ -303,7 +303,7 @@ export function APISelect<T>({
                 <X className="opacity-50 hover:opacity-100 h-3 w-3" />
               </span>
             )}
-            <ChevronsUpDown className="opacity-50" size={10} />
+            {!disabled && <ChevronsUpDown className="opacity-50" size={10} />}
           </div>
         </Button>
       </PopoverTrigger>

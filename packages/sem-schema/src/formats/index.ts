@@ -2,7 +2,7 @@
  * Format validators for SemSchema
  * 
  * Includes:
- * 1. Custom SemSchema formats (not in JSON Schema spec): json, html, text, code, jsonata, reference
+ * 1. Custom SemSchema formats (not in JSON Schema spec): json, html, text, code, jsonata, reference, parent
  * 2. Standard JSON Schema formats missing from ajv-formats: iri, iri-reference, idn-email, idn-hostname
  * 3. Overrides for standard formats: date-time (extended to accept ISO 8601 without timezone)
  */
@@ -12,7 +12,7 @@ import { addHtmlFormat } from './html';
 import { addTextFormat } from './text';
 import { addCodeFormat } from './code';
 import { addJsonataFormat } from './jsonata';
-import { addReferenceFormat } from './reference';
+import { addReferenceFormat, validateReferenceFormat } from './reference';
 import { iriFormat } from './iri';
 import { iriReferenceFormat } from './iri-reference';
 import { idnEmailFormat } from './idn-email';
@@ -80,7 +80,7 @@ function isValidDateTime(str: string): boolean {
 
 /**
  * Add all format validators to AJV instance
- * - Custom formats: json, html, text, code, jsonata, reference
+ * - Custom formats: json, html, text, code, jsonata, reference, parent
  * - Standard formats missing from ajv-formats: iri, iri-reference, idn-email, idn-hostname
  * - Overrides: date-time (extended to accept ISO 8601 without timezone)
  */
@@ -92,6 +92,11 @@ export function addAllFormats(ajv: Ajv): void {
   addCodeFormat(ajv);
   addJsonataFormat(ajv);
   addReferenceFormat(ajv);
+  // 'parent' behaves identically to 'reference' (integer FK generating a DB relationship)
+  ajv.addFormat('parent', {
+    type: 'number',
+    validate: validateReferenceFormat
+  });
   // Standard JSON Schema formats (missing from ajv-formats)
   ajv.addFormat('iri', iriFormat);
   ajv.addFormat('iri-reference', iriReferenceFormat);

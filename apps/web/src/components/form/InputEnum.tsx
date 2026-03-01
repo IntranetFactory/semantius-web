@@ -1,103 +1,25 @@
+import { useState } from 'react'
+import { Check, ChevronsUpDown, X } from 'lucide-react'
+import { cn } from '@/lib/utils'
+import { Button } from '@/components/ui/button'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from '@/components/ui/command'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import type { FormControlProps } from './types'
 import { useFormContext } from './FormContext'
 import { FormLabel } from './FormLabel'
 import { FormDescription } from './FormDescription'
 import { FormError } from './FormError'
-
-interface EnumFieldInnerProps {
-  field: any
-  name: string
-  label?: string
-  description?: string
-  required: boolean
-  disabled: boolean
-  readonly: boolean
-  hidden: boolean
-  enumValues: string[]
-  form: any
-  validators?: any
-}
-
-function EnumFieldInner({
-  field,
-  name,
-  label,
-  description,
-  required,
-  disabled,
-  readonly,
-  hidden,
-  enumValues,
-  form,
-  validators,
-}: EnumFieldInnerProps) {
-  if (hidden) {
-    // Hidden fields should render as <input type="hidden"> to be included in form submission
-    return (
-      <form.Field name={name} validators={validators}>
-        {(field: any) => (
-          <input type="hidden" name={name} value={field.state.value || ''} />
-        )}
-      </form.Field>
-    )
-  }
-  
-  // Get the actual value - prefer field.state.value, fallback to empty string
-  const currentValue = field.state.value ?? ''
-  
-  // Only pass valid enum values to Select, otherwise undefined for placeholder
-  const selectValue = currentValue && enumValues.includes(currentValue) ? currentValue : undefined
-  
-  return (
-    <div className="pt-2 space-y-1">
-      <FormLabel htmlFor={name} label={label} required={required} error={!!field.state.meta.errors?.[0]} />
-      <Select
-        // Key prop forces re-render when value changes - required for Radix UI Select with tanstack-form
-        // See: https://stackoverflow.com/a/78746413
-        key={`${name}-${currentValue}`}
-        value={selectValue}
-        onValueChange={(value) => {
-          // Clear errors first, then change value
-          // This ensures that selecting a valid value always clears validation errors
-          field.setMeta((meta: any) => ({
-            ...meta,
-            errors: [],
-            errorMap: {},
-          }))
-          field.handleChange(value)
-        }}
-        disabled={disabled || readonly}
-      >
-        <SelectTrigger
-          id={name}
-          tabIndex={readonly ? -1 : undefined}
-          className={readonly ? 'opacity-60' : ''}
-          aria-invalid={!!field.state.meta.errors?.[0]}
-          aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
-          onBlur={() => field.handleBlur()}
-        >
-          <SelectValue placeholder="Select an option" />
-        </SelectTrigger>
-        <SelectContent>
-          {enumValues.map((value: string) => (
-            <SelectItem key={value} value={value}>
-              {value}
-            </SelectItem>
-          ))}
-        </SelectContent>
-      </Select>
-      <FormDescription description={description} error={field.state.meta.errors?.[0]} />
-      <FormError name={name} error={field.state.meta.errors?.[0]} />
-    </div>
-  )
-}
 
 export function InputEnum({
   name,
@@ -108,6 +30,7 @@ export function InputEnum({
   schema,
 }: FormControlProps) {
   const { form } = useFormContext()
+  const [open, setOpen] = useState(false)
 
   // Derive props from inputMode
   const required = inputMode === 'required'
@@ -116,30 +39,119 @@ export function InputEnum({
   const hidden = inputMode === 'hidden'
 
   // Get enum values from schema prop
-  const enumValues = (schema as any)?.enum || []
-  
+  const enumValues: string[] = (schema as any)?.enum || []
+  const showSearch = enumValues.length > 10
+
   return (
-    <form.Field 
-      name={name}
-      // Note: defaultValue is handled by the form's defaultValues from useForm
-      // Do not set defaultValue here as it can cause issues with Radix UI Select
-      validators={validators}
-    >
-      {(field: any) => (
-        <EnumFieldInner
-          field={field}
-          name={name}
-          label={label}
-          description={description}
-          required={required}
-          disabled={disabled}
-          readonly={readonly}
-          hidden={hidden}
-          enumValues={enumValues}
-          form={form}
-          validators={validators}
-        />
-      )}
+    <form.Field name={name} validators={validators}>
+      {(field: any) => {
+        if (hidden) {
+          return <input type="hidden" name={name} value={field.state.value || ''} />
+        }
+
+        const currentValue: string = field.state.value ?? ''
+        const isDisabled = disabled || readonly
+
+        const handleSelect = (selected: string) => {
+          field.setMeta((meta: any) => ({
+            ...meta,
+            errors: [],
+            errorMap: {},
+          }))
+          field.handleChange(selected)
+          setOpen(false)
+        }
+
+        const handleClear = (e: React.MouseEvent) => {
+          e.preventDefault()
+          e.stopPropagation()
+          field.setMeta((meta: any) => ({
+            ...meta,
+            errors: [],
+            errorMap: {},
+          }))
+          field.handleChange('')
+        }
+
+        return (
+          <div className="pt-2 space-y-1">
+            <FormLabel htmlFor={name} label={label} required={required} error={!!field.state.meta.errors?.[0]} />
+            <Popover
+              open={open}
+              onOpenChange={(isOpen) => {
+                setOpen(isOpen)
+                if (!isOpen) field.handleBlur()
+              }}
+            >
+              <PopoverTrigger asChild>
+                <Button
+                  id={name}
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={open}
+                  aria-invalid={!!field.state.meta.errors?.[0] || undefined}
+                  aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
+                  disabled={isDisabled}
+                  className={cn(
+                    "group w-full cursor-pointer justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
+                    !currentValue && "text-muted-foreground",
+                    "aria-invalid:ring-destructive/20 aria-invalid:border-destructive"
+                  )}
+                >
+                  <span className="truncate">
+                    {isDisabled ? (currentValue || '') : (currentValue || 'Select an option')}
+                  </span>
+                  <div className="flex items-center gap-1 ml-auto shrink-0 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-aria-expanded:opacity-100 transition-opacity">
+                    {!isDisabled && !required && currentValue && (
+                      <span
+                        role="button"
+                        aria-label="Clear selection"
+                        className="flex items-center justify-center"
+                        onPointerDown={(e) => {
+                          e.preventDefault()
+                          e.stopPropagation()
+                        }}
+                        onClick={handleClear}
+                      >
+                        <X className="opacity-50 hover:opacity-100 h-3 w-3" />
+                      </span>
+                    )}
+                    {!isDisabled && <ChevronsUpDown className="opacity-50" size={10} />}
+                  </div>
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+                <Command>
+                  {showSearch && <CommandInput placeholder="Search..." />}
+                  <CommandList>
+                    <CommandEmpty>No option found.</CommandEmpty>
+                    <CommandGroup>
+                      {enumValues.map((option) => (
+                        <CommandItem
+                          key={option}
+                          value={option}
+                          onSelect={handleSelect}
+                          className="cursor-pointer bg-transparent! hover:bg-accent!"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 size-4",
+                              currentValue === option ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {option}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+            <FormDescription description={description} error={field.state.meta.errors?.[0]} />
+            <FormError name={name} error={field.state.meta.errors?.[0]} />
+          </div>
+        )
+      }}
     </form.Field>
   )
 }

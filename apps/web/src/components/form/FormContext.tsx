@@ -12,6 +12,8 @@ export interface FormContextValue {
   schema: SchemaObject
   /** Validate a single field value against its schema */
   validateField: (value: any, fieldName: string) => string | undefined
+  /** Current form mode - controls view-mode rendering */
+  formMode?: 'edit' | 'create' | 'view'
 }
 
 const FormContext = createContext<FormContextValue | null>(null)

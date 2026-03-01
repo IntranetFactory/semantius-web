@@ -103,7 +103,7 @@ export function DateTimePicker({
           </PopoverContent>
         </Popover>
       </div>
-      <div className="grid gap-2 flex-1">
+      <div className="grid gap-2 max-w-[160px]">
         <Input
           type="time"
           value={timeValue}

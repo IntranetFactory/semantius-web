@@ -117,6 +117,49 @@ describe('Data Validation Tests', () => {
     });
   });
 
+  describe('Format: parent', () => {
+    it('should validate integer values', () => {
+      const schema = { type: 'number', format: 'parent' };
+      
+      expect(validateData(1, schema).valid).toBe(true);
+      expect(validateData(0, schema).valid).toBe(true);
+      expect(validateData(-5, schema).valid).toBe(true);
+      expect(validateData(999999, schema).valid).toBe(true);
+    });
+
+    it('should reject non-integer numbers', () => {
+      const schema = { type: 'number', format: 'parent' };
+      
+      expect(validateData(1.5, schema).valid).toBe(false);
+      expect(validateData(0.1, schema).valid).toBe(false);
+      expect(validateData(3.14159, schema).valid).toBe(false);
+    });
+
+    it('should reject non-number values', () => {
+      const schema = { type: 'number', format: 'parent' };
+      
+      expect(validateData('123', schema).valid).toBe(false);
+      expect(validateData('1', schema).valid).toBe(false);
+      expect(validateData(null, schema).valid).toBe(false);
+      expect(validateData(undefined, schema).valid).toBe(false);
+      expect(validateData(true, schema).valid).toBe(false);
+    });
+
+    it('should work with inputMode required', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          parentId: { type: 'number', format: 'parent', inputMode: 'required' }
+        }
+      };
+      
+      expect(validateData({ parentId: 1 }, schema).valid).toBe(true);
+      expect(validateData({ parentId: 0 }, schema).valid).toBe(true);
+      expect(validateData({ parentId: null }, schema).valid).toBe(false);
+      expect(validateData({}, schema).valid).toBe(false);
+    });
+  });
+
   describe('inputMode: required validation', () => {
     it('should reject empty string when inputMode is required', () => {
       const schema = {

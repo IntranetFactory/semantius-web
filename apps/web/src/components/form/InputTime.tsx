@@ -48,6 +48,7 @@ export function InputTime({
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
                 disabled={disabled || readonly}
+                className="max-w-[160px]"
                 aria-invalid={!!field.state.meta.errors?.[0]}
                 aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
               />

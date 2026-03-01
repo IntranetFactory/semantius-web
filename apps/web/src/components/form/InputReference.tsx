@@ -92,7 +92,7 @@ export function InputReference({
                 getRecordId={getRecordId}
                 renderItem={renderItem}
                 label={schema?.reference_table_plural_label ? String(schema.reference_table_plural_label) : (label ?? name)}
-                placeholder={placeholder}
+                placeholder={disabled || readonly ? '' : placeholder}
                 value={toSelectValue(field.state.value)}
                 onChange={(value) => field.handleChange(toFormValue(value))}
                 disabled={disabled || readonly}

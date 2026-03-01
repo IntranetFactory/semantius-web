@@ -108,4 +108,5 @@ export const controls: Record<string, React.ComponentType<FormControlProps>> = {
   
   // Reference control (API-powered lookup)
   reference: InputReference,
+  parent: InputReference,
 }

@@ -490,6 +490,21 @@ describe('Vocabulary Definition Tests', () => {
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();
     });
+
+    // Custom SemSchema relation formats
+    it('should accept schema with format: reference', () => {
+      const schema = { type: 'number', format: 'reference' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: parent', () => {
+      const schema = { type: 'number', format: 'parent' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
   });
 
   describe('Schema Validity - Invalid types', () => {
@@ -1017,6 +1032,13 @@ describe('Vocabulary Definition Tests', () => {
   });
 
   describe('Schema Validity - width keyword', () => {
+    it('should accept schema with width: default', () => {
+      const schema = { type: 'string', width: 'default' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
     it('should accept schema with width: s', () => {
       const schema = { type: 'string', width: 's' };
       const result = validateSchema(schema);

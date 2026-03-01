@@ -79,7 +79,7 @@
     "width": {
       "description": "Form field width in the responsive grid. 's' = narrow (span-2), 'm' = medium (span-4, default), 'w' = wide (span-8). Prefix with 'n' (ns/nm/nw) to force field to start on a new line.",
       "type": "string",
-      "enum": ["s", "m", "w", "ns", "nm", "nw"],
+      "enum": ["default", "s", "m", "w", "ns", "nm", "nw"],
       "default": "m"
     }
   }
