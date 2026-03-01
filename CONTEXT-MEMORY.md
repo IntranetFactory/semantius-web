@@ -40,7 +40,20 @@ Path alias: `@` → `apps/web/src` (configured in `vite.config.ts` and `tsconfig
 
 The route `_app.$moduleId.$table_name.tsx` loads view components dynamically via `import.meta.glob('../components/views/**/*.{tsx,jsx}')`. It checks for a **specific** component first at `views/{moduleId}/{TableName}.tsx`, then falls back to the **generic** `views/View.tsx`. When fixing behavior in `View.tsx`, always check if specific overrides exist in subdirectories (e.g., `views/crm/Customers.tsx`, `views/crm/Regions.tsx`) — those files are loaded instead of the generic one. Specific overrides should re-export from `View.tsx` (`export { View } from '../View'`) unless they genuinely need custom behavior.
 
-### Data Fetching
+### TanStack Router Search Param Serialization
+
+TanStack Router's default `stringifySearchWith(JSON.stringify, JSON.parse)` **JSON-encodes strings that are valid JSON**. `JSON.parse('1002')` succeeds (it's a JSON number), so `'1002'` becomes `%221002%22` (`"1002"` with quotes) in the URL. Non-JSON strings like `'id'` or `'desc'` are passed through unmodified.
+
+**Do NOT pass string IDs via TanStack Router's `navigate({ search: { _pv: id } })`** — use `router.history.push(url)` with a manually-built URL string instead:
+
+```ts
+const router = useRouter()
+router.history.push(`/module/table?_pf=${encodeURIComponent(pf)}&_pv=${encodeURIComponent(String(id))}`)
+```
+
+This applies specifically to `_pf`/`_pv` parent-filter params (and any param where you need a clean numeric ID string). Other params (`page`, `pageSize`, `sortBy`, etc.) are fine via `navigate({ search: ... })`.
+
+
 
 - All data access via PostgREST — no Supabase client
 - API base URL is in `VITE_API_BASE_URL` (currently Neon Data API)

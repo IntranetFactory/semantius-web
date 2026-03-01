@@ -1,4 +1,4 @@
-import { useNavigate, useRouterState } from '@tanstack/react-router'
+import { useNavigate, useRouter, useRouterState } from '@tanstack/react-router'
 import { useRef } from 'react'
 import { type ViewProps, type ChildRelation } from "@/types/metadata"
 import { useTable } from '@/hooks/useTable'
@@ -19,6 +19,17 @@ import { TableForm } from '@/components/form/TableForm'
 type RecordType = Record<string, unknown>
 
 /**
+ * Build the URL for navigating to a child relation table, pre-filtered to the parent record.
+ * Uses manual URL construction (not TanStack Router search params) to avoid JSON-encoding
+ * of plain string/numeric values — TanStack Router JSON-encodes strings that are valid JSON
+ * (e.g. '1002' → %221002%22). router.history.push with a raw URL bypasses this.
+ */
+function buildChildNavUrl(moduleId: string, childId: string, recordId: string): string {
+  const childTable = childId.split('.')[0]
+  return `/${moduleId}/${childTable}?_pf=${encodeURIComponent(childId)}&_pv=${encodeURIComponent(String(recordId))}`
+}
+
+/**
  * Standalone view for a single record (/module/entity/id/view) or new record creation (/module/entity/new).
  * Renders breadcrumbs + form without the data table list.
  */
@@ -36,6 +47,7 @@ function StandaloneFormView({
   canEdit: boolean
 }) {
   const navigate = useNavigate()
+  const router = useRouter()
   const idColumn = metadata.table?.id_column || 'id'
   const labelColumn = metadata.table?.label_column || ''
   const postSaveTargetRef = useRef<string | null>(null)
@@ -58,13 +70,21 @@ function StandaloneFormView({
 
   const handleBeforeSubmit = (submitter: Element | null) => {
     const childId = submitter instanceof HTMLElement ? submitter.dataset.childId : undefined
-    postSaveTargetRef.current = childId ? `/${moduleId}/${childId.split('.')[0]}` : null
+    if (childId && recordId) {
+      postSaveTargetRef.current = buildChildNavUrl(moduleId, childId, recordId)
+    } else {
+      postSaveTargetRef.current = null
+    }
   }
 
   const handleSave = () => {
     const target = postSaveTargetRef.current
     postSaveTargetRef.current = null
-    navigate({ to: target || viewName })
+    if (target) {
+      router.history.push(target)
+    } else {
+      navigate({ to: viewName })
+    }
   }
 
   const children: ChildRelation[] = metadata.children || []
@@ -110,6 +130,7 @@ function StandaloneFormView({
 
 export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _recordId, metadata }: ViewProps) {
   const navigate = useNavigate()
+  const router = useRouter()
   const routerState = useRouterState()
 
   // Extract primary key column name from metadata (source of truth)
@@ -169,6 +190,10 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const isStandaloneNew = pathname === `${view_name}/new`
   const isStandalone = !!standaloneViewMatch || isStandaloneNew
 
+  // All hooks (useNavigate, useRouter, useRouterState, useUserHasPermission, useRef) must be called
+  // unconditionally before any early return to satisfy React's rules of hooks.
+  const overlayPostSaveTargetRef = useRef<string | null>(null)
+
   // Render standalone form (with breadcrumbs, no data table)
   if (isStandalone) {
     const standaloneRecordId = standaloneViewMatch?.[1] || null
@@ -219,20 +244,23 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const displayMode = resolveDisplayMode()
   const useModal = displayMode === 'modal'
 
-  const overlayPostSaveTargetRef = useRef<string | null>(null)
   const OVERLAY_FORM_ID = 'overlay-record-form'
   const children: ChildRelation[] = metadata.children || []
 
   const handleOverlayBeforeSubmit = (submitter: Element | null) => {
     const childId = submitter instanceof HTMLElement ? submitter.dataset.childId : undefined
-    overlayPostSaveTargetRef.current = childId ? `/${module_name}/${childId.split('.')[0]}` : null
+    if (childId && recordId) {
+      overlayPostSaveTargetRef.current = buildChildNavUrl(module_name, childId, recordId)
+    } else {
+      overlayPostSaveTargetRef.current = null
+    }
   }
 
   const handleClose = () => {
     const target = overlayPostSaveTargetRef.current
     overlayPostSaveTargetRef.current = null
     if (target) {
-      navigate({ to: target })
+      router.history.push(target)
     } else {
       navigatePreservingSearch({ to: view_name })
     }
