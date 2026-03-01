@@ -140,8 +140,22 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const isOpen = isCreateMode || !!recordId
 
   const fieldCount = Object.keys(metadata.properties || {}).length
-  // Determine display mode: modal for entities with many fields on wide screens
-  const useModal = typeof window !== 'undefined' && window.innerWidth > 900 && fieldCount >= 10
+
+  // Determine display mode based on edit_mode from schema metadata.
+  // 'auto' (or unset): decide by field count and screen width.
+  // 'modal': always use modal.
+  // 'sidebar': always use sidebar.
+  const resolveDisplayMode = (): 'modal' | 'sidebar' => {
+    const editMode = metadata.table?.edit_mode || 'auto'
+    if (editMode === 'modal') return 'modal'
+    if (editMode === 'sidebar') return 'sidebar'
+    // auto: wide screen + many fields → modal
+    return typeof window !== 'undefined' && window.innerWidth > 900 && fieldCount >= 10
+      ? 'modal'
+      : 'sidebar'
+  }
+  const displayMode = resolveDisplayMode()
+  const useModal = displayMode === 'modal'
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const navigatePreservingSearch = (opts: Record<string, unknown>) => {

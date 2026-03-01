@@ -17,6 +17,8 @@ export interface JsonSchemaProperty {
   reference_table_id_column?: string
   reference_table_label_column?: string
   reference_delete_mode?: string
+  // Display width hint
+  width?: 's' | 'm' | 'w' | 'default' | string
 }
 
 // Sem Schema table metadata
@@ -35,6 +37,8 @@ export interface SemSchemaTable {
   label_column: string
   managed?: boolean
   searchable?: boolean
+  is_child?: boolean
+  edit_mode?: 'auto' | 'modal' | 'sidebar'
   created_at?: string
   updated_at?: string
 }
