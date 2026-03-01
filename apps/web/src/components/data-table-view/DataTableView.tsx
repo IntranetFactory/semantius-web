@@ -212,6 +212,8 @@ export function DataTableView({
       sortOrder: (search as { sortOrder?: 'asc' | 'desc' }).sortOrder,
       search: (search as { search?: string }).search,
       filters: (search as { filters?: string }).filters,
+      _pf: (search as { _pf?: string })._pf,
+      _pv: (search as { _pv?: string })._pv,
     }),
     structuralSharing: true,
   })
@@ -332,6 +334,18 @@ export function DataTableView({
       if (conditions.length > 0) params.push(`or=(${conditions.join(',')})`)
     }
 
+    // Parent filter from _pf/_pv URL params (independent of filter menu)
+    // _pf format: "{tableName}.{columnName}" — extract the column name after the dot
+    const pf = searchParams._pf
+    const pv = searchParams._pv
+    if (pf && pv !== undefined && pv !== '') {
+      const dotIndex = pf.indexOf('.')
+      const parentColumn = dotIndex >= 0 ? pf.slice(dotIndex + 1) : pf
+      if (parentColumn) {
+        params.push(`${parentColumn}=eq.${pv}`)
+      }
+    }
+
     // Global search box → wfts (full-text search) on search_vector column
     const trimmedSearch = searchText.trim()
     if (trimmedSearch) {
@@ -339,7 +353,7 @@ export function DataTableView({
     }
 
     return params.join('&')
-  }, [pagination.pageIndex, pagination.pageSize, sorting, extFilters, searchText, metadata])
+  }, [pagination.pageIndex, pagination.pageSize, sorting, extFilters, searchText, metadata, searchParams._pf, searchParams._pv])
 
   const { data, totalCount, isLoading, error, refetch } = useTable<RecordType>(tableName, {
     query,
