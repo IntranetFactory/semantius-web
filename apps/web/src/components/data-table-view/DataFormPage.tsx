@@ -1,12 +1,12 @@
 import { useSearch } from '@tanstack/react-router'
 import { useTable } from '@/hooks/useTable'
 import { useCreateRecord, useUpdateRecord } from '@/hooks/useTableMutations'
-import { SchemaForm } from './SchemaForm'
+import { SchemaForm } from '@/components/form/SchemaForm'
 import { ApiErrorDisplay } from '@/components/ApiErrorDisplay'
 import { Loader2 } from 'lucide-react'
 import type { EntityMetadata } from '@/types/metadata'
 
-interface TableFormProps {
+interface DataFormPageProps {
   schema: EntityMetadata
   recordId?: string | null
   onClose?: () => void
@@ -15,7 +15,7 @@ interface TableFormProps {
   onBeforeSubmit?: (submitter: Element | null) => void
 }
 
-export function TableForm({ schema, recordId, onClose, formMode, formId, onBeforeSubmit }: TableFormProps) {
+export function DataFormPage({ schema, recordId, onClose, formMode, formId, onBeforeSubmit }: DataFormPageProps) {
   const tableName = schema.table?.table_name
   const idColumn = schema.table?.id_column
 

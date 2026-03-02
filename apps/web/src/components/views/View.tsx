@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { Plus, Users } from 'lucide-react'
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet'
-import { TableForm } from '@/components/form/TableForm'
+import { DataFormPage } from '@/components/data-table-view/DataFormPage'
 
 type RecordType = Record<string, unknown>
 
@@ -134,7 +134,7 @@ function StandaloneFormView({
           </div>
         )}
       </div>
-      <TableForm
+      <DataFormPage
         schema={metadata}
         recordId={recordId}
         onClose={handleSave}
@@ -409,7 +409,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
             </div>
           </SheetHeader>
           <div className="flex-1 overflow-y-auto p-6 pt-0">
-            <TableForm
+            <DataFormPage
               schema={metadata}
               recordId={isCreateMode ? null : recordId}
               onClose={handleClose}
@@ -434,7 +434,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
               {childButtons}
             </div>
           </DialogHeader>
-          <TableForm
+          <DataFormPage
             schema={metadata}
             recordId={isCreateMode ? null : recordId}
             onClose={handleClose}

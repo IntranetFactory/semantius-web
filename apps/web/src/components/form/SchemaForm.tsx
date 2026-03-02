@@ -462,6 +462,19 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
               : schemaWidth
             const widthClasses = getWidthClasses(effectiveWidth)
 
+            if (inputMode === 'hidden') {
+              return (
+                <ControlComponent
+                  key={key}
+                  name={key}
+                  label={label}
+                  description={description}
+                  inputMode={inputMode}
+                  schema={propSchema as Record<string, unknown>}
+                />
+              )
+            }
+
             return (
               <div key={key} className={widthClasses}>
                 <ControlComponent
