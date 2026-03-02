@@ -13,6 +13,15 @@ interface SchemaFormProps {
   initialValue?: Record<string, any>
   onSubmit?: (value: Record<string, any>) => void
   formMode?: FormMode
+  id?: string
+  onBeforeSubmit?: (submitter: Element | null) => void
+  /**
+   * Field name injected via _pf/_pv URL params (parent relationship pre-fill).
+   * Unlike regular readonly fields that are skipped in create mode, this field is
+   * always rendered as readonly AND always included in form submission — it carries
+   * the foreign key value that ties the new child record to its parent.
+   */
+  parentField?: string
 }
 
 /**
@@ -119,7 +128,7 @@ function getWidthClasses(width: string): string {
   }
 }
 
-export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }: SchemaFormProps) {
+export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', id, onBeforeSubmit, parentField }: SchemaFormProps) {
   // Generate initial value if not provided
   const defaultValue = initialValue && Object.keys(initialValue).length > 0
     ? initialValue
@@ -148,7 +157,8 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
         }
         
         // In create mode, skip readonly fields (they're not rendered and usually don't exist yet)
-        if (formMode === 'create' && inputMode === 'readonly') {
+        // Exception: parentField is always included (it was injected via _pf/_pv and must be submitted)
+        if (formMode === 'create' && inputMode === 'readonly' && key !== parentField) {
           continue
         }
         
@@ -177,7 +187,8 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
           if (inputMode === 'disabled') return false
           
           // In create mode, readonly fields are not rendered, so not required
-          if (formMode === 'create' && inputMode === 'readonly') return false
+          // Exception: parentField is always included
+          if (formMode === 'create' && inputMode === 'readonly' && fieldName !== parentField) return false
           
           return true
         })
@@ -319,10 +330,12 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
   return (
     <FormProvider value={formContextValue}>
       <form
+        id={id}
         noValidate
         onSubmit={(e) => {
           e.preventDefault()
           e.stopPropagation()
+          onBeforeSubmit?.((e.nativeEvent as SubmitEvent).submitter)
           form.handleSubmit()
           
           // After validation, scroll to first error field if any
@@ -417,8 +430,16 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
             let inputMode: 'default' | 'required' | 'readonly' | 'disabled' | 'hidden' = 
               (propSchema as any).inputMode || 'default'
             
+            // parentField (injected via _pf/_pv) is always forced to hidden —
+            // it carries the foreign key that links this child record to its parent
+            // and must not be visible or editable by the user
+            if (key === parentField) {
+              inputMode = 'hidden'
+            }
+            
             // In create mode, skip fields with inputMode='readonly' or 'disabled'
-            if (formMode === 'create' && (inputMode === 'readonly' || inputMode === 'disabled')) {
+            // Exception: parentField (injected via _pf/_pv) is always rendered
+            if (formMode === 'create' && (inputMode === 'readonly' || inputMode === 'disabled') && key !== parentField) {
               return null
             }
             
@@ -440,19 +461,6 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit' }
               ? getDefaultWidthForForm(format as string | undefined, type as string | undefined)
               : schemaWidth
             const widthClasses = getWidthClasses(effectiveWidth)
-
-            if (inputMode === 'hidden') {
-              return (
-                <ControlComponent
-                  key={key}
-                  name={key}
-                  label={label}
-                  description={description}
-                  inputMode={inputMode}
-                  schema={propSchema as Record<string, unknown>}
-                />
-              )
-            }
 
             return (
               <div key={key} className={widthClasses}>
