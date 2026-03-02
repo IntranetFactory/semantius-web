@@ -634,9 +634,6 @@ function useInitialFilters<TData>(
     // If controlled, use controlled filters (normalize to ensure filterId exists)
     if (controlledFilters) {
       const normalized = normalizeFiltersFromUrl(controlledFilters)
-      if (process.env.NODE_ENV === "development") {
-        console.log("[useInitialFilters] Using controlled filters:", normalized)
-      }
       return normalized
     }
 
@@ -681,9 +678,6 @@ function useInitialFilters<TData>(
       }
     }
 
-    if (process.env.NODE_ENV === "development") {
-      console.log("[useInitialFilters] No initial filters found")
-    }
     return []
     // Only run once on mount - we don't want to reset when table state changes
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -744,31 +738,11 @@ function useSyncFiltersWithTable<TData>(
   React.useEffect(() => {
     // Skip if controlled - parent handles table state
     if (isControlled) {
-      if (process.env.NODE_ENV === "development") {
-        console.log(
-          "[useSyncFiltersWithTable] Controlled mode - skipping table sync",
-        )
-      }
       return
     }
 
     // Mark that we've synced at least once
     hasSyncedRef.current = true
-
-    if (process.env.NODE_ENV === "development") {
-      console.log("[useSyncFiltersWithTable] Syncing filters:", {
-        filterCount: filters.length,
-        hasOrFilters: filterLogic.hasOrFilters,
-        hasSameColumnFilters: filterLogic.hasSameColumnFilters,
-        joinOperator: filterLogic.joinOperator,
-        filters: filters.map(f => ({
-          id: f.id,
-          operator: f.operator,
-          joinOp: f.joinOperator,
-          value: f.value,
-        })),
-      })
-    }
 
     // Use core utility to determine routing
     if (filterLogic.shouldUseGlobalFilter) {

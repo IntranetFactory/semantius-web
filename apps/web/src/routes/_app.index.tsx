@@ -1,4 +1,4 @@
-import { createFileRoute, useNavigate } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
 import { GalleryVerticalEnd, Loader2 } from 'lucide-react'
 import {
   Card,
@@ -8,6 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
+import { useModuleNavigate } from '@/hooks/useModuleNavigate'
 import { ApiErrorDisplay } from '@/components/ApiErrorDisplay'
 
 export const Route = createFileRoute('/_app/')({
@@ -15,7 +16,7 @@ export const Route = createFileRoute('/_app/')({
 })
 
 function IndexComponent() {
-  const navigate = useNavigate()
+  const navigateToModule = useModuleNavigate()
   const { rpcUserInfo } = useAuth()
 
   // Get user's permissions array for filtering
@@ -39,10 +40,11 @@ function IndexComponent() {
   }) || []
 
   const handleModuleClick = (module: typeof modules[0]) => {
-    // Navigate to home_page if it exists and is not empty
-    if (module.home_page && module.home_page.trim() !== '') {
-      navigate({ to: module.home_page })
-    }
+    navigateToModule({
+      homePage: module.home_page,
+      moduleId: module.id,
+      moduleName: module.module_name,
+    })
   }
 
   // Loading state

@@ -5,6 +5,7 @@
   "description": "web ui for semantius",
   "scripts": {
     "dev": "dotenvx run -- turbo dev",
+    "dev:supabase": "dotenvx run --env-file .env.supabase -- turbo dev:supabase",
     "build": "turbo build",
     "lint": "turbo lint",
     "test": "dotenvx run -- turbo test",

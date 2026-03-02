@@ -2,7 +2,8 @@
 
 import * as React from "react"
 import { ChevronsUpDown } from "lucide-react"
-import { useParams, useNavigate } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
+import { useModuleNavigate } from '@/hooks/useModuleNavigate'
 
 import {
   DropdownMenu,
@@ -37,7 +38,7 @@ export function ModuleSwitcher({
 }) {
   const params = useParams({ strict: false })
   const { moduleId } = params as { moduleId?: string; table_name?: string; key?: string }
-  const navigate = useNavigate()
+  const navigateToModule = useModuleNavigate()
 
   const { isMobile } = useSidebar()
   const [activeModule, setActiveModule] = React.useState(modules[0])
@@ -45,11 +46,12 @@ export function ModuleSwitcher({
   // Handler for module click - navigate to home_page if available
   const handleModuleClick = React.useCallback((module: typeof modules[0]) => {
     setActiveModule(module)
-    // Navigate to home_page if it exists and is not empty
-    if (module.home_page && module.home_page.trim() !== '') {
-      navigate({ to: module.home_page })
-    }
-  }, [navigate])
+    navigateToModule({
+      homePage: module.home_page,
+      moduleId: module.id,
+      moduleName: module.name,
+    })
+  }, [navigateToModule])
 
   // Update active module when URL changes (moduleId from params)
   React.useEffect(() => {
