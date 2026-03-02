@@ -430,11 +430,11 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
             let inputMode: 'default' | 'required' | 'readonly' | 'disabled' | 'hidden' = 
               (propSchema as any).inputMode || 'default'
             
-            // parentField (injected via _pf/_pv) is always forced to readonly —
+            // parentField (injected via _pf/_pv) is always forced to hidden —
             // it carries the foreign key that links this child record to its parent
-            // and must not be editable by the user
+            // and must not be visible or editable by the user
             if (key === parentField) {
-              inputMode = 'readonly'
+              inputMode = 'hidden'
             }
             
             // In create mode, skip fields with inputMode='readonly' or 'disabled'

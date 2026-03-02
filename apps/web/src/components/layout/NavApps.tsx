@@ -43,7 +43,7 @@ export function NavApps({
   // Only fetch when we have a valid module_id
   // Note: tables table doesn't have table_id, primary key is likely id
   const { data: tables, isLoading, error } = useTable('tables', {
-    query: moduleId ? `module_id=eq.${moduleId}&select=table_name,plural_label,icon_url,singular_label` : '',
+    query: moduleId ? `module_id=eq.${moduleId}&is_child=not.is.true&select=table_name,plural_label,icon_url,singular_label` : '',
     enabled: !!moduleId,
   })
 
