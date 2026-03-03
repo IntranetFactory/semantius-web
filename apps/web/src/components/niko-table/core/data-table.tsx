@@ -44,18 +44,6 @@ export interface DataTableContainerProps {
   className?: string
   height?: number | string
   maxHeight?: number | string
-  /**
-   * Constrain the table container to max-w-[800px].
-   * Use for grids with a small number of columns (≤ 5) to prevent them
-   * from stretching across the full page width.
-   */
-  constrained?: boolean
-  /**
-   * Switch the inner <table> to table-layout:fixed so that columns with
-   * the truncate class properly clip overflow text.
-   * Enable when any column uses width bucket 'w' (wide/long content).
-   */
-  truncating?: boolean
 }
 
 /**
@@ -95,8 +83,6 @@ export function DataTable({
   className,
   height,
   maxHeight,
-  constrained,
-  truncating,
 }: DataTableContainerProps) {
   // Parse height from className if not provided via props
   const parsed = React.useMemo(
@@ -112,7 +98,6 @@ export function DataTable({
       data-slot="table-container"
       className={cn(
         "relative w-full overflow-auto rounded-lg border",
-        constrained && "max-w-[800px]",
         // Custom scrollbar styling to match ScrollArea aesthetic
         // Scrollbar visible but subtle by default, more prominent on hover
         "[&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5",
@@ -130,7 +115,7 @@ export function DataTable({
         maxHeight: finalMaxHeight,
       }}
     >
-      <Table className={truncating ? "table-fixed w-full" : undefined}>{children}</Table>
+      <Table className="w-full">{children}</Table>
     </div>
   )
 }
