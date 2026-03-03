@@ -27,7 +27,7 @@ export interface DeleteConfirmation {
  * // In your JSX:
  * <ConfirmDeleteDialog {...deleteConfirm} entityType="Customer" />
  */
-export function useConfirmDelete(tableName: string, onSuccess?: () => void, idField?: string) {
+export function useConfirmDelete(tableName: string, onSuccess?: () => void, idField?: string, singularLabel?: string) {
   const [isOpen, setIsOpen] = useState(false)
   const [itemToDelete, setItemToDelete] = useState<DeleteConfirmation | null>(null)
   const deleteMutation = useDeleteRecord(tableName, idField)
@@ -46,7 +46,7 @@ export function useConfirmDelete(tableName: string, onSuccess?: () => void, idFi
       const deletedName = itemToDelete.displayName
       setItemToDelete(null)
       onSuccess?.()
-      toast.success(`${deletedName} deleted`)
+      toast.success(`${singularLabel ? singularLabel + ' ' : ''}${deletedName} deleted`)
     } catch (error) {
       console.error('Delete failed:', error)
       // Keep dialog open on error so user can retry

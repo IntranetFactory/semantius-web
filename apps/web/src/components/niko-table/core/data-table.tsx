@@ -132,7 +132,7 @@ export function DataTable({
         maxHeight: finalMaxHeight,
       }}
     >
-      <Table>{children}</Table>
+      <Table className="w-auto">{children}</Table>
     </div>
   )
 }

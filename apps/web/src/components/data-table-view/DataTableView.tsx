@@ -369,7 +369,7 @@ export function DataTableView({
   const hasEditPermission = useUserHasPermission(tableMetadata?.edit_permission || '')
   const effectiveCanEdit = canEdit && (tableMetadata?.edit_permission ? hasEditPermission : true)
 
-  const deleteConfirm = useConfirmDelete(tableName, refetch, primaryKeyColumn)
+  const deleteConfirm = useConfirmDelete(tableName, refetch, primaryKeyColumn, tableMetadata?.singular_label)
 
   // --- Pagination change: from niko-table pagination component ---
   const handlePaginationChange = useCallback(

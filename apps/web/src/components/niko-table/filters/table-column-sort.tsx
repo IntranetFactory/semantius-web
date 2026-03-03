@@ -235,15 +235,17 @@ export function TableColumnSortMenu<TData, TValue>({
   const isMultiSort = table && table.getState().sorting.length > 1
   const showSortBadge = isMultiSort && sortIndex !== -1
 
+  const [menuOpen, setMenuOpen] = React.useState(false)
+
   return (
-    <DropdownMenu>
+    <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
       <DropdownMenuTrigger asChild>
         <Button
           variant="ghost"
           size="icon"
           className={cn(
             "size-7 transition-opacity dark:text-muted-foreground",
-            sortState ? "text-primary" : "opacity-0 group-hover:opacity-100",
+            sortState ? "text-primary" : (menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"),
             className,
           )}
         >
