@@ -9,12 +9,14 @@ import {
 } from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Loader2 } from 'lucide-react'
+import { formatDeleteError } from '@/lib/apiErrors'
 
 interface ConfirmDeleteDialogProps {
   isOpen: boolean
   setIsOpen: (open: boolean) => void
   displayName: string
   isPending: boolean
+  error?: Error | null
   handleConfirm: () => void
   handleCancel: () => void
   entityType?: string
@@ -34,6 +36,7 @@ export function ConfirmDeleteDialog({
   setIsOpen,
   displayName,
   isPending,
+  error,
   handleConfirm,
   handleCancel,
   entityType = 'item',
@@ -48,6 +51,11 @@ export function ConfirmDeleteDialog({
             <strong>{displayName}</strong>?
             This action cannot be undone.
           </AlertDialogDescription>
+          {error && (
+            <p role="alert" className="text-sm font-medium text-destructive pt-1">
+              {formatDeleteError(error, entityType)}
+            </p>
+          )}
         </AlertDialogHeader>
         <AlertDialogFooter>
           <AlertDialogCancel disabled={isPending} onClick={handleCancel}>

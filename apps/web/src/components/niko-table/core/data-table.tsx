@@ -41,26 +41,21 @@ function parseHeightFromClassName(className?: string) {
 
 export interface DataTableContainerProps {
   children: React.ReactNode
-  /**
-   * Additional CSS classes for the container.
-   * Arbitrary height values (e.g., h-[600px], max-h-[400px]) are automatically extracted
-   * and applied as inline styles to ensure scroll event callbacks work reliably.
-   * For other height utilities, use the height/maxHeight props directly.
-   */
   className?: string
-  /**
-   * Sets the height of the table container.
-   * When provided, enables vertical scrolling and allows DataTableBody/DataTableVirtualizedBody
-   * to use onScroll, onScrolledTop, and onScrolledBottom callbacks.
-   * Takes precedence over height utilities in className.
-   */
   height?: number | string
-  /**
-   * Sets the maximum height of the table container.
-   * Defaults to the height value if not specified.
-   * Takes precedence over max-height utilities in className.
-   */
   maxHeight?: number | string
+  /**
+   * Constrain the table container to max-w-[800px].
+   * Use for grids with a small number of columns (≤ 5) to prevent them
+   * from stretching across the full page width.
+   */
+  constrained?: boolean
+  /**
+   * Switch the inner <table> to table-layout:fixed so that columns with
+   * the truncate class properly clip overflow text.
+   * Enable when any column uses width bucket 'w' (wide/long content).
+   */
+  truncating?: boolean
 }
 
 /**
@@ -100,6 +95,8 @@ export function DataTable({
   className,
   height,
   maxHeight,
+  constrained,
+  truncating,
 }: DataTableContainerProps) {
   // Parse height from className if not provided via props
   const parsed = React.useMemo(
@@ -115,6 +112,7 @@ export function DataTable({
       data-slot="table-container"
       className={cn(
         "relative w-full overflow-auto rounded-lg border",
+        constrained && "max-w-[800px]",
         // Custom scrollbar styling to match ScrollArea aesthetic
         // Scrollbar visible but subtle by default, more prominent on hover
         "[&::-webkit-scrollbar]:h-2.5 [&::-webkit-scrollbar]:w-2.5",
@@ -132,7 +130,7 @@ export function DataTable({
         maxHeight: finalMaxHeight,
       }}
     >
-      <Table className="w-auto">{children}</Table>
+      <Table className={truncating ? "table-fixed w-full" : undefined}>{children}</Table>
     </div>
   )
 }

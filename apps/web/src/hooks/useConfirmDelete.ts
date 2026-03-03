@@ -33,6 +33,7 @@ export function useConfirmDelete(tableName: string, onSuccess?: () => void, idFi
   const deleteMutation = useDeleteRecord(tableName, idField)
 
   const showConfirmation = (id: string | number, displayName: string) => {
+    deleteMutation.reset()
     setItemToDelete({ id, displayName })
     setIsOpen(true)
   }

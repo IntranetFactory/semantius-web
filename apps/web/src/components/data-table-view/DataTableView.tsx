@@ -76,6 +76,13 @@ function getFilterVariant(property: {
   return FILTER_VARIANTS.TEXT
 }
 
+// Returns the width bucket ('s' | 'm' | 'w') for a metadata property.
+// Explicit property.width takes precedence; falls back to getDefaultWidthForGrid.
+function getWidthBucket(property: { width?: string; format?: string; type?: string | string[] }): 's' | 'm' | 'w' {
+  if (property.width === 's' || property.width === 'm' || property.width === 'w') return property.width
+  return getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type) as 's' | 'm' | 'w'
+}
+
 // Convert one ExtendedColumnFilter to one or more PostgREST AND query parameters.
 // Returns an array because 'between' requires two parameters.
 function filterToPostgRESTParams(filter: PlainFilter): string[] {
@@ -425,17 +432,13 @@ export function DataTableView({
         ? property.enum.map(v => ({ label: v, value: v }))
         : undefined
 
-      // Compute max-width from property.width; fall back to getDefaultWidthForGrid
-      const explicitBucket = property.width === 's' || property.width === 'm' || property.width === 'w'
-        ? property.width
-        : null
-      const widthBucket = explicitBucket
-        ?? getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type)
-      const maxWidthPx = widthBucket === 's' ? 100 : widthBucket === 'w' ? 400 : 200
+      // Width bucket: 'w' columns use text truncation in table-fixed mode
+      const isTruncating = getWidthBucket(property) === 'w'
 
       cols.push({
         accessorKey: key,
-        size: maxWidthPx,
+        // No fixed pixel size — let the table distribute widths naturally.
+        // The actions column retains size:50 to stay compact.
         enableColumnFilter: true,
         meta: {
           label: columnTitle,
@@ -457,10 +460,10 @@ export function DataTableView({
             if (embedded && typeof embedded === 'object' && !Array.isArray(embedded)) {
               const labelValue = embedded[property.reference_table_label_column]
               const text = String(labelValue || value || '-')
-              return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
+              return <div className={isTruncating ? 'truncate' : undefined} title={isTruncating ? text : undefined}>{text}</div>
             }
             const text = String(value || '-')
-            return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
+            return <div className={isTruncating ? 'truncate' : undefined} title={isTruncating ? text : undefined}>{text}</div>
           }
 
           if (property.type === 'boolean') {
@@ -481,7 +484,7 @@ export function DataTableView({
           }
 
           const text = String(value ?? '-')
-          return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
+          return <div className={isTruncating ? 'truncate' : undefined} title={isTruncating ? text : undefined}>{text}</div>
         },
       })
     }
@@ -563,6 +566,19 @@ export function DataTableView({
     return cols
   }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn])
 
+  // Derive layout flags from columns
+  const hasTruncatingColumns = useMemo(() =>
+    Object.entries(metadata.properties || {}).some(([key, property]) =>
+      !excludeColumns.includes(key) &&
+      !key.startsWith('_') &&
+      !key.endsWith('_at') &&
+      getWidthBucket(property) === 'w'
+    ),
+    [metadata.properties, excludeColumns]
+  )
+  // Constrain width for grids with few columns (≤5 total incl. actions)
+  const isConstrained = columns.length <= 5
+
   const tableData = useMemo(() => data ?? [], [data])
 
   // Show empty state when first page is empty with no active search/filters
@@ -621,7 +637,7 @@ export function DataTableView({
         </DataTableToolbarSection>
 
         {/* Table */}
-        <DataTable>
+        <DataTable constrained={isConstrained} truncating={hasTruncatingColumns}>
           <DataTableHeader />
           <DataTableBody<RecordType>
             onRowClick={onRowClick}
