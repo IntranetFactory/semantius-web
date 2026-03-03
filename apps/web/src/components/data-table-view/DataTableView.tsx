@@ -425,8 +425,17 @@ export function DataTableView({
         ? property.enum.map(v => ({ label: v, value: v }))
         : undefined
 
+      // Compute max-width from property.width; fall back to getDefaultWidthForGrid
+      const explicitBucket = property.width === 's' || property.width === 'm' || property.width === 'w'
+        ? property.width
+        : null
+      const widthBucket = explicitBucket
+        ?? getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type)
+      const maxWidthPx = widthBucket === 's' ? 100 : widthBucket === 'w' ? 400 : 200
+
       cols.push({
         accessorKey: key,
+        size: maxWidthPx,
         enableColumnFilter: true,
         meta: {
           label: columnTitle,
@@ -441,14 +450,6 @@ export function DataTableView({
         ),
         cell: ({ row }) => {
           const value = row.original[key]
-
-          // Compute max-width from property.width; fall back to getDefaultWidthForGrid
-          const explicitBucket = property.width === 's' || property.width === 'm' || property.width === 'w'
-            ? property.width
-            : null
-          const widthBucket = explicitBucket
-            ?? getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type)
-          const maxWidthPx = widthBucket === 's' ? 100 : widthBucket === 'w' ? 400 : 200
 
           if (property.reference_table && property.reference_table_label_column) {
             const labelKey = `${key}_label`
@@ -540,7 +541,9 @@ export function DataTableView({
                     e.stopPropagation()
                     deleteConfirm.showConfirmation(
                       recordId as string | number,
-                      String(displayValue || recordId || 'this record')
+                      displayValue
+                        ? `${String(displayValue)} (${String(recordId)})`
+                        : String(recordId || 'this record')
                     )
                   }}
                 >

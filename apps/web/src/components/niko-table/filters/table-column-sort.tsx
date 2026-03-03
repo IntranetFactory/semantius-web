@@ -243,7 +243,7 @@ export function TableColumnSortMenu<TData, TValue>({
           size="icon"
           className={cn(
             "size-7 transition-opacity dark:text-muted-foreground",
-            sortState && "text-primary",
+            sortState ? "text-primary" : "opacity-0 group-hover:opacity-100",
             className,
           )}
         >

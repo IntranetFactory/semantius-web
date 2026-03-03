@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { toast } from 'sonner'
 import { useDeleteRecord } from './useTableMutations'
 
 export interface DeleteConfirmation {
@@ -42,8 +43,10 @@ export function useConfirmDelete(tableName: string, onSuccess?: () => void, idFi
     try {
       await deleteMutation.mutateAsync(itemToDelete.id)
       setIsOpen(false)
+      const deletedName = itemToDelete.displayName
       setItemToDelete(null)
       onSuccess?.()
+      toast.success(`${deletedName} deleted`)
     } catch (error) {
       console.error('Delete failed:', error)
       // Keep dialog open on error so user can retry

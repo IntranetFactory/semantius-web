@@ -1,4 +1,5 @@
 import { useSearch } from '@tanstack/react-router'
+import { toast } from 'sonner'
 import { useTable } from '@/hooks/useTable'
 import { useCreateRecord, useUpdateRecord } from '@/hooks/useTableMutations'
 import { SchemaForm } from '@/components/form/SchemaForm'
@@ -71,6 +72,7 @@ export function DataFormPage({ schema, recordId, onClose, formMode, formId, onBe
   // Handle form submission
   const handleSubmit = async (value: Record<string, any>) => {
     try {
+      const singularLabel = schema.table?.singular_label || 'Record'
       if (recordId) {
         // Update existing record
         await updateRecord.mutateAsync({
@@ -80,6 +82,7 @@ export function DataFormPage({ schema, recordId, onClose, formMode, formId, onBe
       } else {
         // Create new record
         await createRecord.mutateAsync(value)
+        toast.success(`${singularLabel} created`)
       }
       
       // Refetch data if updating
