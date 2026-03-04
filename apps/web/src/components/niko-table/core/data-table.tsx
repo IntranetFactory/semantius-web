@@ -41,25 +41,8 @@ function parseHeightFromClassName(className?: string) {
 
 export interface DataTableContainerProps {
   children: React.ReactNode
-  /**
-   * Additional CSS classes for the container.
-   * Arbitrary height values (e.g., h-[600px], max-h-[400px]) are automatically extracted
-   * and applied as inline styles to ensure scroll event callbacks work reliably.
-   * For other height utilities, use the height/maxHeight props directly.
-   */
   className?: string
-  /**
-   * Sets the height of the table container.
-   * When provided, enables vertical scrolling and allows DataTableBody/DataTableVirtualizedBody
-   * to use onScroll, onScrolledTop, and onScrolledBottom callbacks.
-   * Takes precedence over height utilities in className.
-   */
   height?: number | string
-  /**
-   * Sets the maximum height of the table container.
-   * Defaults to the height value if not specified.
-   * Takes precedence over max-height utilities in className.
-   */
   maxHeight?: number | string
 }
 
@@ -132,7 +115,7 @@ export function DataTable({
         maxHeight: finalMaxHeight,
       }}
     >
-      <Table>{children}</Table>
+      <Table className="w-full">{children}</Table>
     </div>
   )
 }

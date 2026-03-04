@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { type EntityMetadata, type TableMetadata } from '@/types/metadata'
 import { getDefaultWidthForGrid } from 'sem-schema'
+import { cn } from '@/lib/utils'
 import { useTable } from '@/hooks/useTable'
 import { useConfirmDelete } from '@/hooks/useConfirmDelete'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
@@ -74,6 +75,13 @@ function getFilterVariant(property: {
   if (type === 'integer' || type === 'number') return FILTER_VARIANTS.NUMBER
   if (type === 'boolean') return FILTER_VARIANTS.BOOLEAN
   return FILTER_VARIANTS.TEXT
+}
+
+// Returns the width bucket ('s' | 'm' | 'w') for a metadata property.
+// Explicit property.width takes precedence; falls back to getDefaultWidthForGrid.
+function getWidthBucket(property: { width?: string; format?: string; type?: string | string[] }): 's' | 'm' | 'w' {
+  if (property.width === 's' || property.width === 'm' || property.width === 'w') return property.width
+  return getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type) as 's' | 'm' | 'w'
 }
 
 // Convert one ExtendedColumnFilter to one or more PostgREST AND query parameters.
@@ -369,7 +377,7 @@ export function DataTableView({
   const hasEditPermission = useUserHasPermission(tableMetadata?.edit_permission || '')
   const effectiveCanEdit = canEdit && (tableMetadata?.edit_permission ? hasEditPermission : true)
 
-  const deleteConfirm = useConfirmDelete(tableName, refetch, primaryKeyColumn)
+  const deleteConfirm = useConfirmDelete(tableName, refetch, primaryKeyColumn, tableMetadata?.singular_label)
 
   // --- Pagination change: from niko-table pagination component ---
   const handlePaginationChange = useCallback(
@@ -425,8 +433,14 @@ export function DataTableView({
         ? property.enum.map(v => ({ label: v, value: v }))
         : undefined
 
+      // Width bucket: 'w' columns truncate at max-width 400px
+      const isTruncating = getWidthBucket(property) === 'w'
+      const truncateClasses = isTruncating ? 'max-w-[400px] whitespace-nowrap overflow-hidden text-ellipsis' : undefined
+
       cols.push({
         accessorKey: key,
+        // No fixed pixel size — let the table distribute widths naturally.
+        // The actions column retains size:50 to stay compact.
         enableColumnFilter: true,
         meta: {
           label: columnTitle,
@@ -442,24 +456,16 @@ export function DataTableView({
         cell: ({ row }) => {
           const value = row.original[key]
 
-          // Compute max-width from property.width; fall back to getDefaultWidthForGrid
-          const explicitBucket = property.width === 's' || property.width === 'm' || property.width === 'w'
-            ? property.width
-            : null
-          const widthBucket = explicitBucket
-            ?? getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type)
-          const maxWidthPx = widthBucket === 's' ? 100 : widthBucket === 'w' ? 400 : 200
-
           if (property.reference_table && property.reference_table_label_column) {
             const labelKey = `${key}_label`
             const embedded = row.original[labelKey] as Record<string, unknown> | undefined
             if (embedded && typeof embedded === 'object' && !Array.isArray(embedded)) {
               const labelValue = embedded[property.reference_table_label_column]
               const text = String(labelValue || value || '-')
-              return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
+              return <div className={truncateClasses} title={isTruncating ? text : undefined}>{text}</div>
             }
             const text = String(value || '-')
-            return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
+            return <div className={truncateClasses} title={isTruncating ? text : undefined}>{text}</div>
           }
 
           if (property.type === 'boolean') {
@@ -480,7 +486,7 @@ export function DataTableView({
           }
 
           const text = String(value ?? '-')
-          return <div className="truncate" style={{ maxWidth: `${maxWidthPx}px` }} title={text}>{text}</div>
+          return <div className={truncateClasses} title={isTruncating ? text : undefined}>{text}</div>
         },
       })
     }
@@ -540,7 +546,9 @@ export function DataTableView({
                     e.stopPropagation()
                     deleteConfirm.showConfirmation(
                       recordId as string | number,
-                      String(displayValue || recordId || 'this record')
+                      displayValue
+                        ? `${String(displayValue)} (${String(recordId)})`
+                        : String(recordId || 'this record')
                     )
                   }}
                 >
@@ -560,6 +568,10 @@ export function DataTableView({
     return cols
   }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn])
 
+  // Constrain the whole grid to max-w-[760px] when there are ≤ 4 data columns
+  // columns includes the actions column, so threshold is columns.length <= 5
+  const isConstrained = columns.length <= 5
+
   const tableData = useMemo(() => data ?? [], [data])
 
   // Show empty state when first page is empty with no active search/filters
@@ -574,65 +586,67 @@ export function DataTableView({
 
   return (
     <>
-      <DataTableRoot<RecordType, unknown>
-        key={tableName}
-        data={tableData}
-        columns={columns}
-        isLoading={isLoading}
-        state={{
-          pagination,
-          sorting,
-        }}
-        onPaginationChange={handlePaginationChange}
-        onSortingChange={handleSortingChange}
-        config={{
-          manualPagination: true,
-          manualSorting: true,
-          manualFiltering: true,
-          enablePagination: true,
-          enableFilters: true,
-          enableSorting: true,
-          pageCount: totalPages ?? -1,
-        }}
-      >
-        {/* Toolbar */}
-        <DataTableToolbarSection className="justify-between">
-          <div className="flex flex-1 gap-2">
-            {tableMetadata.searchable && (
-              <DataTableSearchFilter
-                placeholder={`Search ${tableMetadata.plural_label || 'records'}...`}
-                value={searchText}
-                onChange={handleSearchChange}
-                className="max-w-[400px]"
-              />
-            )}
-          </div>
-          <div className="flex gap-2">
-            <DataTableSortMenu />
-            <DataTableFilterMenu
-              filters={extFilters}
-              onFiltersChange={handleFiltersChange}
-            />
-            <DataTableViewMenu />
-          </div>
-        </DataTableToolbarSection>
-
-        {/* Table */}
-        <DataTable>
-          <DataTableHeader />
-          <DataTableBody<RecordType>
-            onRowClick={onRowClick}
-          />
-          <DataTableEmptyBody />
-        </DataTable>
-
-        {/* Pagination */}
-        <DataTablePagination
-          totalCount={totalCount}
-          pageSizeOptions={[10, 15, 20, 25, 30, 40, 50]}
+      <div className={cn("w-full", isConstrained && "max-w-[760px]")}>
+        <DataTableRoot<RecordType, unknown>
+          key={tableName}
+          data={tableData}
+          columns={columns}
           isLoading={isLoading}
-        />
-      </DataTableRoot>
+          state={{
+            pagination,
+            sorting,
+          }}
+          onPaginationChange={handlePaginationChange}
+          onSortingChange={handleSortingChange}
+          config={{
+            manualPagination: true,
+            manualSorting: true,
+            manualFiltering: true,
+            enablePagination: true,
+            enableFilters: true,
+            enableSorting: true,
+            pageCount: totalPages ?? -1,
+          }}
+        >
+          {/* Toolbar */}
+          <DataTableToolbarSection className="justify-between">
+            <div className="flex flex-1 gap-2">
+              {tableMetadata.searchable && (
+                <DataTableSearchFilter
+                  placeholder={`Search ${tableMetadata.plural_label || 'records'}...`}
+                  value={searchText}
+                  onChange={handleSearchChange}
+                  className="max-w-[400px]"
+                />
+              )}
+            </div>
+            <div className="flex gap-2">
+              <DataTableSortMenu />
+              <DataTableFilterMenu
+                filters={extFilters}
+                onFiltersChange={handleFiltersChange}
+              />
+              <DataTableViewMenu />
+            </div>
+          </DataTableToolbarSection>
+
+          {/* Table */}
+          <DataTable>
+            <DataTableHeader />
+            <DataTableBody<RecordType>
+              onRowClick={onRowClick}
+            />
+            <DataTableEmptyBody />
+          </DataTable>
+
+          {/* Pagination */}
+          <DataTablePagination
+            totalCount={totalCount}
+            pageSizeOptions={[10, 15, 20, 25, 30, 40, 50]}
+            isLoading={isLoading}
+          />
+        </DataTableRoot>
+      </div>
 
       <ConfirmDeleteDialog
         {...deleteConfirm}
