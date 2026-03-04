@@ -75,86 +75,122 @@ describe('Data Validation Tests', () => {
   });
 
   describe('Format: reference', () => {
-    it('should validate integer values', () => {
-      const schema = { type: 'number', format: 'reference' };
-      
+    it('should validate integer values with integer type', () => {
+      const schema = { type: 'integer', format: 'reference' };
+
       expect(validateData(1, schema).valid).toBe(true);
       expect(validateData(0, schema).valid).toBe(true);
       expect(validateData(-5, schema).valid).toBe(true);
       expect(validateData(999999, schema).valid).toBe(true);
     });
 
-    it('should reject non-integer numbers', () => {
-      const schema = { type: 'number', format: 'reference' };
-      
-      expect(validateData(1.5, schema).valid).toBe(false);
-      expect(validateData(0.1, schema).valid).toBe(false);
-      expect(validateData(3.14159, schema).valid).toBe(false);
+    it('should validate string values with string type', () => {
+      const schema = { type: 'string', format: 'reference' };
+
+      expect(validateData('abc-123', schema).valid).toBe(true);
+      expect(validateData('550e8400-e29b-41d4-a716-446655440000', schema).valid).toBe(true);
+      expect(validateData('1', schema).valid).toBe(true);
     });
 
-    it('should reject non-number values', () => {
-      const schema = { type: 'number', format: 'reference' };
-      
+    it('should reject non-integer numbers via type: integer', () => {
+      const schema = { type: 'integer', format: 'reference' };
+
+      expect(validateData(1.5, schema).valid).toBe(false);
+      expect(validateData(0.1, schema).valid).toBe(false);
+    });
+
+    it('should reject wrong types', () => {
+      const schema = { type: 'integer', format: 'reference' };
+
       expect(validateData('123', schema).valid).toBe(false);
-      expect(validateData('1', schema).valid).toBe(false);
       expect(validateData(null, schema).valid).toBe(false);
-      expect(validateData(undefined, schema).valid).toBe(false);
       expect(validateData(true, schema).valid).toBe(false);
     });
 
-    it('should work with inputMode required', () => {
+    it('should work with inputMode required (integer)', () => {
       const schema = {
         type: 'object',
         properties: {
-          userId: { type: 'number', format: 'reference', inputMode: 'required' }
+          userId: { type: 'integer', format: 'reference', inputMode: 'required' }
         }
       };
-      
+
       expect(validateData({ userId: 1 }, schema).valid).toBe(true);
       expect(validateData({ userId: 0 }, schema).valid).toBe(true);
+      expect(validateData({ userId: null }, schema).valid).toBe(false);
+      expect(validateData({}, schema).valid).toBe(false);
+    });
+
+    it('should work with inputMode required (string)', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          userId: { type: 'string', format: 'reference', inputMode: 'required' }
+        }
+      };
+
+      expect(validateData({ userId: 'abc-123' }, schema).valid).toBe(true);
       expect(validateData({ userId: null }, schema).valid).toBe(false);
       expect(validateData({}, schema).valid).toBe(false);
     });
   });
 
   describe('Format: parent', () => {
-    it('should validate integer values', () => {
-      const schema = { type: 'number', format: 'parent' };
-      
+    it('should validate integer values with integer type', () => {
+      const schema = { type: 'integer', format: 'parent' };
+
       expect(validateData(1, schema).valid).toBe(true);
       expect(validateData(0, schema).valid).toBe(true);
       expect(validateData(-5, schema).valid).toBe(true);
       expect(validateData(999999, schema).valid).toBe(true);
     });
 
-    it('should reject non-integer numbers', () => {
-      const schema = { type: 'number', format: 'parent' };
-      
-      expect(validateData(1.5, schema).valid).toBe(false);
-      expect(validateData(0.1, schema).valid).toBe(false);
-      expect(validateData(3.14159, schema).valid).toBe(false);
+    it('should validate string values with string type', () => {
+      const schema = { type: 'string', format: 'parent' };
+
+      expect(validateData('abc-123', schema).valid).toBe(true);
+      expect(validateData('550e8400-e29b-41d4-a716-446655440000', schema).valid).toBe(true);
+      expect(validateData('1', schema).valid).toBe(true);
     });
 
-    it('should reject non-number values', () => {
-      const schema = { type: 'number', format: 'parent' };
-      
+    it('should reject non-integer numbers via type: integer', () => {
+      const schema = { type: 'integer', format: 'parent' };
+
+      expect(validateData(1.5, schema).valid).toBe(false);
+      expect(validateData(0.1, schema).valid).toBe(false);
+    });
+
+    it('should reject wrong types', () => {
+      const schema = { type: 'integer', format: 'parent' };
+
       expect(validateData('123', schema).valid).toBe(false);
-      expect(validateData('1', schema).valid).toBe(false);
       expect(validateData(null, schema).valid).toBe(false);
-      expect(validateData(undefined, schema).valid).toBe(false);
       expect(validateData(true, schema).valid).toBe(false);
     });
 
-    it('should work with inputMode required', () => {
+    it('should work with inputMode required (integer)', () => {
       const schema = {
         type: 'object',
         properties: {
-          parentId: { type: 'number', format: 'parent', inputMode: 'required' }
+          parentId: { type: 'integer', format: 'parent', inputMode: 'required' }
         }
       };
-      
+
       expect(validateData({ parentId: 1 }, schema).valid).toBe(true);
       expect(validateData({ parentId: 0 }, schema).valid).toBe(true);
+      expect(validateData({ parentId: null }, schema).valid).toBe(false);
+      expect(validateData({}, schema).valid).toBe(false);
+    });
+
+    it('should work with inputMode required (string)', () => {
+      const schema = {
+        type: 'object',
+        properties: {
+          parentId: { type: 'string', format: 'parent', inputMode: 'required' }
+        }
+      };
+
+      expect(validateData({ parentId: 'abc-123' }, schema).valid).toBe(true);
       expect(validateData({ parentId: null }, schema).valid).toBe(false);
       expect(validateData({}, schema).valid).toBe(false);
     });

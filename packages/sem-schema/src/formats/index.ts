@@ -92,11 +92,8 @@ export function addAllFormats(ajv: Ajv): void {
   addCodeFormat(ajv);
   addJsonataFormat(ajv);
   addReferenceFormat(ajv);
-  // 'parent' behaves identically to 'reference' (integer FK generating a DB relationship)
-  ajv.addFormat('parent', {
-    type: 'number',
-    validate: validateReferenceFormat
-  });
+  // 'parent' behaves identically to 'reference' (FK generating a DB relationship)
+  ajv.addFormat('parent', validateReferenceFormat);
   // Standard JSON Schema formats (missing from ajv-formats)
   ajv.addFormat('iri', iriFormat);
   ajv.addFormat('iri-reference', iriReferenceFormat);

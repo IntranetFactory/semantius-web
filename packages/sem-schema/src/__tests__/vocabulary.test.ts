@@ -492,15 +492,29 @@ describe('Vocabulary Definition Tests', () => {
     });
 
     // Custom SemSchema relation formats
-    it('should accept schema with format: reference', () => {
-      const schema = { type: 'number', format: 'reference' };
+    it('should accept schema with format: reference (integer)', () => {
+      const schema = { type: 'integer', format: 'reference' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();
     });
 
-    it('should accept schema with format: parent', () => {
-      const schema = { type: 'number', format: 'parent' };
+    it('should accept schema with format: reference (string)', () => {
+      const schema = { type: 'string', format: 'reference' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: parent (integer)', () => {
+      const schema = { type: 'integer', format: 'parent' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: parent (string)', () => {
+      const schema = { type: 'string', format: 'parent' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();
