@@ -19,12 +19,12 @@ A production-ready React application with authentication, metadata-driven UI, an
 
 The workspace provisions itself via `workplace/setup.sh` (installs global deps, Playwright browsers, and project dependencies). It is idempotent — versioned so re-runs are skipped when already up to date.
 
-| Environment | How setup runs |
-|---|---|
+| Environment                 | How setup runs                                                                       |
+| --------------------------- | ------------------------------------------------------------------------------------ |
 | GitHub Copilot coding agent | `.github/workflows/copilot-setup-steps.yml` runs `setup.sh` before the agent session |
-| Claude Code sandbox | `.claude/settings.json` hooks run `setup.sh` on `SessionStart` |
-| DevContainer | `postCreateCommand` in `.devcontainer/devcontainer.json` |
-| Human clone | `bash workplace/setup.sh` |
+| Claude Code sandbox         | `.claude/settings.json` hooks run `setup.sh` on `SessionStart`                       |
+| DevContainer                | `postCreateCommand` in `.devcontainer/devcontainer.json`                             |
+| Human clone                 | `bash workplace/setup.sh`                                                            |
 
 ## Monorepo Structure
 
@@ -69,10 +69,12 @@ Open in VS Code and choose **Reopen in Container**. Setup runs automatically.
 The `copilot-setup-steps.yml` workflow runs setup before each agent session. One-time configuration required:
 
 **Repository secrets** — `DOTENV_PRIVATE_KEY` must be added in two places:
+
 - **Actions** (Settings → Secrets and variables → Actions) — used by CI.
 - **Copilot environment** (Settings → Environments → copilot) — used by the Copilot coding agent.
 
 **Allowed domains** (Settings → Copilot → Policies):
+
 - `cloudflare.com`
 - `workers.dev`
 
@@ -83,12 +85,14 @@ pnpm --filter @semantius/frontend genconfig
 ```
 
 This interactive tool offers two options:
+
 1. **Auto-configure from OIDC discovery endpoint** (recommended) — provide your well-known URL and the script fetches all endpoints automatically
 2. **Manual setup** — creates `.env` from template for manual editing
 
 The app validates configuration on startup and shows a friendly error page if credentials are missing or contain placeholder values.
 
 Common OIDC discovery URLs:
+
 - Auth0: `https://DOMAIN.auth0.com/.well-known/openid-configuration`
 - Keycloak: `https://HOST/realms/REALM/.well-known/openid-configuration`
 - Azure AD: `https://login.microsoftonline.com/TENANT/.well-known/openid-configuration`
@@ -112,32 +116,34 @@ Secrets are managed with [dotenvx](https://dotenvx.com/). The encrypted `.env` f
 
 ### OAuth
 
-| Variable | Description |
-|---|---|
-| `VITE_OAUTH_CLIENT_ID` | OAuth client ID |
-| `VITE_OAUTH_AUTH_ENDPOINT` | Authorization endpoint |
-| `VITE_OAUTH_TOKEN_ENDPOINT` | Token endpoint |
-| `VITE_OAUTH_SCOPE` | OAuth scopes (e.g., `openid profile email`) |
-| `VITE_OAUTH_USERINFO_ENDPOINT` | OIDC userinfo endpoint |
-| `VITE_OAUTH_LOGOUT_ENDPOINT` | Logout endpoint |
-| `VITE_OAUTH_LOGOUT_REDIRECT` | Post-logout redirect URI |
-| `VITE_OAUTH_AUDIENCE` | API audience (required for Auth0) |
+The callback url is /oauth2_callback like http://localhost:5173/oauth2_callback
+
+| Variable                       | Description                                 |
+| ------------------------------ | ------------------------------------------- |
+| `VITE_OAUTH_CLIENT_ID`         | OAuth client ID                             |
+| `VITE_OAUTH_AUTH_ENDPOINT`     | Authorization endpoint                      |
+| `VITE_OAUTH_TOKEN_ENDPOINT`    | Token endpoint                              |
+| `VITE_OAUTH_SCOPE`             | OAuth scopes (e.g., `openid profile email`) |
+| `VITE_OAUTH_USERINFO_ENDPOINT` | OIDC userinfo endpoint                      |
+| `VITE_OAUTH_LOGOUT_ENDPOINT`   | Logout endpoint                             |
+| `VITE_OAUTH_LOGOUT_REDIRECT`   | Post-logout redirect URI                    |
+| `VITE_OAUTH_AUDIENCE`          | API audience (required for Auth0)           |
 
 ### API
 
-| Variable | Description |
-|---|---|
-| `VITE_API_BASE_URL` | PostgREST API base URL |
-| `VITE_API_TYPE` | Optional — set to `"supabase"` if using Supabase |
+| Variable               | Description                                                |
+| ---------------------- | ---------------------------------------------------------- |
+| `VITE_API_BASE_URL`    | PostgREST API base URL                                     |
+| `VITE_API_TYPE`        | Optional — set to `"supabase"` if using Supabase           |
 | `VITE_SUPABASE_APIKEY` | Supabase anon key (required when `VITE_API_TYPE=supabase`) |
 
 ### Deployment
 
-| Variable | Required | Description |
-|---|---|---|
-| `CLOUDFLARE_API_TOKEN` | Yes | Cloudflare API token for Wrangler deployments |
-| `CLOUDFLARE_ACCOUNT_ID` | Yes | Cloudflare account ID |
-| `NOTIFY_WEBHOOK_URL` | No | Slack or compatible webhook — sends preview URL after deploy |
+| Variable                | Required | Description                                                  |
+| ----------------------- | -------- | ------------------------------------------------------------ |
+| `CLOUDFLARE_API_TOKEN`  | Yes      | Cloudflare API token for Wrangler deployments                |
+| `CLOUDFLARE_ACCOUNT_ID` | Yes      | Cloudflare account ID                                        |
+| `NOTIFY_WEBHOOK_URL`    | No       | Slack or compatible webhook — sends preview URL after deploy |
 
 **Adding or rotating a secret:**
 
@@ -168,6 +174,7 @@ Each branch gets its own preview URL, written to `.preview-url.md` at the repo r
 Custom JSON Schema vocabulary with additional validation features for form rendering and data validation. See [packages/sem-schema/README.md](packages/sem-schema/README.md) for full documentation.
 
 Key features:
+
 - Custom formats: `json`, `html`, `text` (plus all standard ajv-formats)
 - `inputMode` keyword: `required`, `readonly`, `disabled`, `hidden`, `default`
 - `precision` keyword for decimal place validation

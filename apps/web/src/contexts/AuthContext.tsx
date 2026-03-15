@@ -111,6 +111,11 @@ const authConfig = isConfigValid ? {
   scope: import.meta.env.VITE_OAUTH_SCOPE || 'openid profile email',
   logoutEndpoint: import.meta.env.VITE_OAUTH_LOGOUT_ENDPOINT,
   autoLogin: false,
+  postLogin: () => {
+    const prefix = `SC_${import.meta.env.MODE}_`
+    const t = sessionStorage.getItem(`${prefix}token`) || localStorage.getItem(`${prefix}token`)
+    console.log('[AUTH] token received:', t)
+  },
   storageKeyPrefix: `SC_${import.meta.env.MODE}_`,
   // Add audience parameter for Auth0 and other providers that require it
   ...(import.meta.env.VITE_OAUTH_AUDIENCE && {

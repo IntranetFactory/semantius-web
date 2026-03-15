@@ -70,7 +70,7 @@ async function fetchWellKnown(url) {
   }
 }
 
-function generateEnvContent(wellKnownConfig, clientId, redirectUri) {
+function generateEnvContent(wellKnownConfig, clientId, wellKnownUrl) {
   // Read .env.example to get template and comments
   const envExamplePath = join(projectRoot, ".env.example");
   let envExampleContent = "";
@@ -109,10 +109,6 @@ function generateEnvContent(wellKnownConfig, clientId, redirectUri) {
         /^VITE_OAUTH_TOKEN_ENDPOINT=.*/m,
         `VITE_OAUTH_TOKEN_ENDPOINT=${wellKnownConfig.token_endpoint}`
       )
-      .replace(
-        /^VITE_OAUTH_REDIRECT_URI=.*/m,
-        `VITE_OAUTH_REDIRECT_URI=${redirectUri}`
-      )
       .replace(/^VITE_OAUTH_SCOPE=.*/m, `VITE_OAUTH_SCOPE=${scope}`)
       .replace(
         /^VITE_OAUTH_USERINFO_ENDPOINT=.*/m,
@@ -123,27 +119,21 @@ function generateEnvContent(wellKnownConfig, clientId, redirectUri) {
         `VITE_OAUTH_LOGOUT_ENDPOINT=${wellKnownConfig.end_session_endpoint || ""}`
       )
       .replace(
-        /^VITE_OAUTH_LOGOUT_REDIRECT=.*/m,
-        `VITE_OAUTH_LOGOUT_REDIRECT=${redirectUri}`
-      )
-      .replace(
         /^# OAuth2\/OIDC Configuration\n# Replace these values with your OAuth provider's settings/m,
-        "# OAuth2/OIDC Configuration\n# Generated from OIDC well-known endpoint"
+        `# OAuth2/OIDC Configuration\n# Generated from: ${wellKnownUrl}`
       );
   }
 
   // Fallback to minimal config if template not available
   return `# OAuth2/OIDC Configuration
-# Generated from OIDC well-known endpoint
+# Generated from: ${wellKnownUrl}
 
 VITE_OAUTH_CLIENT_ID=${clientId}
 VITE_OAUTH_AUTH_ENDPOINT=${wellKnownConfig.authorization_endpoint}
 VITE_OAUTH_TOKEN_ENDPOINT=${wellKnownConfig.token_endpoint}
-VITE_OAUTH_REDIRECT_URI=${redirectUri}
 VITE_OAUTH_SCOPE=${scope}
 VITE_OAUTH_USERINFO_ENDPOINT=${wellKnownConfig.userinfo_endpoint || ""}
 VITE_OAUTH_LOGOUT_ENDPOINT=${wellKnownConfig.end_session_endpoint || ""}
-VITE_OAUTH_LOGOUT_REDIRECT=${redirectUri}
 
 # API Configuration (REQUIRED)
 VITE_API_BASE_URL=
@@ -259,12 +249,7 @@ async function main() {
     process.exit(1);
   }
 
-  const defaultRedirect = "http://localhost:5173";
-  const redirectUri =
-    (await prompt(`Enter redirect URI (default: ${defaultRedirect}): `)) ||
-    defaultRedirect;
-
-  const envContent = generateEnvContent(wellKnownConfig, clientId, redirectUri);
+  const envContent = generateEnvContent(wellKnownConfig, clientId, wellKnownUrl);
 
   try {
     writeFileSync(envPath, envContent);
@@ -273,7 +258,6 @@ async function main() {
     log("=".repeat(60), colors.green);
     log("\nConfiguration saved with:", colors.cyan);
     log(`  • Client ID: ${clientId}`);
-    log(`  • Redirect URI: ${redirectUri}`);
     log(
       `  • Authorization Endpoint: ${wellKnownConfig.authorization_endpoint}`
     );
@@ -281,20 +265,6 @@ async function main() {
     if (wellKnownConfig.userinfo_endpoint) {
       log(`  • UserInfo Endpoint: ${wellKnownConfig.userinfo_endpoint}`);
     }
-
-    log("\n" + "=".repeat(60), colors.yellow);
-    log(
-      "⚠ IMPORTANT: Add this redirect URI to your OAuth provider:",
-      colors.bright + colors.yellow
-    );
-    log("=".repeat(60), colors.yellow);
-    log(`\n  ${redirectUri}\n`, colors.bright + colors.cyan);
-    log(
-      "This redirect URI must be registered in your OAuth provider's",
-      colors.yellow
-    );
-    log("allowed callback URLs / redirect URIs configuration.", colors.yellow);
-    log("Without this, authentication will fail!\n", colors.yellow);
 
     log(
       "✓ You can now start the development server with: npm run dev",
