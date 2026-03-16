@@ -1,43 +1,47 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { getApiConfig, createApiHeaders, buildPostgRESTSelect } from './apiClient'
+import { initConfig } from './config'
 
 describe('apiClient', () => {
-  beforeEach(() => {
+  beforeEach(async () => {
     vi.clearAllMocks()
     // Reset environment variables
     vi.stubEnv('VITE_API_BASE_URL', '')
     vi.stubEnv('VITE_API_TYPE', '')
     vi.stubEnv('VITE_SUPABASE_APIKEY', '')
+    await initConfig()
   })
 
   describe('getApiConfig', () => {
-    it('returns API configuration from environment variables', () => {
+    it('returns API configuration from environment variables', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
       vi.stubEnv('VITE_API_TYPE', 'postgrest')
       vi.stubEnv('VITE_SUPABASE_APIKEY', '')
+      await initConfig()
 
       const config = getApiConfig()
 
       expect(config).toEqual({
         baseUrl: 'https://api.example.com',
         type: 'postgrest',
-        supabaseApiKey: '',
+        supabaseApiKey: undefined,
       })
     })
 
-    it('normalizes API type to lowercase', () => {
+    it('normalizes API type to lowercase', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
       vi.stubEnv('VITE_API_TYPE', 'SUPABASE')
       vi.stubEnv('VITE_SUPABASE_APIKEY', 'test-key')
+      await initConfig()
 
       const config = getApiConfig()
 
       expect(config.type).toBe('supabase')
     })
 
-    it('handles empty API type', () => {
+    it('handles empty API type', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
-      // API_TYPE not set (will be empty string)
+      await initConfig()
 
       const config = getApiConfig()
 
@@ -46,9 +50,10 @@ describe('apiClient', () => {
   })
 
   describe('createApiHeaders', () => {
-    it('creates basic headers with Authorization and Content-Type', () => {
+    it('creates basic headers with Authorization and Content-Type', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
       vi.stubEnv('VITE_API_TYPE', '')
+      await initConfig()
 
       const headers = createApiHeaders('test-token')
 
@@ -58,10 +63,11 @@ describe('apiClient', () => {
       })
     })
 
-    it('adds Supabase apikey header when API_TYPE is supabase', () => {
+    it('adds Supabase apikey header when API_TYPE is supabase', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
       vi.stubEnv('VITE_API_TYPE', 'supabase')
       vi.stubEnv('VITE_SUPABASE_APIKEY', 'supabase-key')
+      await initConfig()
 
       const headers = createApiHeaders('test-token')
 
@@ -72,29 +78,32 @@ describe('apiClient', () => {
       })
     })
 
-    it('does not add apikey header when API_TYPE is not supabase', () => {
+    it('does not add apikey header when API_TYPE is not supabase', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
       vi.stubEnv('VITE_API_TYPE', 'postgrest')
       vi.stubEnv('VITE_SUPABASE_APIKEY', 'supabase-key')
+      await initConfig()
 
       const headers = createApiHeaders('test-token')
 
       expect(headers).not.toHaveProperty('apikey')
     })
 
-    it('does not add apikey header when Supabase key is missing', () => {
+    it('does not add apikey header when Supabase key is missing', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
       vi.stubEnv('VITE_API_TYPE', 'supabase')
       vi.stubEnv('VITE_SUPABASE_APIKEY', '')
+      await initConfig()
 
       const headers = createApiHeaders('test-token')
 
       expect(headers).not.toHaveProperty('apikey')
     })
 
-    it('accepts configuration override options', () => {
+    it('accepts configuration override options', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
       vi.stubEnv('VITE_API_TYPE', '')
+      await initConfig()
 
       const headers = createApiHeaders('test-token', {
         type: 'supabase',
@@ -108,10 +117,11 @@ describe('apiClient', () => {
       })
     })
 
-    it('merges override options with environment config', () => {
+    it('merges override options with environment config', async () => {
       vi.stubEnv('VITE_API_BASE_URL', 'https://api.example.com')
       vi.stubEnv('VITE_API_TYPE', 'supabase')
       vi.stubEnv('VITE_SUPABASE_APIKEY', 'env-key')
+      await initConfig()
 
       const headers = createApiHeaders('test-token', {
         supabaseApiKey: 'override-key',

@@ -15,7 +15,8 @@
     "VITE_OAUTH_AUDIENCE",
     "VITE_API_BASE_URL",
     "VITE_API_TYPE",
-    "VITE_SUPABASE_APIKEY"
+    "VITE_SUPABASE_APIKEY",
+    "VITE_CONTROL_PLANE_URL"
   ],
   "tasks": {
     "build": {

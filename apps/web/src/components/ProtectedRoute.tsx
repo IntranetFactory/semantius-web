@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react'
+import { useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { ApiErrorDisplay } from '@/components/ApiErrorDisplay'
-import { Loader2 } from 'lucide-react'
+import { hideAppLoader } from '@/lib/appLoader'
 
 interface ProtectedRouteProps {
   children: ReactNode
@@ -23,31 +24,35 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
   // transiently clears loginInProgress before setting the token, so this component
   // would see !token && !loginInProgress and trigger a second OAuth redirect.
 
+  const hasErrors = !userInfoLoading && !rpcUserInfoLoading && (userInfoError || rpcUserInfoError)
+  const isReady = token && isAuthReady && !userInfoLoading && !rpcUserInfoLoading && !hasErrors
+
+  // Hide the HTML loading overlay once we have a final state (ready, error, or no token)
+  useEffect(() => {
+    if (isReady || hasErrors || !token) {
+      hideAppLoader()
+    }
+  }, [isReady, hasErrors, token])
+
+  // While loading (no token yet, or fetching user info), let the HTML overlay stay visible.
+  // Return null so there's no flash of a second spinner.
   if (!token) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">{loginInProgress ? 'Authenticating...' : 'Redirecting to login...'}</p>
-        </div>
-      </div>
-    )
+    return null
   }
 
-  // Show errors if user info fetching has completed and there are errors
-  if (!userInfoLoading && !rpcUserInfoLoading && (userInfoError || rpcUserInfoError)) {
+  if (hasErrors) {
     return (
       <div className="flex items-center justify-center min-h-screen p-4">
         <div className="max-w-2xl w-full space-y-4">
           {userInfoError && (
-            <ApiErrorDisplay 
-              error={userInfoError} 
+            <ApiErrorDisplay
+              error={userInfoError}
               title="Failed to fetch user information from OAuth provider"
             />
           )}
           {rpcUserInfoError && (
-            <ApiErrorDisplay 
-              error={rpcUserInfoError} 
+            <ApiErrorDisplay
+              error={rpcUserInfoError}
               title="Failed to fetch user information from API"
             />
           )}
@@ -56,16 +61,8 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     )
   }
 
-  // Wait for user info fetching to complete
-  if (!isAuthReady || userInfoLoading || rpcUserInfoLoading) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <p className="text-sm text-muted-foreground">Loading user information...</p>
-        </div>
-      </div>
-    )
+  if (!isReady) {
+    return null
   }
 
   return <>{children}</>

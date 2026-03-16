@@ -1,8 +1,10 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect, useState } from 'react'
-import { AlertCircle, Loader2 } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { parseOAuthState } from '@/lib/oauthState'
+import { hideAppLoader } from '@/lib/appLoader'
 
 export const Route = createFileRoute('/oauth2_callback')({
   component: CallbackComponent,
@@ -19,10 +21,10 @@ function CallbackComponent() {
   // it before the token is set, causing a false "no active flow" signal.
   const [hadOAuthCode] = useState(() => new URLSearchParams(window.location.search).has('code'))
 
-  // The redirect target is passed through the OAuth state parameter (stored in
-  // localStorage by the library before the redirect). Read it once at mount so
-  // it's available after the token exchange completes.
-  const [redirectTarget] = useState(() => localStorage.getItem('ROCP_auth_state'))
+  // The redirect target is encoded in the OAuth state parameter (stored in
+  // localStorage by the library before the redirect). The state format is
+  // `<nonce>:<redirectPath>` — parseOAuthState extracts the path.
+  const [redirectTarget] = useState(() => parseOAuthState(localStorage.getItem('ROCP_auth_state')))
 
   useEffect(() => {
     if (token) {
@@ -34,6 +36,8 @@ function CallbackComponent() {
   }, [token, hadOAuthCode, error, navigate, redirectTarget])
 
   if (error) {
+    // Auth error needs user interaction — hide the loading overlay to show the error UI
+    hideAppLoader()
     return (
       <div className="flex h-screen items-center justify-center">
         <div className="max-w-md text-center">
@@ -58,13 +62,6 @@ function CallbackComponent() {
     )
   }
 
-  return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-        <h2 className="mt-4 text-xl font-semibold">Completing sign-in...</h2>
-        <p className="mt-2 text-muted-foreground">Please wait.</p>
-      </div>
-    </div>
-  )
+  // HTML overlay stays visible while completing the token exchange
+  return null
 }

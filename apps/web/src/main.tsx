@@ -7,13 +7,15 @@ import { AuthProviderWrapper } from './contexts/AuthContext'
 import { ThemeProvider } from './components/ThemeProvider'
 import { Toaster } from './components/ui/sonner'
 import type { RouterContext } from './routes/__root'
+import { initConfig, getConfigError } from './lib/config'
+import { hideAppLoader } from './lib/appLoader'
 import './global.css'
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
 
 // Create a new router instance with context
-const router = createRouter({ 
+const router = createRouter({
   routeTree,
   context: {
     auth: {
@@ -46,17 +48,39 @@ const queryClient = new QueryClient({
   },
 })
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
-    <ThemeProvider defaultTheme="system" storageKey="semantius-ui-theme">
-      <QueryClientProvider client={queryClient}>
-        <AuthProviderWrapper router={router}>
-          <RouterProvider router={router} />
-        </AuthProviderWrapper>
-        <ReactQueryDevtools initialIsOpen={false} />
-        <Toaster position="top-right" />
-      </QueryClientProvider>
-    </ThemeProvider>
-  </StrictMode>,
-)
+const root = createRoot(document.getElementById('root')!)
 
+// Load config (async) before rendering the app
+initConfig().then(() => {
+  const configError = getConfigError()
+
+  if (configError) {
+    hideAppLoader()
+    root.render(
+      <StrictMode>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh', fontFamily: 'system-ui, sans-serif', padding: '2rem' }}>
+          <div style={{ maxWidth: '480px', textAlign: 'center' }}>
+            <h1 style={{ fontSize: '1.25rem', fontWeight: 600, marginBottom: '0.75rem' }}>Configuration Error</h1>
+            <p style={{ color: '#666', marginBottom: '1rem' }}>The application could not load its configuration.</p>
+            <pre style={{ background: '#f5f5f5', padding: '1rem', borderRadius: '6px', fontSize: '0.8rem', textAlign: 'left', whiteSpace: 'pre-wrap', wordBreak: 'break-word' }}>{configError}</pre>
+          </div>
+        </div>
+      </StrictMode>,
+    )
+    return
+  }
+
+  root.render(
+    <StrictMode>
+      <ThemeProvider defaultTheme="system" storageKey="semantius-ui-theme">
+        <QueryClientProvider client={queryClient}>
+          <AuthProviderWrapper router={router}>
+            <RouterProvider router={router} />
+          </AuthProviderWrapper>
+          <ReactQueryDevtools initialIsOpen={false} />
+          <Toaster position="top-right" />
+        </QueryClientProvider>
+      </ThemeProvider>
+    </StrictMode>,
+  )
+})

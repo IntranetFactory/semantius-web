@@ -17,7 +17,7 @@ globalThis.fetch = mockFetch
 describe('useTable', () => {
   let queryClient: QueryClient
 
-  beforeEach(() => {
+  beforeEach(async () => {
     queryClient = new QueryClient({
       defaultOptions: {
         queries: { retry: false },
@@ -26,7 +26,7 @@ describe('useTable', () => {
     vi.clearAllMocks()
 
     // Setup API configuration using test utility
-    setupMockApiConfig()
+    await setupMockApiConfig()
 
     // Default mock for useAuth
     vi.mocked(useAuth).mockReturnValue({
@@ -86,7 +86,7 @@ describe('useTable', () => {
   })
 
   it('adds Supabase apikey header when API_TYPE is supabase', async () => {
-    setupMockApiConfig({
+    await setupMockApiConfig({
       type: 'supabase',
       supabaseApiKey: 'supabase-key',
     })

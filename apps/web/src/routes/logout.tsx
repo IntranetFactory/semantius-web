@@ -1,6 +1,7 @@
 import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
+import { getConfig } from '@/lib/config'
 
 export const Route = createFileRoute('/logout')({
   component: LogoutRoute,
@@ -12,8 +13,8 @@ function LogoutRoute() {
 
   useEffect(() => {
     const performLogout = async () => {
-      const logoutEndpoint = import.meta.env.VITE_OAUTH_LOGOUT_ENDPOINT
-      const clientId = import.meta.env.VITE_OAUTH_CLIENT_ID
+      const logoutEndpoint = getConfig().oauthLogoutEndpoint
+      const clientId = getConfig().oauthClientId
       
       // ALWAYS clear our local session first
       logOut()

@@ -1,7 +1,7 @@
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { useAuth } from '@/hooks/useAuth'
 import { useEffect, useRef } from 'react'
-import { Loader2 } from 'lucide-react'
+import { buildOAuthState } from '@/lib/oauthState'
 
 export const Route = createFileRoute('/login')({
   beforeLoad: async ({ context, search }) => {
@@ -26,16 +26,9 @@ function LoginComponent() {
     calledRef.current = true
 
     const redirectTarget = (search as any).redirect
-    logIn(redirectTarget || undefined)
+    logIn(buildOAuthState(redirectTarget || '/'))
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
 
-  return (
-    <div className="flex h-screen items-center justify-center">
-      <div className="text-center">
-        <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
-        <h2 className="mt-4 text-xl font-semibold">Redirecting to login...</h2>
-        <p className="mt-2 text-muted-foreground">Please wait while we redirect you to the sign-in page.</p>
-      </div>
-    </div>
-  )
+  // HTML overlay from index.html stays visible while we redirect to the OAuth provider
+  return null
 }

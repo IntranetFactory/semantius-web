@@ -6,6 +6,7 @@
  */
 
 import { type EntityMetadata } from "@/types/metadata"
+import { getConfig } from "@/lib/config"
 
 // --- Fetch interceptor ---
 // Module-level token store for the fetch interceptor
@@ -61,22 +62,16 @@ export interface ApiConfig {
 }
 
 /**
- * Get API configuration from environment variables
- * 
+ * Get API configuration from runtime config
+ *
  * @returns API configuration object
  */
 export function getApiConfig(): ApiConfig {
-  const apiBaseUrl = import.meta.env.VITE_API_BASE_URL
-  const apiTypeEnv = import.meta.env.VITE_API_TYPE
-  const apiType = (typeof apiTypeEnv === 'string' && apiTypeEnv.trim() !== '') 
-    ? apiTypeEnv.toLowerCase() 
-    : undefined
-  const supabaseApiKey = import.meta.env.VITE_SUPABASE_APIKEY
-
+  const cfg = getConfig()
   return {
-    baseUrl: apiBaseUrl,
-    type: apiType,
-    supabaseApiKey,
+    baseUrl: cfg.apiBaseUrl,
+    type: cfg.apiType,
+    supabaseApiKey: cfg.supabaseApiKey,
   }
 }
 
