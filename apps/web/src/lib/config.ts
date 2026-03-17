@@ -94,7 +94,7 @@ export async function initConfig(): Promise<AppConfig> {
   _configError = null
   const fallback = envFallback()
 
-  const controlPlaneUrl = (import.meta.env.VITE_CONTROL_PLANE_URL ?? '').trim()
+  const controlPlaneUrl = (import.meta.env.VITE_CONTROL_PLANE_URL ?? 'https://app.semantius.com').trim()
 
   if (controlPlaneUrl) {
     const tenantName = getTenantName()
