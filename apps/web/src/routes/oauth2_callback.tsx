@@ -11,14 +11,13 @@ export const Route = createFileRoute('/oauth2_callback')({
 })
 
 function CallbackComponent() {
-  const { token, error, logIn } = useAuth()
+  const { token, error, logIn, loginInProgress } = useAuth()
   const navigate = useNavigate()
 
   // Freeze whether an OAuth code was present at mount time. The library may
   // strip ?code= from the URL before the token exchange completes, so we
   // capture this once instead of re-reading window.location.search on every
-  // render. loginInProgress is not reliable here because the library clears
-  // it before the token is set, causing a false "no active flow" signal.
+  // render.
   const [hadOAuthCode] = useState(() => new URLSearchParams(window.location.search).has('code'))
 
   // The redirect target is encoded in the OAuth state parameter (stored in
@@ -26,14 +25,28 @@ function CallbackComponent() {
   // `<nonce>:<redirectPath>` — parseOAuthState extracts the path.
   const [redirectTarget] = useState(() => parseOAuthState(localStorage.getItem('ROCP_auth_state')))
 
+  // Safety timeout: if nothing happens within 5 seconds, the token exchange
+  // likely never started (e.g. loginInProgress was already cleared after a
+  // long break). Without this, the page hangs on the loading spinner forever.
+  const [timedOut, setTimedOut] = useState(false)
+  useEffect(() => {
+    const timer = setTimeout(() => setTimedOut(true), 5000)
+    return () => clearTimeout(timer)
+  }, [])
+
   useEffect(() => {
     if (token) {
       navigate({ to: redirectTarget || '/' })
     } else if (!hadOAuthCode && !error) {
       // Arrived at /oauth2_callback without an OAuth code — no active flow, send to login
       navigate({ to: '/login' })
+    } else if (hadOAuthCode && !loginInProgress && !token && !error && timedOut) {
+      // The library skipped the token exchange (loginInProgress was false in
+      // storage, e.g. after a long break or stale callback URL). Restart the
+      // login flow instead of hanging forever.
+      logIn()
     }
-  }, [token, hadOAuthCode, error, navigate, redirectTarget])
+  }, [token, hadOAuthCode, error, loginInProgress, timedOut, navigate, redirectTarget, logIn])
 
   if (error) {
     // Auth error needs user interaction — hide the loading overlay to show the error UI
