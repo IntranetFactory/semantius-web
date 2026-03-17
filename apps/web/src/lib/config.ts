@@ -14,6 +14,7 @@ export interface AppConfig {
   oauthScope: string
   oauthUserinfoEndpoint?: string
   oauthLogoutEndpoint?: string
+  oauthLogoutAPIEndpoint?: string
   oauthLogoutRedirect?: string
   oauthAudience?: string
 
@@ -66,9 +67,22 @@ function getTenantName(): string {
 
 interface TenantResponse {
   id: string
+  client_id: string
   name: string
   logo: string | null
   postgrest_url: string
+}
+
+const CONNECT_BASE = 'https://connect.semantius.cloud'
+
+function buildOAuthUrls(tenantId: string) {
+  const base = `${CONNECT_BASE}/${tenantId}/api/auth/oauth2`
+  return {
+    oauthAuthEndpoint: `${base}/authorize`,
+    oauthTokenEndpoint: `${base}/token`,
+    oauthUserinfoEndpoint: `${base}/userinfo`,
+    // oauthLogoutEndpoint: `${base}/end-session`,
+  }
 }
 
 /**
@@ -103,14 +117,21 @@ export async function initConfig(): Promise<AppConfig> {
 
       const tenant: TenantResponse = await res.json()
 
+      const oauthUrls = buildOAuthUrls(tenant.id)
+
       _config = {
         ...fallback,
+        ...oauthUrls,
+        oauthClientId: tenant.client_id || fallback.oauthClientId,
+        oauthScope: 'openid profile email',
+        oauthLogoutAPIEndpoint: `${controlPlaneUrl.replace(/\/+$/, '')}/api/logout`,
         apiBaseUrl: tenant.postgrest_url || fallback.apiBaseUrl,
         tenantId: tenant.id,
         tenantName: tenant.name,
         tenantLogo: tenant.logo,
       }
       return _config
+
     } catch (err) {
       _configError = `Tenant lookup failed: ${err instanceof Error ? err.message : String(err)} (${url})`
       _config = fallback

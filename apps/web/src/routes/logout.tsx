@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useEffect } from 'react'
 import { useAuth } from '@/hooks/useAuth'
 import { getConfig } from '@/lib/config'
+import { setInterceptorToken } from '@/lib/apiClient'
 
 export const Route = createFileRoute('/logout')({
   component: LogoutRoute,
@@ -13,10 +14,36 @@ function LogoutRoute() {
 
   useEffect(() => {
     const performLogout = async () => {
-      const logoutEndpoint = getConfig().oauthLogoutEndpoint
-      const clientId = getConfig().oauthClientId
-      
-      // ALWAYS clear our local session first
+      const config = getConfig()
+      const logoutEndpoint = config.oauthLogoutEndpoint
+      const logoutAPIEndpoint = config.oauthLogoutAPIEndpoint
+      const clientId = config.oauthClientId
+
+      // Call the OAuth logout API to clear server-side cookies
+      if (logoutAPIEndpoint) {
+        try {
+          await fetch(logoutAPIEndpoint, { method: 'POST', credentials: 'include' })
+        } catch {
+          // Ignore errors — best-effort cookie cleanup
+        }
+      }
+
+      // Clear the fetch interceptor token immediately — logOut() only updates
+      // React state, and the useLayoutEffect that normally calls this won't
+      // fire before we navigate away.
+      setInterceptorToken(null)
+
+      // Synchronously wipe the library's storage keys so the token cannot
+      // survive a page reload. The library's logOut() uses React state setters
+      // which are async and may not flush before we navigate.
+      const prefix = `SC_${import.meta.env.MODE}_`
+      for (const store of [sessionStorage, localStorage]) {
+        for (const key of Object.keys(store)) {
+          if (key.startsWith(prefix)) store.removeItem(key)
+        }
+      }
+
+      // Clear React state (library internals)
       logOut()
       
       if (logoutEndpoint) {
