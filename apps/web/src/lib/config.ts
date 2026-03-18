@@ -56,11 +56,14 @@ function envFallback(): AppConfig {
 
 /**
  * Extract tenant name from the current URL.
- * It is the leftmost subdomain of the hostname.
+ * When VITE_CONTROL_PLANE_ORG is set, that value is used directly
+ * instead of parsing the subdomain from the hostname.
  * e.g. http://test.adenin.com/foo → "test"
  *      http://localhost:1234/bar  → "localhost"
  */
 function getTenantName(): string {
+  const org = (import.meta.env.VITE_CONTROL_PLANE_ORG ?? '').trim()
+  if (org) return org
   const parts = window.location.hostname.split('.')
   return parts[0]
 }
@@ -116,6 +119,14 @@ export async function initConfig(): Promise<AppConfig> {
       }
 
       const tenant: TenantResponse = await res.json()
+
+      const missing = (['id', 'name', 'postgrest_url', 'client_id'] as const)
+        .filter((k) => !tenant[k])
+      if (missing.length > 0) {
+        _configError = `Tenant response is missing required fields: ${missing.join(', ')} (${url})`
+        _config = fallback
+        return _config
+      }
 
       const oauthUrls = buildOAuthUrls(tenant.id)
 

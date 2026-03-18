@@ -2,7 +2,8 @@
   "permissions": {
     "allow": [
       "Bash(chmod +x c:/dev/semantius-web/workplace/approve-pr.sh)",
-      "Bash(grep -r \"import.*controls\" c:devsemantius-web/apps/web/src/components/form/*.tsx)"
+      "Bash(grep -r \"import.*controls\" c:devsemantius-web/apps/web/src/components/form/*.tsx)",
+      "Bash(grep -r \"window.location.hostname\\\\|split\\(''''\\\\.''''\\)\" c:/dev/semantius-web/apps/web/src --include=*.ts --include=*.tsx)"
     ]
   },
   "hooks": {
