@@ -76,10 +76,10 @@ interface TenantResponse {
   postgrest_url: string
 }
 
-const CONNECT_BASE = 'https://connect.semantius.cloud'
 
 function buildOAuthUrls(tenantId: string) {
-  const base = `${CONNECT_BASE}/${tenantId}/api/auth/oauth2`
+  const CONNECT_BASE = `https://${tenantId}.semantius.cloud`
+  const base = `${CONNECT_BASE}/api/auth/oauth2`
   return {
     oauthAuthEndpoint: `${base}/authorize`,
     oauthTokenEndpoint: `${base}/token`,
