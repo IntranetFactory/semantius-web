@@ -77,8 +77,8 @@ interface TenantResponse {
 }
 
 
-function buildOAuthUrls(tenantId: string) {
-  const CONNECT_BASE = `https://${tenantId}.semantius.cloud`
+function buildOAuthUrls(slug: string) {
+  const CONNECT_BASE = `https://${slug}.semantius.cloud`
   const base = `${CONNECT_BASE}/api/auth/oauth2`
   return {
     oauthAuthEndpoint: `${base}/authorize`,
@@ -128,7 +128,7 @@ export async function initConfig(): Promise<AppConfig> {
         return _config
       }
 
-      const oauthUrls = buildOAuthUrls(tenant.id)
+      const oauthUrls = buildOAuthUrls(tenant.name)
 
       _config = {
         ...fallback,
