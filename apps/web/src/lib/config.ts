@@ -137,6 +137,7 @@ export async function initConfig(): Promise<AppConfig> {
         oauthScope: 'openid profile email',
         oauthLogoutAPIEndpoint: `${controlPlaneUrl.replace(/\/+$/, '')}/api/logout`,
         apiBaseUrl: tenant.postgrest_url || fallback.apiBaseUrl,
+        oauthAudience: "tenant://" + tenant.id,
         tenantId: tenant.id,
         tenantName: tenant.name,
         tenantLogo: tenant.logo,
