@@ -101,7 +101,7 @@ export async function initConfig(): Promise<AppConfig> {
 
   if (controlPlaneUrl) {
     const tenantName = getTenantName()
-    const url = `${controlPlaneUrl.replace(/\/+$/, '')}/api/tenant/${encodeURIComponent(tenantName)}`
+    const url = `https://api.semantius.cloud/organization/${encodeURIComponent(tenantName)}`
 
     try {
       const res = await fetch(url)
