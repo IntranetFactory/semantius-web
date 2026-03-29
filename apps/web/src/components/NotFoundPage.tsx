@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { Home, Search } from 'lucide-react'
+import { useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -9,8 +10,13 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { hideAppLoader } from '@/lib/appLoader'
 
 export function NotFoundPage() {
+  useEffect(() => {
+    hideAppLoader()
+  }, [])
+
   return (
     <div className="flex items-center justify-center min-h-[calc(100vh-8rem)]">
       <Card className="max-w-md w-full">

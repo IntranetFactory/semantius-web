@@ -22,6 +22,8 @@ import { Route as AppXcustomersRouteImport } from './routes/_app.xcustomers'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
 import { Route as AppModulesRouteImport } from './routes/_app.modules'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
+import { Route as AppModuleIdRouteImport } from './routes/_app.$moduleId'
+import { Route as AppModuleIdIndexRouteImport } from './routes/_app.$moduleId.index'
 import { Route as AppXcustomersNewRouteImport } from './routes/_app.xcustomers.new'
 import { Route as AppXcustomersIdRouteImport } from './routes/_app.xcustomers.$id'
 import { Route as AppModuleIdTable_nameRouteImport } from './routes/_app.$moduleId.$table_name'
@@ -90,6 +92,16 @@ const AppDocumentsRoute = AppDocumentsRouteImport.update({
   path: '/documents',
   getParentRoute: () => AppRoute,
 } as any)
+const AppModuleIdRoute = AppModuleIdRouteImport.update({
+  id: '/$moduleId',
+  path: '/$moduleId',
+  getParentRoute: () => AppRoute,
+} as any)
+const AppModuleIdIndexRoute = AppModuleIdIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AppModuleIdRoute,
+} as any)
 const AppCrmHomeLazyRoute = AppCrmHomeLazyRouteImport.update({
   id: '/crm/home',
   path: '/crm/home',
@@ -106,9 +118,9 @@ const AppXcustomersIdRoute = AppXcustomersIdRouteImport.update({
   getParentRoute: () => AppXcustomersRoute,
 } as any)
 const AppModuleIdTable_nameRoute = AppModuleIdTable_nameRouteImport.update({
-  id: '/$moduleId/$table_name',
-  path: '/$moduleId/$table_name',
-  getParentRoute: () => AppRoute,
+  id: '/$table_name',
+  path: '/$table_name',
+  getParentRoute: () => AppModuleIdRoute,
 } as any)
 const AppCrmHomeDetailLazyRoute = AppCrmHomeDetailLazyRouteImport.update({
   id: '/detail',
@@ -146,6 +158,7 @@ export interface FileRoutesByFullPath {
   '/logout': typeof LogoutRoute
   '/logout-success': typeof LogoutSuccessRoute
   '/oauth2_callback': typeof Oauth2_callbackRoute
+  '/$moduleId': typeof AppModuleIdRouteWithChildren
   '/documents': typeof AppDocumentsRoute
   '/modules': typeof AppModulesRoute
   '/settings': typeof AppSettingsRoute
@@ -154,6 +167,7 @@ export interface FileRoutesByFullPath {
   '/xcustomers/$id': typeof AppXcustomersIdRouteWithChildren
   '/xcustomers/new': typeof AppXcustomersNewRoute
   '/crm/home': typeof AppCrmHomeLazyRouteWithChildren
+  '/$moduleId/': typeof AppModuleIdIndexRoute
   '/xcustomers/$id/edit': typeof AppXcustomersIdEditRoute
   '/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRouteWithChildren
   '/crm/home/detail': typeof AppCrmHomeDetailLazyRoute
@@ -174,6 +188,7 @@ export interface FileRoutesByTo {
   '/xcustomers/$id': typeof AppXcustomersIdRouteWithChildren
   '/xcustomers/new': typeof AppXcustomersNewRoute
   '/crm/home': typeof AppCrmHomeLazyRouteWithChildren
+  '/$moduleId': typeof AppModuleIdIndexRoute
   '/xcustomers/$id/edit': typeof AppXcustomersIdEditRoute
   '/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRouteWithChildren
   '/crm/home/detail': typeof AppCrmHomeDetailLazyRoute
@@ -187,6 +202,7 @@ export interface FileRoutesById {
   '/logout': typeof LogoutRoute
   '/logout-success': typeof LogoutSuccessRoute
   '/oauth2_callback': typeof Oauth2_callbackRoute
+  '/_app/$moduleId': typeof AppModuleIdRouteWithChildren
   '/_app/documents': typeof AppDocumentsRoute
   '/_app/modules': typeof AppModulesRoute
   '/_app/settings': typeof AppSettingsRoute
@@ -196,6 +212,7 @@ export interface FileRoutesById {
   '/_app/xcustomers/$id': typeof AppXcustomersIdRouteWithChildren
   '/_app/xcustomers/new': typeof AppXcustomersNewRoute
   '/_app/crm/home': typeof AppCrmHomeLazyRouteWithChildren
+  '/_app/$moduleId/': typeof AppModuleIdIndexRoute
   '/_app/xcustomers/$id/edit': typeof AppXcustomersIdEditRoute
   '/_app/$moduleId/$table_name/$key': typeof AppModuleIdTable_nameKeyLazyRouteWithChildren
   '/_app/crm/home/detail': typeof AppCrmHomeDetailLazyRoute
@@ -210,6 +227,7 @@ export interface FileRouteTypes {
     | '/logout'
     | '/logout-success'
     | '/oauth2_callback'
+    | '/$moduleId'
     | '/documents'
     | '/modules'
     | '/settings'
@@ -218,6 +236,7 @@ export interface FileRouteTypes {
     | '/xcustomers/$id'
     | '/xcustomers/new'
     | '/crm/home'
+    | '/$moduleId/'
     | '/xcustomers/$id/edit'
     | '/$moduleId/$table_name/$key'
     | '/crm/home/detail'
@@ -238,6 +257,7 @@ export interface FileRouteTypes {
     | '/xcustomers/$id'
     | '/xcustomers/new'
     | '/crm/home'
+    | '/$moduleId'
     | '/xcustomers/$id/edit'
     | '/$moduleId/$table_name/$key'
     | '/crm/home/detail'
@@ -250,6 +270,7 @@ export interface FileRouteTypes {
     | '/logout'
     | '/logout-success'
     | '/oauth2_callback'
+    | '/_app/$moduleId'
     | '/_app/documents'
     | '/_app/modules'
     | '/_app/settings'
@@ -259,6 +280,7 @@ export interface FileRouteTypes {
     | '/_app/xcustomers/$id'
     | '/_app/xcustomers/new'
     | '/_app/crm/home'
+    | '/_app/$moduleId/'
     | '/_app/xcustomers/$id/edit'
     | '/_app/$moduleId/$table_name/$key'
     | '/_app/crm/home/detail'
@@ -353,6 +375,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AppDocumentsRouteImport
       parentRoute: typeof AppRoute
     }
+    '/_app/$moduleId': {
+      id: '/_app/$moduleId'
+      path: '/$moduleId'
+      fullPath: '/$moduleId'
+      preLoaderRoute: typeof AppModuleIdRouteImport
+      parentRoute: typeof AppRoute
+    }
+    '/_app/$moduleId/': {
+      id: '/_app/$moduleId/'
+      path: '/'
+      fullPath: '/$moduleId/'
+      preLoaderRoute: typeof AppModuleIdIndexRouteImport
+      parentRoute: typeof AppModuleIdRoute
+    }
     '/_app/crm/home': {
       id: '/_app/crm/home'
       path: '/crm/home'
@@ -376,10 +412,10 @@ declare module '@tanstack/react-router' {
     }
     '/_app/$moduleId/$table_name': {
       id: '/_app/$moduleId/$table_name'
-      path: '/$moduleId/$table_name'
+      path: '/$table_name'
       fullPath: '/$moduleId/$table_name'
       preLoaderRoute: typeof AppModuleIdTable_nameRouteImport
-      parentRoute: typeof AppRoute
+      parentRoute: typeof AppModuleIdRoute
     }
     '/_app/crm/home/detail': {
       id: '/_app/crm/home/detail'
@@ -412,32 +448,6 @@ declare module '@tanstack/react-router' {
   }
 }
 
-interface AppXcustomersIdRouteChildren {
-  AppXcustomersIdEditRoute: typeof AppXcustomersIdEditRoute
-}
-
-const AppXcustomersIdRouteChildren: AppXcustomersIdRouteChildren = {
-  AppXcustomersIdEditRoute: AppXcustomersIdEditRoute,
-}
-
-const AppXcustomersIdRouteWithChildren = AppXcustomersIdRoute._addFileChildren(
-  AppXcustomersIdRouteChildren,
-)
-
-interface AppXcustomersRouteChildren {
-  AppXcustomersIdRoute: typeof AppXcustomersIdRouteWithChildren
-  AppXcustomersNewRoute: typeof AppXcustomersNewRoute
-}
-
-const AppXcustomersRouteChildren: AppXcustomersRouteChildren = {
-  AppXcustomersIdRoute: AppXcustomersIdRouteWithChildren,
-  AppXcustomersNewRoute: AppXcustomersNewRoute,
-}
-
-const AppXcustomersRouteWithChildren = AppXcustomersRoute._addFileChildren(
-  AppXcustomersRouteChildren,
-)
-
 interface AppModuleIdTable_nameKeyLazyRouteChildren {
   AppModuleIdTable_nameKeyViewRoute: typeof AppModuleIdTable_nameKeyViewRoute
 }
@@ -466,6 +476,46 @@ const AppModuleIdTable_nameRouteWithChildren =
     AppModuleIdTable_nameRouteChildren,
   )
 
+interface AppModuleIdRouteChildren {
+  AppModuleIdTable_nameRoute: typeof AppModuleIdTable_nameRouteWithChildren
+  AppModuleIdIndexRoute: typeof AppModuleIdIndexRoute
+}
+
+const AppModuleIdRouteChildren: AppModuleIdRouteChildren = {
+  AppModuleIdTable_nameRoute: AppModuleIdTable_nameRouteWithChildren,
+  AppModuleIdIndexRoute: AppModuleIdIndexRoute,
+}
+
+const AppModuleIdRouteWithChildren = AppModuleIdRoute._addFileChildren(
+  AppModuleIdRouteChildren,
+)
+
+interface AppXcustomersIdRouteChildren {
+  AppXcustomersIdEditRoute: typeof AppXcustomersIdEditRoute
+}
+
+const AppXcustomersIdRouteChildren: AppXcustomersIdRouteChildren = {
+  AppXcustomersIdEditRoute: AppXcustomersIdEditRoute,
+}
+
+const AppXcustomersIdRouteWithChildren = AppXcustomersIdRoute._addFileChildren(
+  AppXcustomersIdRouteChildren,
+)
+
+interface AppXcustomersRouteChildren {
+  AppXcustomersIdRoute: typeof AppXcustomersIdRouteWithChildren
+  AppXcustomersNewRoute: typeof AppXcustomersNewRoute
+}
+
+const AppXcustomersRouteChildren: AppXcustomersRouteChildren = {
+  AppXcustomersIdRoute: AppXcustomersIdRouteWithChildren,
+  AppXcustomersNewRoute: AppXcustomersNewRoute,
+}
+
+const AppXcustomersRouteWithChildren = AppXcustomersRoute._addFileChildren(
+  AppXcustomersRouteChildren,
+)
+
 interface AppCrmHomeLazyRouteChildren {
   AppCrmHomeDetailLazyRoute: typeof AppCrmHomeDetailLazyRoute
 }
@@ -479,22 +529,22 @@ const AppCrmHomeLazyRouteWithChildren = AppCrmHomeLazyRoute._addFileChildren(
 )
 
 interface AppRouteChildren {
+  AppModuleIdRoute: typeof AppModuleIdRouteWithChildren
   AppDocumentsRoute: typeof AppDocumentsRoute
   AppModulesRoute: typeof AppModulesRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppXcustomersRoute: typeof AppXcustomersRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
-  AppModuleIdTable_nameRoute: typeof AppModuleIdTable_nameRouteWithChildren
   AppCrmHomeLazyRoute: typeof AppCrmHomeLazyRouteWithChildren
 }
 
 const AppRouteChildren: AppRouteChildren = {
+  AppModuleIdRoute: AppModuleIdRouteWithChildren,
   AppDocumentsRoute: AppDocumentsRoute,
   AppModulesRoute: AppModulesRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppXcustomersRoute: AppXcustomersRouteWithChildren,
   AppIndexRoute: AppIndexRoute,
-  AppModuleIdTable_nameRoute: AppModuleIdTable_nameRouteWithChildren,
   AppCrmHomeLazyRoute: AppCrmHomeLazyRouteWithChildren,
 }
 
