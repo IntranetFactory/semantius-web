@@ -23,6 +23,9 @@ export interface AppConfig {
   apiType?: string
   supabaseApiKey?: string
 
+  // Cube.js
+  cubeApiUrl?: string
+
   // Tenant (populated when control plane is used)
   tenantId?: string
   tenantName?: string
@@ -51,6 +54,7 @@ function envFallback(): AppConfig {
     apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
     apiType: normaliseApiType(import.meta.env.VITE_API_TYPE),
     supabaseApiKey: import.meta.env.VITE_SUPABASE_APIKEY || undefined,
+    cubeApiUrl: import.meta.env.VITE_CUBE_API_URL || undefined,
   }
 }
 

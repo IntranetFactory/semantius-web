@@ -31,6 +31,7 @@ export interface Module {
   module_name: string
   view_permission: string
   edit_permission: string
+  dashboard_config: import('drizzle-cube/client').DashboardConfig | null
 }
 
 export interface RpcUserInfo {
