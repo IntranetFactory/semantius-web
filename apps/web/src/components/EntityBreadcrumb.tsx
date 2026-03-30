@@ -41,8 +41,8 @@ export function EntityBreadcrumb({
 }: EntityBreadcrumbProps) {
   const { rpcUserInfo } = useAuth()
 
-  // Look up the actual module name (e.g. "CRM") from user's module list
-  const moduleLabel = useMemo(() => {
+  // Look up the actual module name (e.g. "CRM") and home page from user's module list
+  const { moduleLabel, moduleHomePath } = useMemo(() => {
     const moduleIdLower = moduleId.toLowerCase()
     const found = rpcUserInfo?.modules?.find((m) => {
       const nameLower = m.module_name.toLowerCase()
@@ -52,13 +52,14 @@ export function EntityBreadcrumb({
         (aliasLower && aliasLower.trim() !== '' && aliasLower === moduleIdLower)
       )
     })
-    return (
+    const label =
       found?.module_name ||
       moduleId
         .split('-')
         .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
         .join(' ')
-    )
+    const homePath = found?.home_page || `/${moduleId}`
+    return { moduleLabel: label, moduleHomePath: homePath }
   }, [moduleId, rpcUserInfo?.modules])
 
   return (
@@ -66,7 +67,7 @@ export function EntityBreadcrumb({
       <BreadcrumbList>
         <BreadcrumbItem>
           <BreadcrumbLink asChild>
-            <Link to={entityPath}>{moduleLabel}</Link>
+            <Link to={moduleHomePath}>{moduleLabel}</Link>
           </BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
