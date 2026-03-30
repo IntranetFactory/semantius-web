@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { useAuth } from '@/hooks/useAuth'
-import { getApiConfig, createApiHeaders } from '@/lib/apiClient'
+import { getApiConfig, createApiHeaders, refreshSchemaCache } from '@/lib/apiClient'
+import { getConfig } from '@/lib/config'
 
 /**
  * Generic hook for creating records in a PostgREST table
@@ -71,10 +72,11 @@ export function useCreateRecord<T = Record<string, unknown>>(tableName: string) 
     onSuccess: () => {
       // Invalidate the table query to refetch data
       // Use refetchType: 'active' to immediately refetch all active queries (e.g., sidebar, main grid)
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['table', tableName],
         refetchType: 'active'
       })
+      if (token) refreshSchemaCache(token, getConfig().tenantName, tableName)
     },
   })
 }
@@ -161,10 +163,11 @@ export function useUpdateRecord<T extends Record<string, unknown>>(
     onSuccess: () => {
       // Invalidate the table query to refetch data
       // Use refetchType: 'active' to immediately refetch all active queries (e.g., sidebar, main grid)
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['table', tableName],
         refetchType: 'active'
       })
+      if (token) refreshSchemaCache(token, getConfig().tenantName, tableName)
     },
   })
 }
@@ -230,10 +233,11 @@ export function useDeleteRecord(tableName: string, idField: string = 'id') {
     onSuccess: () => {
       // Invalidate the table query to refetch data
       // Use refetchType: 'active' to immediately refetch all active queries (e.g., sidebar, main grid)
-      queryClient.invalidateQueries({ 
+      queryClient.invalidateQueries({
         queryKey: ['table', tableName],
         refetchType: 'active'
       })
+      if (token) refreshSchemaCache(token, getConfig().tenantName, tableName)
     },
   })
 }

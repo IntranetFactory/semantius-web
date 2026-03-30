@@ -113,6 +113,30 @@ export function createApiHeaders(
   return headers
 }
 
+const SCHEMA_CACHE_TABLES = new Set(['entities', 'fields'])
+
+/**
+ * Notify the tenant's schema cache endpoint to refresh after data mutations.
+ * Only fires for tables that affect the schema (entities, fields).
+ * Uses the absolute semantius.cloud URL (not intercepted), so the token is passed explicitly.
+ */
+export async function refreshSchemaCache(token: string, tenantName: string | undefined, tableName: string): Promise<void> {
+  if (!tenantName || !SCHEMA_CACHE_TABLES.has(tableName)) return
+  const url = `https://${tenantName}.semantius.cloud/refresh-schema-cache`
+  try {
+    await _originalFetch(url, {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        'authorization': `Bearer ${token}`,
+      },
+      body: '{}',
+    })
+  } catch {
+    // Non-fatal — schema cache refresh failure should not block the UI
+  }
+}
+
 /**
  * Call a PostgREST RPC function
  * DRY utility for all RPC calls - can be used in loaders and non-React contexts
