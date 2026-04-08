@@ -6,6 +6,8 @@
  * control plane and merged on top of VITE_* fallback values.
  */
 
+import { _ } from "ajv"
+
 export interface AppConfig {
   // OAuth
   oauthClientId: string
@@ -53,8 +55,7 @@ function envFallback(): AppConfig {
 
     apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
     apiType: normaliseApiType(import.meta.env.VITE_API_TYPE),
-    supabaseApiKey: import.meta.env.VITE_SUPABASE_APIKEY || undefined,
-    cubeApiUrl: import.meta.env.VITE_CUBE_API_URL || undefined,
+    supabaseApiKey: import.meta.env.VITE_SUPABASE_APIKEY || undefined
   }
 }
 
@@ -141,11 +142,13 @@ export async function initConfig(): Promise<AppConfig> {
         oauthScope: 'openid profile email',
         oauthLogoutAPIEndpoint: `${controlPlaneUrl.replace(/\/+$/, '')}/api/logout`,
         apiBaseUrl: tenant.postgrest_url || fallback.apiBaseUrl,
+        cubeApiUrl: import.meta.env.VITE_CUBE_API_URL || `https://${tenant.name}.semantius.io`,
         oauthAudience: "tenant://" + tenant.id,
         tenantId: tenant.id,
         tenantName: tenant.name,
         tenantLogo: tenant.logo,
       }
+
       return _config
 
     } catch (err) {
