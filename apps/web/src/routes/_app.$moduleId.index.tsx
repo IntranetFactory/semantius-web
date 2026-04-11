@@ -3,6 +3,7 @@ import { useCallback, useState, useEffect } from 'react'
 import { GalleryVerticalEnd } from 'lucide-react'
 import { AnalyticsDashboard, CubeProvider } from 'drizzle-cube/client'
 import type { DashboardConfig } from 'drizzle-cube/client'
+import { customCharts } from '@/charts'
 import { Card, CardContent } from '@/components/ui/card'
 import { useAuth } from '@/hooks/useAuth'
 import { NotFoundPage } from '@/components/NotFoundPage'
@@ -97,7 +98,7 @@ function ModuleHomeComponent() {
     <div className="space-y-6">
       {moduleHeader}
 
-      <CubeProvider apiOptions={{ apiUrl: cubeApiUrl ?? '', credentials: 'omit' }} token={token ?? undefined}>
+      <CubeProvider apiOptions={{ apiUrl: cubeApiUrl ?? '', credentials: 'omit' }} token={token ?? undefined} customCharts={customCharts}>
         {isDashboardConfigLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading dashboard…</div>
         ) : (

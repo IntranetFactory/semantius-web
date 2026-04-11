@@ -5,6 +5,10 @@ import { dataTableConfig } from './CustomTableChart.config'
 /**
  * Custom chart definitions to pass to CubeProvider.
  *
+ * The 'table' type overrides the built-in Data Table chart.
+ * The original built-in is backed up internally by drizzle-cube
+ * and restored automatically if this override is unregistered.
+ *
  * Usage:
  *   import { customCharts } from './charts'
  *
@@ -14,8 +18,8 @@ import { dataTableConfig } from './CustomTableChart.config'
  */
 export const customCharts: ChartDefinition[] = [
   {
-    type: 'customTableChart',
-    label: dataTableConfig.label || 'Custom Table Chart',
+    type: 'table',
+    label: dataTableConfig.label || 'Data Table',
     config: dataTableConfig,
     component: CustomTableChart,
   },
