@@ -117,6 +117,29 @@ For this repo (`IntranetFactory/semantius-web`) on branch `copilot/fix-datatable
 https://raw.githubusercontent.com/IntranetFactory/semantius-web/copilot/fix-datatableview-state-issues/screenshots/...
 ```
 
+## Secrets & Deployment
+
+### `.env` File (CRITICAL — read before every deploy)
+
+The encrypted `.env` file is **not committed in `main`** — it was deleted in commit `114aed6`. If `.env` is missing at session start, `dotenvx run` injects 0 variables and `CLOUDFLARE_API_TOKEN` will be empty, causing deployment to fail with `Error: CLOUDFLARE_API_TOKEN is not set`.
+
+**Always restore before deploying:**
+
+```bash
+# Check whether .env exists
+ls .env 2>/dev/null || echo "MISSING — restore it"
+
+# Restore from git history (the last commit that had it)
+git show 9ef17da:.env > .env
+
+# Verify decryption works (DOTENV_PRIVATE_KEY must be set in environment)
+dotenvx run -- printenv CLOUDFLARE_API_TOKEN
+```
+
+`DOTENV_PRIVATE_KEY` is injected into the sandbox environment automatically and does not need manual configuration. The `.env` file just needs to exist on disk for `dotenvx run` to decrypt it.
+
+The `workplace/deploy-wrangler.sh` health-check curl and `message.sh` notification may fail with non-fatal errors after a successful wrangler upload — the deploy is still live. The `.preview-url.md` file is written regardless of those failures.
+
 ## Testing
 
 ### Test Accounts
