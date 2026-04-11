@@ -98,7 +98,7 @@ function ModuleHomeComponent() {
     <div className="space-y-6">
       {moduleHeader}
 
-      <CubeProvider apiOptions={{ apiUrl: cubeApiUrl ?? '', credentials: 'omit' }} token={token ?? undefined} customCharts={customCharts}>
+      <CubeProvider apiOptions={{ apiUrl: cubeApiUrl ?? '', credentials: 'omit' }} token={token ?? undefined} customCharts={customCharts} >
         {isDashboardConfigLoading ? (
           <div className="flex items-center justify-center py-12 text-muted-foreground text-sm">Loading dashboard…</div>
         ) : (

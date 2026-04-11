@@ -9,7 +9,9 @@
       "Bash(pnpm --filter @semantius/frontend add @nivo/heatmap@^0.99.0 d3@^7.9.0)",
       "Bash(pnpm --filter @semantius/frontend build)",
       "Bash(npm show:*)",
-      "Bash(pnpm --filter @semantius/frontend update drizzle-cube@latest)"
+      "Bash(pnpm --filter @semantius/frontend update drizzle-cube@latest)",
+      "Bash(pnpm --filter web update drizzle-cube)",
+      "Bash(pnpm update:*)"
     ]
   }
 }

@@ -1,7 +1,7 @@
 import type { ChartTypeConfig } from 'drizzle-cube/client'
 
 export const dataTableConfig: ChartTypeConfig = {
-  label: 'Data Table',
+  label: 'Data Table v2',
   description: 'Sortable tabular display of query results',
   useCase: 'Best for exploring raw data and detailed breakdowns',
   dropZones: [
