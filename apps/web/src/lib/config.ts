@@ -167,7 +167,7 @@ export function getConfig(): AppConfig {
   if (!_config) {
     throw new Error('App config not initialised — await initConfig() before rendering')
   }
-  console.log('Using app config:', _config)
+  //console.log('Using app config:', _config)
   return _config
 }
 
