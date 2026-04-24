@@ -491,30 +491,58 @@ describe('Vocabulary Definition Tests', () => {
       expect(result.errors).toBeNull();
     });
 
-    // Custom SemSchema relation formats
-    it('should accept schema with format: reference (integer)', () => {
-      const schema = { type: 'integer', format: 'reference' };
+    // Primitive type formats
+    it('should accept schema with format: string', () => {
+      const schema = { type: 'string', format: 'string' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();
     });
 
-    it('should accept schema with format: reference (string)', () => {
-      const schema = { type: 'string', format: 'reference' };
+    it('should accept schema with format: boolean', () => {
+      const schema = { type: 'boolean', format: 'boolean' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();
     });
 
-    it('should accept schema with format: parent (integer)', () => {
-      const schema = { type: 'integer', format: 'parent' };
+    it('should accept schema with format: integer', () => {
+      const schema = { type: 'integer', format: 'integer' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();
     });
 
-    it('should accept schema with format: parent (string)', () => {
-      const schema = { type: 'string', format: 'parent' };
+    it('should accept schema with format: number', () => {
+      const schema = { type: 'number', format: 'number' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: string (type inferred)', () => {
+      const schema = { format: 'string' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: boolean (type inferred)', () => {
+      const schema = { format: 'boolean' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: integer (type inferred)', () => {
+      const schema = { format: 'integer' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: number (type inferred)', () => {
+      const schema = { format: 'number' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();
@@ -1045,72 +1073,61 @@ describe('Vocabulary Definition Tests', () => {
     });
   });
 
-  describe('Schema Validity - width keyword', () => {
-    it('should accept schema with width: default', () => {
-      const schema = { type: 'string', width: 'default' };
-      const result = validateSchema(schema);
-      expect(result.valid).toBe(true);
-      expect(result.errors).toBeNull();
-    });
-
-    it('should accept schema with width: s', () => {
-      const schema = { type: 'string', width: 's' };
-      const result = validateSchema(schema);
-      expect(result.valid).toBe(true);
-      expect(result.errors).toBeNull();
-    });
-
-    it('should accept schema with width: m', () => {
-      const schema = { type: 'string', width: 'm' };
-      const result = validateSchema(schema);
-      expect(result.valid).toBe(true);
-      expect(result.errors).toBeNull();
-    });
-
-    it('should accept schema with width: w', () => {
-      const schema = { type: 'string', width: 'w' };
-      const result = validateSchema(schema);
-      expect(result.valid).toBe(true);
-      expect(result.errors).toBeNull();
-    });
-
-    it('should accept schema with width: ns', () => {
-      const schema = { type: 'string', width: 'ns' };
-      const result = validateSchema(schema);
-      expect(result.valid).toBe(true);
-      expect(result.errors).toBeNull();
-    });
-
-    it('should accept schema with width: nm', () => {
-      const schema = { type: 'string', width: 'nm' };
-      const result = validateSchema(schema);
-      expect(result.valid).toBe(true);
-      expect(result.errors).toBeNull();
-    });
-
-    it('should accept schema with width: nw', () => {
-      const schema = { type: 'string', width: 'nw' };
-      const result = validateSchema(schema);
-      expect(result.valid).toBe(true);
-      expect(result.errors).toBeNull();
-    });
-
-    it('should reject schema with invalid width value', () => {
-      const schema = { type: 'string', width: 'x' };
+  describe('Schema Validity - Primitive-type format/type compatibility', () => {
+    it('should reject schema with format: "integer" and type: "string"', () => {
+      const schema = { type: 'string', format: 'integer' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(false);
-      expect(result.errors).toBeDefined();
-      expect(result.errors?.[0]?.message).toContain('width');
-      expect(result.errors?.[0]?.message).toContain('must be equal to one of the allowed values');
+      expect(result.errors?.[0]?.message).toContain('Format "integer" is not compatible with type "string"');
     });
 
-    it('should reject schema with non-string width', () => {
-      const schema = { type: 'string', width: 2 };
+    it('should reject schema with format: "boolean" and type: "string"', () => {
+      const schema = { type: 'string', format: 'boolean' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(false);
-      expect(result.errors).toBeDefined();
-      expect(result.errors?.[0]?.message).toContain('width');
-      expect(result.errors?.[0]?.message).toContain('must be string');
+      expect(result.errors?.[0]?.message).toContain('Format "boolean" is not compatible with type "string"');
+    });
+
+    it('should reject schema with format: "number" and type: "string"', () => {
+      const schema = { type: 'string', format: 'number' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors?.[0]?.message).toContain('Format "number" is not compatible with type "string"');
+    });
+
+    it('should reject schema with format: "string" and type: "integer"', () => {
+      const schema = { type: 'integer', format: 'string' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors?.[0]?.message).toContain('Format "string" is not compatible with type "integer"');
+    });
+
+    it('should reject schema with format: "string" and type: "boolean"', () => {
+      const schema = { type: 'boolean', format: 'string' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(false);
+      expect(result.errors?.[0]?.message).toContain('Format "string" is not compatible with type "boolean"');
+    });
+
+    it('should accept schema with format: "integer" and type: "number" (compatible subtypes)', () => {
+      const schema = { type: 'number', format: 'integer' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: "number" and type: "integer" (compatible subtypes)', () => {
+      const schema = { type: 'integer', format: 'number' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: "string" and type: "string"', () => {
+      const schema = { type: 'string', format: 'string' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
     });
   });
 });

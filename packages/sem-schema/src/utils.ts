@@ -1,9 +1,19 @@
 import type { SchemaObject } from 'ajv';
 
 /**
+ * Primitive type names allowed as format values
+ */
+const PRIMITIVE_TYPE_FORMATS = new Set(['boolean', 'integer', 'number', 'string']);
+
+/**
  * Known formats - includes both custom and standard formats
  */
 const KNOWN_FORMATS = new Set([
+  // Primitive type names (allowed as format hints)
+  'boolean',
+  'integer',
+  'number',
+  'string',
   // Custom SemSchema formats (not in JSON Schema spec)
   'json',
   'html',
@@ -77,6 +87,26 @@ export function validateSchemaStructure(schema: SchemaObject, path: string = '#'
         keyword: 'format',
         value: schema.format
       });
+    } else if (PRIMITIVE_TYPE_FORMATS.has(schema.format) && schema.type) {
+      // When format is a primitive type name, it must be compatible with the declared type.
+      // "integer" and "number" are mutually compatible; all other primitive formats must
+      // match the type exactly.
+      const fmt = schema.format as string;
+      const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+      const compatible =
+        (fmt === 'integer' || fmt === 'number')
+          ? types.some(t => t === 'integer' || t === 'number')
+          : types.includes(fmt);
+      if (!compatible) {
+        const expectedType = fmt === 'integer' ? '"integer" or "number"' : `"${fmt}"`;
+        const actualType = Array.isArray(schema.type) ? schema.type.join(', ') : schema.type;
+        errors.push({
+          schemaPath: path,
+          message: `Format "${fmt}" is not compatible with type "${actualType}". Expected type ${expectedType}`,
+          keyword: 'format',
+          value: schema.format
+        });
+      }
     }
   }
 
@@ -145,43 +175,12 @@ export function validateSchemaStructure(schema: SchemaObject, path: string = '#'
 }
 
 /**
- * Maps a field's format/type to its default display width for **form** renderers.
- *
- * - text, json, html, jsonata → 'w' (wide)
- * - number, integer (without a format) → 's' (small)
- * - everything else → 'm' (medium)
- *
- * Format takes priority over type — e.g. a number with format "reference" gets 'm', not 's'.
- */
-export function getDefaultWidthForForm(format?: string, type?: string): 's' | 'm' | 'w' {
-  if (format === 'text' || format === 'json' || format === 'html' || format === 'jsonata') {
-    return 'w'
-  }
-  // Only default to small for bare number/integer (no format override)
-  if (!format && (type === 'number' || type === 'integer')) {
-    return 's'
-  }
-  return 'm'
-}
-
-/**
- * Maps a field's format/type to its default display width for **grid** renderers.
- *
- * Same rules as {@link getDefaultWidthForForm}, with the addition:
- * - boolean → 's' (small, fits a toggle/checkbox column)
- */
-export function getDefaultWidthForGrid(format?: string, type?: string): 's' | 'm' | 'w' {
-  if (type === 'boolean') {
-    return 's'
-  }
-  return getDefaultWidthForForm(format, type)
-}
-
-/**
  * Preprocess schema to handle default type as string and enum empty string handling
  * 
- * When a schema has a format but no type, this function adds type: "string"
- * This allows schemas like { format: "json" } to work correctly
+ * When a schema has a format but no type, this function infers the type:
+ * - If format is a primitive type name (boolean/integer/number/string), uses that as type
+ * - Otherwise defaults to string (formats like json, html, date, etc. imply a string field)
+ * This allows schemas like { format: "json" } or { format: "number" } to work correctly
  * 
  * When a schema has an enum but inputMode is not "required", this function adds "" to the enum
  * This allows empty strings to be valid for optional enum fields
@@ -193,9 +192,13 @@ export function preprocessSchema(schema: SchemaObject): SchemaObject {
 
   const processed: SchemaObject = { ...schema };
 
-  // If format is provided but type is not, default to string
+  // If format is provided but type is not, infer the type
+  // If format is a primitive type name (boolean/integer/number/string), use it as the type;
+  // otherwise default to string (formats like json, html, date, etc. imply a string field)
   if (processed.format && !processed.type) {
-    processed.type = 'string';
+    processed.type = PRIMITIVE_TYPE_FORMATS.has(processed.format as string)
+      ? (processed.format as string)
+      : 'string';
   }
 
   // If enum is present and inputMode is not "required", add "" to enum if not already present

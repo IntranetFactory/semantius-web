@@ -167,7 +167,7 @@ describe('apiClient', () => {
         },
       }
       const result = buildPostgRESTSelect(metadata)
-      expect(result).toBe('id,product_name,category_id,category_id_label:product_categories!category_id(category_name)')
+      expect(result).toBe('id,product_name,category_id,category_id_label:category_id(category_name)')
     })
 
     it('handles multiple columns referencing the same table (PGRST201 fix)', () => {
@@ -191,9 +191,9 @@ describe('apiClient', () => {
         },
       }
       const result = buildPostgRESTSelect(metadata)
-      // Each reference gets its own aliased field with the column name as the relationship hint
-      // This solves PostgREST PGRST201 ambiguous relationship error
-      expect(result).toBe('id,user_id,user_id_label:users!user_id(name),assigned_by,assigned_by_label:users!assigned_by(name),role_name')
+      // Each reference embeds by FK column, which disambiguates without PGRST201
+      // and also works for self-joins (e.g. departments.parent_department_id → departments).
+      expect(result).toBe('id,user_id,user_id_label:user_id(name),assigned_by,assigned_by_label:assigned_by(name),role_name')
     })
 
     it('only adds _label field when both reference_table and reference_table_label_column are present', () => {

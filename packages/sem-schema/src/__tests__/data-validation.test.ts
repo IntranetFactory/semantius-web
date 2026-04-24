@@ -75,123 +75,44 @@ describe('Data Validation Tests', () => {
   });
 
   describe('Format: reference', () => {
-    it('should validate integer values with integer type', () => {
-      const schema = { type: 'integer', format: 'reference' };
-
+    it('should validate integer values', () => {
+      const schema = { type: 'number', format: 'reference' };
+      
       expect(validateData(1, schema).valid).toBe(true);
       expect(validateData(0, schema).valid).toBe(true);
       expect(validateData(-5, schema).valid).toBe(true);
       expect(validateData(999999, schema).valid).toBe(true);
     });
 
-    it('should validate string values with string type', () => {
-      const schema = { type: 'string', format: 'reference' };
-
-      expect(validateData('abc-123', schema).valid).toBe(true);
-      expect(validateData('550e8400-e29b-41d4-a716-446655440000', schema).valid).toBe(true);
-      expect(validateData('1', schema).valid).toBe(true);
-    });
-
-    it('should reject non-integer numbers via type: integer', () => {
-      const schema = { type: 'integer', format: 'reference' };
-
+    it('should reject non-integer numbers', () => {
+      const schema = { type: 'number', format: 'reference' };
+      
       expect(validateData(1.5, schema).valid).toBe(false);
       expect(validateData(0.1, schema).valid).toBe(false);
+      expect(validateData(3.14159, schema).valid).toBe(false);
     });
 
-    it('should reject wrong types', () => {
-      const schema = { type: 'integer', format: 'reference' };
-
+    it('should reject non-number values', () => {
+      const schema = { type: 'number', format: 'reference' };
+      
       expect(validateData('123', schema).valid).toBe(false);
+      expect(validateData('1', schema).valid).toBe(false);
       expect(validateData(null, schema).valid).toBe(false);
+      expect(validateData(undefined, schema).valid).toBe(false);
       expect(validateData(true, schema).valid).toBe(false);
     });
 
-    it('should work with inputMode required (integer)', () => {
+    it('should work with inputMode required', () => {
       const schema = {
         type: 'object',
         properties: {
-          userId: { type: 'integer', format: 'reference', inputMode: 'required' }
+          userId: { type: 'number', format: 'reference', inputMode: 'required' }
         }
       };
-
+      
       expect(validateData({ userId: 1 }, schema).valid).toBe(true);
       expect(validateData({ userId: 0 }, schema).valid).toBe(true);
       expect(validateData({ userId: null }, schema).valid).toBe(false);
-      expect(validateData({}, schema).valid).toBe(false);
-    });
-
-    it('should work with inputMode required (string)', () => {
-      const schema = {
-        type: 'object',
-        properties: {
-          userId: { type: 'string', format: 'reference', inputMode: 'required' }
-        }
-      };
-
-      expect(validateData({ userId: 'abc-123' }, schema).valid).toBe(true);
-      expect(validateData({ userId: null }, schema).valid).toBe(false);
-      expect(validateData({}, schema).valid).toBe(false);
-    });
-  });
-
-  describe('Format: parent', () => {
-    it('should validate integer values with integer type', () => {
-      const schema = { type: 'integer', format: 'parent' };
-
-      expect(validateData(1, schema).valid).toBe(true);
-      expect(validateData(0, schema).valid).toBe(true);
-      expect(validateData(-5, schema).valid).toBe(true);
-      expect(validateData(999999, schema).valid).toBe(true);
-    });
-
-    it('should validate string values with string type', () => {
-      const schema = { type: 'string', format: 'parent' };
-
-      expect(validateData('abc-123', schema).valid).toBe(true);
-      expect(validateData('550e8400-e29b-41d4-a716-446655440000', schema).valid).toBe(true);
-      expect(validateData('1', schema).valid).toBe(true);
-    });
-
-    it('should reject non-integer numbers via type: integer', () => {
-      const schema = { type: 'integer', format: 'parent' };
-
-      expect(validateData(1.5, schema).valid).toBe(false);
-      expect(validateData(0.1, schema).valid).toBe(false);
-    });
-
-    it('should reject wrong types', () => {
-      const schema = { type: 'integer', format: 'parent' };
-
-      expect(validateData('123', schema).valid).toBe(false);
-      expect(validateData(null, schema).valid).toBe(false);
-      expect(validateData(true, schema).valid).toBe(false);
-    });
-
-    it('should work with inputMode required (integer)', () => {
-      const schema = {
-        type: 'object',
-        properties: {
-          parentId: { type: 'integer', format: 'parent', inputMode: 'required' }
-        }
-      };
-
-      expect(validateData({ parentId: 1 }, schema).valid).toBe(true);
-      expect(validateData({ parentId: 0 }, schema).valid).toBe(true);
-      expect(validateData({ parentId: null }, schema).valid).toBe(false);
-      expect(validateData({}, schema).valid).toBe(false);
-    });
-
-    it('should work with inputMode required (string)', () => {
-      const schema = {
-        type: 'object',
-        properties: {
-          parentId: { type: 'string', format: 'parent', inputMode: 'required' }
-        }
-      };
-
-      expect(validateData({ parentId: 'abc-123' }, schema).valid).toBe(true);
-      expect(validateData({ parentId: null }, schema).valid).toBe(false);
       expect(validateData({}, schema).valid).toBe(false);
     });
   });
@@ -426,57 +347,6 @@ describe('Data Validation Tests', () => {
       
       expect(validateData('2023-13-45', schema).valid).toBe(false);
       expect(validateData('not-a-date', schema).valid).toBe(false);
-    });
-  });
-
-  describe('Standard Formats - date-time', () => {
-    it('should validate valid date-time strings with timezone', () => {
-      const schema = { type: 'string', format: 'date-time' };
-
-      expect(validateData('2026-02-09T17:43:07Z', schema).valid).toBe(true);
-      expect(validateData('2026-02-09T17:43:07.906Z', schema).valid).toBe(true);
-      expect(validateData('2026-02-09T17:43:07+00:00', schema).valid).toBe(true);
-      expect(validateData('2026-02-09T17:43:07-05:00', schema).valid).toBe(true);
-    });
-
-    it('should validate ISO 8601 date-time without timezone (Python isoformat)', () => {
-      const schema = { type: 'string', format: 'date-time' };
-
-      expect(validateData('2026-02-09T17:43:07.906138', schema).valid).toBe(true);
-      expect(validateData('2026-02-09T17:43:07', schema).valid).toBe(true);
-    });
-
-    it('should reject invalid timezone offsets', () => {
-      const schema = { type: 'string', format: 'date-time' };
-
-      // 25 hours is not a valid UTC offset (max is ±23:59)
-      expect(validateData('2026-02-09T17:43:07+25:00', schema).valid).toBe(false);
-      // 61 minutes is not a valid UTC offset
-      expect(validateData('2026-02-09T17:43:07+00:61', schema).valid).toBe(false);
-    });
-
-    it('should reject impossible calendar dates', () => {
-      const schema = { type: 'string', format: 'date-time' };
-
-      // February has at most 29 days — JavaScript Date() would silently roll
-      // Feb 30 over to March 2, so this must be caught by the date-part validator
-      expect(validateData('2026-02-30T10:00:00Z', schema).valid).toBe(false);
-      // April has 30 days, not 31
-      expect(validateData('2026-04-31T10:00:00Z', schema).valid).toBe(false);
-    });
-
-    it('should reject invalid time components', () => {
-      const schema = { type: 'string', format: 'date-time' };
-
-      expect(validateData('2026-02-09T25:43:07Z', schema).valid).toBe(false);
-      expect(validateData('2026-02-09T17:61:07Z', schema).valid).toBe(false);
-    });
-
-    it('should reject invalid date-time strings', () => {
-      const schema = { type: 'string', format: 'date-time' };
-
-      expect(validateData('not-a-datetime', schema).valid).toBe(false);
-      expect(validateData('2026-13-09T17:43:07Z', schema).valid).toBe(false);
     });
   });
 

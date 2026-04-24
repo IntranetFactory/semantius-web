@@ -1,5 +1,5 @@
 import { useForm } from '@tanstack/react-form'
-import { validateData, getDefaultWidthForForm } from 'sem-schema'
+import { validateData } from 'sem-schema'
 import { controls } from './controls'
 import { Button } from '@/components/ui/button'
 import type { SchemaObject } from 'ajv'
@@ -112,6 +112,25 @@ function validateField(value: any, fieldSchema: SchemaObject, fieldName: string)
   return undefined
 }
 
+
+/**
+ * Maps a field's format/type to its default display width for form renderers.
+ *
+ * - text, json, html, jsonata → 'w' (wide)
+ * - number, integer (without a format) → 's' (small)
+ * - everything else → 'm' (medium)
+ *
+ * Format takes priority over type — e.g. a number with format "reference" gets 'm', not 's'.
+ */
+function getDefaultWidthForForm(format?: string, type?: string): 's' | 'm' | 'w' {
+  if (format === 'text' || format === 'json' || format === 'html' || format === 'jsonata') {
+    return 'w'
+  }
+  if (!format && (type === 'number' || type === 'integer')) {
+    return 's'
+  }
+  return 'm'
+}
 
 /**
  * Map a width value to CSS grid column class names

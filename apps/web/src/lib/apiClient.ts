@@ -187,15 +187,15 @@ export async function callRpc<TResult = unknown, TParams = Record<string, unknow
  * a select clause that includes embedded resources using PostgREST's resource embedding.
  * 
  * For example, if a 'category_id' field references 'product_categories' table,
- * the select will include: category_id,category_id_label:product_categories!category_id(category_name)
+ * the select will include: category_id,category_id_label:category_id(category_name)
  * This creates a separate field with _label suffix containing the referenced label value.
- * 
+ *
  * @param metadata - Entity metadata containing schema with reference field information
- * @returns PostgREST select parameter string (e.g., "id,name,category_id,category_id_label:product_categories!category_id(category_name)")
- * 
+ * @returns PostgREST select parameter string (e.g., "id,name,category_id,category_id_label:category_id(category_name)")
+ *
  * @example
  * const select = buildPostgRESTSelect(productMetadata)
- * // Returns: "id,product_name,sku,description,price,quantity_in_stock,category_id,category_id_label:product_categories!category_id(category_name),is_discontinued,created_at,updated_at"
+ * // Returns: "id,product_name,sku,description,price,quantity_in_stock,category_id,category_id_label:category_id(category_name),is_discontinued,created_at,updated_at"
  */
 export function buildPostgRESTSelect(metadata: EntityMetadata): string {
   const selects: string[] = []
@@ -209,11 +209,12 @@ export function buildPostgRESTSelect(metadata: EntityMetadata): string {
     // Always include the field itself (the ID)
     selects.push(fieldName)
     
-    // If field has a foreign key reference, add aliased embedded resource
-    // Using PostgREST aliasing: field_name_label:table!foreign_key(label_column)
-    // This allows multiple references to the same table and makes sorting easier
+    // If field has a foreign key reference, add aliased embedded resource.
+    // Use PostgREST's FK-column embed form: alias:fk_column(label_column).
+    // Embedding by FK column (rather than table!fk hint) disambiguates
+    // self-joins and multiple FKs to the same table without PGRST201.
     if (property.reference_table && property.reference_table_label_column) {
-      selects.push(`${fieldName}_label:${property.reference_table}!${fieldName}(${property.reference_table_label_column})`)
+      selects.push(`${fieldName}_label:${fieldName}(${property.reference_table_label_column})`)
     }
   }
   

@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { type EntityMetadata, type TableMetadata } from '@/types/metadata'
-import { getDefaultWidthForGrid } from 'sem-schema'
 import { cn } from '@/lib/utils'
 import { useTable } from '@/hooks/useTable'
 import { useConfirmDelete } from '@/hooks/useConfirmDelete'
@@ -77,11 +76,23 @@ function getFilterVariant(property: {
   return FILTER_VARIANTS.TEXT
 }
 
+// Default display width for a property in the grid.
+// - boolean → 's' (fits a toggle/checkbox column)
+// - text, json, html, jsonata → 'w' (wide)
+// - number, integer (without a format) → 's'
+// - everything else → 'm'
+function getDefaultWidthForGrid(format?: string, type?: string): 's' | 'm' | 'w' {
+  if (type === 'boolean') return 's'
+  if (format === 'text' || format === 'json' || format === 'html' || format === 'jsonata') return 'w'
+  if (!format && (type === 'number' || type === 'integer')) return 's'
+  return 'm'
+}
+
 // Returns the width bucket ('s' | 'm' | 'w') for a metadata property.
 // Explicit property.width takes precedence; falls back to getDefaultWidthForGrid.
 function getWidthBucket(property: { width?: string; format?: string; type?: string | string[] }): 's' | 'm' | 'w' {
   if (property.width === 's' || property.width === 'm' || property.width === 'w') return property.width
-  return getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type) as 's' | 'm' | 'w'
+  return getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type)
 }
 
 // Convert one ExtendedColumnFilter to one or more PostgREST AND query parameters.

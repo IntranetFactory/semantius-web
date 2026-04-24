@@ -48,15 +48,7 @@ export function InputReference({
     idUrl = `/${table}?${idCol}=eq.\${id}`;
   }
 
-  console.log('InputReference derived props', {
-    fieldType,
-    searchUrl,
-    idUrl,
-    getRecords,
-    getRecordId,
-    renderItem,
-    placeholder
-  })
+  // console.log('InputReference derived props', {     fieldType,    searchUrl,   idUrl,    getRecords,    getRecordId,    renderItem,    placeholder  })
 
   // Convert the numeric form value to a string for APISelect, and back on change
   const isNumeric = fieldType === 'integer' || fieldType === 'number'
