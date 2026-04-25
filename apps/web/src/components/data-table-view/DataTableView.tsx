@@ -368,7 +368,7 @@ export function DataTableView({
     // Global search box → wfts (full-text search) on search_vector column
     const trimmedSearch = searchText.trim()
     if (trimmedSearch) {
-      params.push(`search_vector=wfts.${encodeURIComponent(trimmedSearch)}`)
+      params.push(`search_vector=wfts(simple).${encodeURIComponent(trimmedSearch)}`)
     }
 
     return params.join('&')

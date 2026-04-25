@@ -39,7 +39,7 @@ export function InputReference({
     const table = schema.reference_table;
     const idCol = schema.reference_table_id_column || 'id';
     const labelCol = schema.reference_table_label_column || 'label';
-    searchUrl = `/${table}?select=${idCol},${labelCol}&limit=21&offset=0&order=${idCol}.desc&search_vector=wfts.\${query}`;
+    searchUrl = `/${table}?select=${idCol},${labelCol}&limit=21&offset=0&order=${idCol}.desc&search_vector=wfts(simple).\${query}`;
   }
 
   if (!idUrl && schema?.reference_table) {
