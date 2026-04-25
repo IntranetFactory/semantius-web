@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/semantius-logo-square.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Semantius UI - System of Records</title>
+    <title>Semantius</title>
     <style>
       /* Initial loading spinner — hidden once the app signals readiness */
       #app-loader {
@@ -16,7 +16,9 @@
         z-index: 9999;
         background: white;
       }
-      #app-loader[hidden] { display: none; }
+      #app-loader[hidden] {
+        display: none;
+      }
       .app-loader-inner {
         display: flex;
         flex-direction: column;
@@ -35,7 +37,9 @@
         animation: app-spin 0.6s linear infinite;
       }
       @keyframes app-spin {
-        to { transform: rotate(360deg); }
+        to {
+          transform: rotate(360deg);
+        }
       }
     </style>
   </head>
