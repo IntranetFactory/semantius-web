@@ -214,10 +214,20 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
         validationSchema = { ...schema, required: filteredRequired }
       }
       
+      // For AJV validation, omit null/undefined for non-required fields.
+      // AJV rejects null for type:'string' (produces "must be string"), but null is
+      // a valid cleared value for optional fields — treat absent == valid here.
+      const requiredFields = new Set<string>(Array.isArray(validationSchema.required) ? validationSchema.required : [])
+      const validationValue = Object.fromEntries(
+        Object.entries(cleanedValue).filter(([key, val]) =>
+          requiredFields.has(key) || (val !== null && val !== undefined)
+        )
+      )
+
       // Validate the entire form
       let result
       try {
-        result = validateData(cleanedValue, validationSchema)
+        result = validateData(validationValue, validationSchema)
       } catch (error) {
         // Schema validation error (invalid schema structure)
         const errorMessage = error instanceof Error ? error.message : 'Invalid schema'
