@@ -111,6 +111,11 @@ export async function initConfig(): Promise<AppConfig> {
     try {
       const res = await fetch(url)
       if (!res.ok) {
+        if (res.status === 404 && tenantName === 'www') {
+          window.location.replace('https://www.semantius.com')
+          _config = fallback
+          return _config
+        }
         _configError = `Tenant lookup failed: ${res.status} ${res.statusText} (${url})`
         _config = fallback
         return _config
