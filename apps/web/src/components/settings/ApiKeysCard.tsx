@@ -110,7 +110,7 @@ export function ApiKeysCard() {
               }}
             >
               <Plus className="h-4 w-4" />
-              Add new api key
+              Add new API key
             </Button>
           </div>
           <CardDescription>
