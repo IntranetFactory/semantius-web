@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { useQueryClient } from '@tanstack/react-query'
 import { Key, Plus, Trash2, Copy, Check, Loader2 } from 'lucide-react'
 import { useRpc, useRpcMutation } from '@/hooks/useRpc'
+import { getConfig } from '@/lib/config'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -74,7 +75,10 @@ export function ApiKeysCard() {
   const [showNewKeyDialog, setShowNewKeyDialog] = useState(false)
   const [newApiKey, setNewApiKey] = useState('')
   const [copied, setCopied] = useState(false)
+  const [copiedEnv, setCopiedEnv] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<ApiKey | null>(null)
+
+  const orgName = getConfig().tenantName ?? ''
 
   const handleCreate = () => {
     if (!keyName.trim()) return
@@ -219,23 +223,37 @@ export function ApiKeysCard() {
           setShowNewKeyDialog(open)
         }}
       >
-        <DialogContent>
+        <DialogContent className="sm:max-w-2xl">
           <DialogHeader>
             <DialogTitle>API Key Created</DialogTitle>
             <DialogDescription>
               Copy your API key now. You won't be able to see it again.
             </DialogDescription>
           </DialogHeader>
-          <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-md bg-muted p-3 font-mono text-sm break-all">
+          <div className="relative">
+            <code className="block w-full rounded-md bg-muted p-3 pr-12 font-mono text-sm break-all">
               {newApiKey}
             </code>
-            <Button variant="outline" size="icon" onClick={handleCopy}>
-              {copied ? (
-                <Check className="h-4 w-4 text-green-600" />
-              ) : (
-                <Copy className="h-4 w-4" />
-              )}
+            <Button variant="ghost" size="icon" className="absolute right-1 top-1" onClick={handleCopy}>
+              {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">Semantius CLI configuration</p>
+          <div className="relative">
+            <code className="block w-full rounded-md bg-muted p-3 pr-12 font-mono text-sm whitespace-pre">
+              {`SEMANTIUS_API_KEY=${newApiKey}\nSEMANTIUS_ORG=${orgName}`}
+            </code>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-1 top-1"
+              onClick={async () => {
+                await navigator.clipboard.writeText(`SEMANTIUS_API_KEY=${newApiKey}\nSEMANTIUS_ORG=${orgName}`)
+                setCopiedEnv(true)
+                setTimeout(() => setCopiedEnv(false), 2000)
+              }}
+            >
+              {copiedEnv ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
             </Button>
           </div>
           <DialogFooter>
