@@ -8,6 +8,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { ApiKeysCard } from '@/components/settings/ApiKeysCard'
 
 export const Route = createFileRoute('/_app/settings')({
   component: SettingsComponent,
@@ -38,6 +39,8 @@ function SettingsComponent() {
           </CardDescription>
         </CardContent>
       </Card>
+
+      <ApiKeysCard />
 
       <Card>
         <CardHeader>
