@@ -30,7 +30,7 @@ import {
 } from '@/components/ui/alert-dialog'
 
 interface ApiKey {
-  key_id: number
+  key_id: string
   description: string
   created_at: string
   last_used_at: string | null
@@ -50,7 +50,7 @@ export function ApiKeysCard() {
   })
 
   // Create API key mutation
-  const createMutation = useRpcMutation<CreateApiKeyResult, { p_description: string }>('create_api_key', {
+  const createMutation = useRpcMutation<CreateApiKeyResult, { p_user_id: number; p_description: string }>('generate_api_key', {
     onSuccess: (data) => {
       setNewApiKey(data.api_key)
       setShowNewKeyDialog(true)
@@ -61,7 +61,7 @@ export function ApiKeysCard() {
   })
 
   // Revoke API key mutation
-  const revokeMutation = useRpcMutation<unknown, { p_key_id: number }>('revoke_api_key', {
+  const revokeMutation = useRpcMutation<unknown, { p_key_id: string }>('delete_api_key', {
     onSuccess: () => {
       setDeleteTarget(null)
       queryClient.invalidateQueries({ queryKey: ['rpc', 'list_api_keys'] })
@@ -78,7 +78,7 @@ export function ApiKeysCard() {
 
   const handleCreate = () => {
     if (!keyName.trim()) return
-    createMutation.mutate({ p_description: keyName.trim() })
+    createMutation.mutate({ p_user_id: 0, p_description: keyName.trim() })
   }
 
   const handleCopy = async () => {
@@ -128,6 +128,7 @@ export function ApiKeysCard() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="px-4 py-2 text-left font-medium">Name</th>
+                    <th className="px-4 py-2 text-left font-medium">Key</th>
                     <th className="px-4 py-2 text-left font-medium">Created</th>
                     <th className="px-4 py-2 text-left font-medium">Last Used</th>
                     <th className="px-4 py-2 text-right font-medium">Actions</th>
@@ -137,6 +138,7 @@ export function ApiKeysCard() {
                   {apiKeys.map((key) => (
                     <tr key={key.key_id} className="border-b last:border-0">
                       <td className="px-4 py-2">{key.description}</td>
+                      <td className="px-4 py-2 font-mono text-sm text-muted-foreground">{key.key_id}-...</td>
                       <td className="px-4 py-2 text-muted-foreground">
                         {new Date(key.created_at).toLocaleDateString()}
                       </td>
@@ -225,7 +227,7 @@ export function ApiKeysCard() {
             </DialogDescription>
           </DialogHeader>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-md bg-muted p-3 font-mono text-xs break-all">
+            <code className="flex-1 rounded-md bg-muted p-3 font-mono text-sm break-all">
               {newApiKey}
             </code>
             <Button variant="outline" size="icon" onClick={handleCopy}>
