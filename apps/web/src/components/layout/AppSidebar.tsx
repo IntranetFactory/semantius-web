@@ -116,11 +116,11 @@ const staticData = {
 
 export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   const { userInfo, rpcUserInfo } = useAuth()
-  
+
   // Track the currently selected module
   const [selectedModuleId, setSelectedModuleId] = React.useState<number | null>(null)
   const [selectedModuleSlug, setSelectedModuleSlug] = React.useState<string | null>(null)
-  
+
   // Callback to handle module changes from ModuleSwitcher
   const handleModuleChange = React.useCallback((moduleId: number | null, moduleSlug: string | null) => {
     setSelectedModuleId(moduleId)
@@ -145,12 +145,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       if (!module.view_permission && !module.edit_permission) {
         return true
       }
-      
+
       // Collect non-empty permissions to check
       const permissionsToCheck: string[] = []
       if (module.view_permission) permissionsToCheck.push(module.view_permission)
       if (module.edit_permission) permissionsToCheck.push(module.edit_permission)
-      
+
       // User must have at least one of view or edit permission
       return permissionsToCheck.some(permission => userPermissions.includes(permission))
     })

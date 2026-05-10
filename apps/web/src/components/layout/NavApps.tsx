@@ -38,7 +38,7 @@ export function NavApps({
   const { isMobile } = useSidebar()
   const matchRoute = useMatchRoute()
   const navigate = useNavigate()
-  
+
   // Fetch tables filtered by module_id
   // Only fetch when we have a valid module_id
   // Note: tables table doesn't have table_id, primary key is likely id
@@ -87,13 +87,13 @@ export function NavApps({
           const tableName = String(table.table_name || '')
           const label = String(table.plural_label || table.singular_label || tableName)
           const url = `/${moduleSlug || ''}/${tableName}`
-          
+
           // Check if this link matches the current route
           const isActive = !!matchRoute({ to: url, fuzzy: true })
-          
+
           return (
             <SidebarMenuItem key={tableName}>
-              <SidebarMenuButton 
+              <SidebarMenuButton
                 isActive={isActive}
                 onClick={(e) => {
                   e.preventDefault()

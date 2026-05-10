@@ -49,9 +49,9 @@ export function EntityBreadcrumb({
     const label = found
       ? getModuleDisplay(found).displayName
       : moduleId
-          .split('-')
-          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-          .join(' ')
+        .split('-')
+        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ')
     const homePath = found?.home_page || `/${moduleId}`
     return { moduleLabel: label, moduleHomePath: homePath }
   }, [moduleId, rpcUserInfo?.modules])
