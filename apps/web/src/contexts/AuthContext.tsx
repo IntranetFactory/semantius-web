@@ -29,9 +29,34 @@ export interface Module {
   updated_at: string
   description: string
   module_name: string
+  module_slug: string
   view_permission: string
   edit_permission: string
   dashboard_config: import('drizzle-cube/client').DashboardConfig | null
+}
+
+/**
+ * Compute display name and title for a module.
+ * - DisplayName is initialized from module_name, DisplayTitle from description.
+ * - If module_name starts with '_': DisplayName = description, DisplayTitle = ""
+ * - If description starts with module_name: DisplayName = description, DisplayTitle = ""
+ */
+export function getModuleDisplay(module: Module): { displayName: string; displayTitle: string } {
+  const name = module.module_name
+  const desc = module.description || ''
+
+  // Rule a: module name starts with underscore — use description as display name
+  if (name.startsWith('_')) {
+    return { displayName: desc || name, displayTitle: '' }
+  }
+
+  // Rule b: description starts with module name — promote description to display name
+  if (desc.startsWith(name)) {
+    return { displayName: desc, displayTitle: '' }
+  }
+
+  // Default: name on top, description below
+  return { displayName: name, displayTitle: desc }
 }
 
 export interface RpcUserInfo {

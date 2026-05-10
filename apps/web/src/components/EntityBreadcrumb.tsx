@@ -9,6 +9,7 @@ import {
   BreadcrumbSeparator,
 } from '@/components/ui/breadcrumb'
 import { useAuth } from '@/hooks/useAuth'
+import { getModuleDisplay } from '@/contexts/AuthContext'
 
 interface EntityBreadcrumbProps {
   /** Module name (first URL segment, e.g. "crm") */
@@ -41,23 +42,16 @@ export function EntityBreadcrumb({
 }: EntityBreadcrumbProps) {
   const { rpcUserInfo } = useAuth()
 
-  // Look up the actual module name (e.g. "CRM") and home page from user's module list
+  // Look up the module by slug and use displayName for breadcrumb label
   const { moduleLabel, moduleHomePath } = useMemo(() => {
     const moduleIdLower = moduleId.toLowerCase()
-    const found = rpcUserInfo?.modules?.find((m) => {
-      const nameLower = m.module_name.toLowerCase()
-      const aliasLower = m.alias?.toLowerCase()
-      return (
-        nameLower === moduleIdLower ||
-        (aliasLower && aliasLower.trim() !== '' && aliasLower === moduleIdLower)
-      )
-    })
-    const label =
-      found?.module_name ||
-      moduleId
-        .split('-')
-        .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ')
+    const found = rpcUserInfo?.modules?.find((m) => m.module_slug.toLowerCase() === moduleIdLower)
+    const label = found
+      ? getModuleDisplay(found).displayName
+      : moduleId
+          .split('-')
+          .map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ')
     const homePath = found?.home_page || `/${moduleId}`
     return { moduleLabel: label, moduleHomePath: homePath }
   }, [moduleId, rpcUserInfo?.modules])

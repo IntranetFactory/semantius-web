@@ -21,6 +21,7 @@ import {
   SidebarRail,
 } from '@/components/ui/sidebar'
 import { useAuth } from '@/hooks/useAuth'
+import { getModuleDisplay } from '@/contexts/AuthContext'
 
 // This is sample data.
 const staticData = {
@@ -118,12 +119,12 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
   
   // Track the currently selected module
   const [selectedModuleId, setSelectedModuleId] = React.useState<number | null>(null)
-  const [selectedModuleName, setSelectedModuleName] = React.useState<string | null>(null)
+  const [selectedModuleSlug, setSelectedModuleSlug] = React.useState<string | null>(null)
   
   // Callback to handle module changes from ModuleSwitcher
-  const handleModuleChange = React.useCallback((moduleId: number | null, moduleName: string | null) => {
+  const handleModuleChange = React.useCallback((moduleId: number | null, moduleSlug: string | null) => {
     setSelectedModuleId(moduleId)
-    setSelectedModuleName(moduleName)
+    setSelectedModuleSlug(moduleSlug)
   }, [])
 
   // Create user data from authenticated user info
@@ -153,15 +154,21 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       // User must have at least one of view or edit permission
       return permissionsToCheck.some(permission => userPermissions.includes(permission))
     })
-    .map((module) => ({
-      name: module.module_name,
-      alias: module.alias, // Pass alias for URL matching
-      logo: module.logo_url || GalleryVerticalEnd,
-      plan: module.description,
-      logoColor: module.logo_color || '#0000FF',
-      id: module.id,
-      home_page: module.home_page, // Pass home_page for navigation
-    })) || [] 
+    .map((module) => {
+      const { displayName, displayTitle } = getModuleDisplay(module)
+      return {
+        name: module.module_name,
+        displayName,
+        displayTitle,
+        slug: module.module_slug,
+        alias: module.alias,
+        logo: module.logo_url || GalleryVerticalEnd,
+        plan: module.description,
+        logoColor: module.logo_color || '#0000FF',
+        id: module.id,
+        home_page: module.home_page,
+      }
+    }) || []
 
   return (
     <Sidebar collapsible="icon" {...props}>
@@ -169,7 +176,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
         <ModuleSwitcher modules={dynamicModules} onModuleChange={handleModuleChange} />
       </SidebarHeader>
       <SidebarContent>
-        <NavApps moduleId={selectedModuleId} moduleName={selectedModuleName} />
+        <NavApps moduleId={selectedModuleId} moduleSlug={selectedModuleSlug} />
         {/* <NavMain items={staticData.navMain} /> */}
       </SidebarContent>
       <SidebarFooter>

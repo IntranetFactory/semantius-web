@@ -10,6 +10,7 @@ import { NotFoundPage } from '@/components/NotFoundPage'
 import { useUpdateRecord } from '@/hooks/useTableMutations'
 import { useTable } from '@/hooks/useTable'
 import { getConfig } from '@/lib/config'
+import { getModuleDisplay } from '@/contexts/AuthContext'
 
 export const Route = createFileRoute('/_app/$moduleId/')({
   validateSearch: () => ({}),
@@ -27,13 +28,13 @@ function ModuleHomeComponent() {
     : undefined
 
   const module = rpcUserInfo?.modules?.find(
-    (m) => m.module_name.toLowerCase() === moduleId.toLowerCase()
+    (m) => m.module_slug.toLowerCase() === moduleId.toLowerCase()
   )
 
   const { data: moduleConfigData, isLoading: isDashboardConfigLoading } = useTable<{ id: number; dashboard_config: DashboardConfig | null }>(
     'modules',
     {
-      query: `module_name=ilike.${encodeURIComponent(moduleId)}&select=id,dashboard_config`,
+      query: `module_slug=ilike.${encodeURIComponent(moduleId)}&select=id,dashboard_config`,
       enabled: !!module,
     }
   )
@@ -60,6 +61,8 @@ function ModuleHomeComponent() {
     return <NotFoundPage />
   }
 
+  const { displayName, displayTitle } = getModuleDisplay(module)
+
   const moduleHeader = (
     <div className="flex items-center gap-4">
       <div
@@ -67,15 +70,15 @@ function ModuleHomeComponent() {
         style={module.logo_color ? { backgroundColor: module.logo_color } : { backgroundColor: '#0000FF' }}
       >
         {module.logo_url ? (
-          <img src={module.logo_url} alt={module.module_name} className="size-full object-cover" />
+          <img src={module.logo_url} alt={displayName} className="size-full object-cover" />
         ) : (
           <GalleryVerticalEnd className="size-7 text-white" />
         )}
       </div>
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">{module.module_name}</h1>
-        {module.description && (
-          <p className="text-muted-foreground mt-1">{module.description}</p>
+        <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>
+        {displayTitle && (
+          <p className="text-muted-foreground mt-1">{displayTitle}</p>
         )}
       </div>
     </div>

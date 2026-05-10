@@ -20,7 +20,6 @@ import { Route as AppRouteImport } from './routes/_app'
 import { Route as AppIndexRouteImport } from './routes/_app.index'
 import { Route as AppXcustomersRouteImport } from './routes/_app.xcustomers'
 import { Route as AppSettingsRouteImport } from './routes/_app.settings'
-import { Route as AppModulesRouteImport } from './routes/_app.modules'
 import { Route as AppDocumentsRouteImport } from './routes/_app.documents'
 import { Route as AppModuleIdRouteImport } from './routes/_app.$moduleId'
 import { Route as AppModuleIdIndexRouteImport } from './routes/_app.$moduleId.index'
@@ -80,11 +79,6 @@ const AppXcustomersRoute = AppXcustomersRouteImport.update({
 const AppSettingsRoute = AppSettingsRouteImport.update({
   id: '/settings',
   path: '/settings',
-  getParentRoute: () => AppRoute,
-} as any)
-const AppModulesRoute = AppModulesRouteImport.update({
-  id: '/modules',
-  path: '/modules',
   getParentRoute: () => AppRoute,
 } as any)
 const AppDocumentsRoute = AppDocumentsRouteImport.update({
@@ -160,7 +154,6 @@ export interface FileRoutesByFullPath {
   '/oauth2_callback': typeof Oauth2_callbackRoute
   '/$moduleId': typeof AppModuleIdRouteWithChildren
   '/documents': typeof AppDocumentsRoute
-  '/modules': typeof AppModulesRoute
   '/settings': typeof AppSettingsRoute
   '/xcustomers': typeof AppXcustomersRouteWithChildren
   '/$moduleId/$table_name': typeof AppModuleIdTable_nameRouteWithChildren
@@ -180,7 +173,6 @@ export interface FileRoutesByTo {
   '/logout-success': typeof LogoutSuccessRoute
   '/oauth2_callback': typeof Oauth2_callbackRoute
   '/documents': typeof AppDocumentsRoute
-  '/modules': typeof AppModulesRoute
   '/settings': typeof AppSettingsRoute
   '/xcustomers': typeof AppXcustomersRouteWithChildren
   '/': typeof AppIndexRoute
@@ -204,7 +196,6 @@ export interface FileRoutesById {
   '/oauth2_callback': typeof Oauth2_callbackRoute
   '/_app/$moduleId': typeof AppModuleIdRouteWithChildren
   '/_app/documents': typeof AppDocumentsRoute
-  '/_app/modules': typeof AppModulesRoute
   '/_app/settings': typeof AppSettingsRoute
   '/_app/xcustomers': typeof AppXcustomersRouteWithChildren
   '/_app/': typeof AppIndexRoute
@@ -229,7 +220,6 @@ export interface FileRouteTypes {
     | '/oauth2_callback'
     | '/$moduleId'
     | '/documents'
-    | '/modules'
     | '/settings'
     | '/xcustomers'
     | '/$moduleId/$table_name'
@@ -249,7 +239,6 @@ export interface FileRouteTypes {
     | '/logout-success'
     | '/oauth2_callback'
     | '/documents'
-    | '/modules'
     | '/settings'
     | '/xcustomers'
     | '/'
@@ -272,7 +261,6 @@ export interface FileRouteTypes {
     | '/oauth2_callback'
     | '/_app/$moduleId'
     | '/_app/documents'
-    | '/_app/modules'
     | '/_app/settings'
     | '/_app/xcustomers'
     | '/_app/'
@@ -359,13 +347,6 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof AppSettingsRouteImport
-      parentRoute: typeof AppRoute
-    }
-    '/_app/modules': {
-      id: '/_app/modules'
-      path: '/modules'
-      fullPath: '/modules'
-      preLoaderRoute: typeof AppModulesRouteImport
       parentRoute: typeof AppRoute
     }
     '/_app/documents': {
@@ -531,7 +512,6 @@ const AppCrmHomeLazyRouteWithChildren = AppCrmHomeLazyRoute._addFileChildren(
 interface AppRouteChildren {
   AppModuleIdRoute: typeof AppModuleIdRouteWithChildren
   AppDocumentsRoute: typeof AppDocumentsRoute
-  AppModulesRoute: typeof AppModulesRoute
   AppSettingsRoute: typeof AppSettingsRoute
   AppXcustomersRoute: typeof AppXcustomersRouteWithChildren
   AppIndexRoute: typeof AppIndexRoute
@@ -541,7 +521,6 @@ interface AppRouteChildren {
 const AppRouteChildren: AppRouteChildren = {
   AppModuleIdRoute: AppModuleIdRouteWithChildren,
   AppDocumentsRoute: AppDocumentsRoute,
-  AppModulesRoute: AppModulesRoute,
   AppSettingsRoute: AppSettingsRoute,
   AppXcustomersRoute: AppXcustomersRouteWithChildren,
   AppIndexRoute: AppIndexRoute,

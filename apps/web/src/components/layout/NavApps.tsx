@@ -30,10 +30,10 @@ import {
 // Component that fetches and displays tables for the currently selected module
 export function NavApps({
   moduleId,
-  moduleName,
+  moduleSlug,
 }: {
   moduleId: number | null
-  moduleName: string | null
+  moduleSlug: string | null
 }) {
   const { isMobile } = useSidebar()
   const matchRoute = useMatchRoute()
@@ -86,8 +86,7 @@ export function NavApps({
         {tables.map((table) => {
           const tableName = String(table.table_name || '')
           const label = String(table.plural_label || table.singular_label || tableName)
-          const lowercasedModuleName = (moduleName || '').toLowerCase()
-          const url = `/${lowercasedModuleName}/${tableName}`
+          const url = `/${moduleSlug || ''}/${tableName}`
           
           // Check if this link matches the current route
           const isActive = !!matchRoute({ to: url, fuzzy: true })

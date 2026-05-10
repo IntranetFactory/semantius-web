@@ -10,6 +10,7 @@ import {
 import { useAuth } from '@/hooks/useAuth'
 import { useModuleNavigate } from '@/hooks/useModuleNavigate'
 import { ApiErrorDisplay } from '@/components/ApiErrorDisplay'
+import { getModuleDisplay } from '@/contexts/AuthContext'
 
 export const Route = createFileRoute('/_app/')({
   component: IndexComponent,
@@ -44,6 +45,7 @@ function IndexComponent() {
       homePage: module.home_page,
       moduleId: module.id,
       moduleName: module.module_name,
+      moduleSlug: module.module_slug,
     })
   }
 
@@ -82,7 +84,9 @@ function IndexComponent() {
         </Card>
       ) : (
         <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {modules.map((module) => (
+          {modules.map((module) => {
+            const { displayName, displayTitle } = getModuleDisplay(module)
+            return (
             <Card
               key={module.id}
               className="group cursor-pointer transition-all hover:shadow-lg hover:scale-[1.02] p-6"
@@ -94,22 +98,25 @@ function IndexComponent() {
                   style={module.logo_color ? { backgroundColor: module.logo_color } : { backgroundColor: '#0000FF' }}
                 >
                   {module.logo_url ? (
-                    <img src={module.logo_url} alt={module.module_name} className="size-full object-cover" />
+                    <img src={module.logo_url} alt={displayName} className="size-full object-cover" />
                   ) : (
                     <GalleryVerticalEnd className="size-7 text-white" />
                   )}
                 </div>
                 <div className="flex-1 space-y-1.5">
                   <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">
-                    {module.module_name}
+                    {displayName}
                   </CardTitle>
-                  <CardDescription className="text-sm text-muted-foreground line-clamp-2">
-                    {module.description || 'No description available'}
-                  </CardDescription>
+                  {displayTitle && (
+                    <CardDescription className="text-sm text-muted-foreground line-clamp-2">
+                      {displayTitle}
+                    </CardDescription>
+                  )}
                 </div>
               </div>
             </Card>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

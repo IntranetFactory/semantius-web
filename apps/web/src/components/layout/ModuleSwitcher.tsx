@@ -27,6 +27,9 @@ export function ModuleSwitcher({
 }: {
   modules: {
     name: string
+    displayName: string
+    displayTitle: string
+    slug: string
     alias?: string
     logo: React.ElementType | string | null
     plan: string
@@ -34,7 +37,7 @@ export function ModuleSwitcher({
     id?: number
     home_page?: string
   }[]
-  onModuleChange?: (moduleId: number | null, moduleName: string | null) => void
+  onModuleChange?: (moduleId: number | null, moduleSlug: string | null) => void
 }) {
   const params = useParams({ strict: false })
   const { moduleId } = params as { moduleId?: string; table_name?: string; key?: string }
@@ -50,20 +53,16 @@ export function ModuleSwitcher({
       homePage: module.home_page,
       moduleId: module.id,
       moduleName: module.name,
+      moduleSlug: module.slug,
     })
   }, [navigateToModule])
 
-  // Update active module when URL changes (moduleId from params)
+  // Update active module when URL changes (moduleId from params matches slug)
   React.useEffect(() => {
     if (moduleId && modules.length > 0) {
-      // Find module by matching the lowercased name or alias (when not empty)
+      // Find module by matching the slug
       const moduleIdLower = moduleId.toLowerCase()
-      const module = modules.find(m => {
-        const nameLower = m.name.toLowerCase()
-        const aliasLower = m.alias?.toLowerCase()
-        // Match against module_name or alias (when alias is not empty)
-        return nameLower === moduleIdLower || (aliasLower && aliasLower.trim() !== '' && aliasLower === moduleIdLower)
-      })
+      const module = modules.find(m => m.slug.toLowerCase() === moduleIdLower)
       if (module && module !== activeModule) {
         setActiveModule(module)
       }
@@ -73,7 +72,7 @@ export function ModuleSwitcher({
   // Notify parent when active module changes
   React.useEffect(() => {
     if (activeModule && onModuleChange) {
-      onModuleChange(activeModule.id || null, activeModule.name)
+      onModuleChange(activeModule.id || null, activeModule.slug || null)
     }
   }, [activeModule, onModuleChange])
 
@@ -95,14 +94,16 @@ export function ModuleSwitcher({
                 style={activeModule.logoColor ? { backgroundColor: activeModule.logoColor } : undefined}
               >
                 {typeof activeModule.logo === 'string' ? (
-                  <img src={activeModule.logo} alt={activeModule.name} className="size-full object-cover" />
+                  <img src={activeModule.logo} alt={activeModule.displayName} className="size-full object-cover" />
                 ) : activeModule.logo ? (
                   <activeModule.logo className="size-4" />
                 ) : null}
               </div>
               <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{activeModule.name}</span>
-                <span className="truncate text-xs">{activeModule.plan}</span>
+                <span className="truncate font-medium">{activeModule.displayName}</span>
+                {activeModule.displayTitle && (
+                  <span className="truncate text-xs">{activeModule.displayTitle}</span>
+                )}
               </div>
               <ChevronsUpDown className="ml-auto" />
             </SidebarMenuButton>
@@ -115,7 +116,7 @@ export function ModuleSwitcher({
           >
             {modules.map((module, index) => (
               <DropdownMenuItem
-                key={module.name}
+                key={module.slug}
                 onClick={() => handleModuleClick(module)}
                 className="gap-2 p-2"
               >
@@ -124,12 +125,12 @@ export function ModuleSwitcher({
                   style={module.logoColor ? { backgroundColor: module.logoColor } : undefined}
                 >
                   {typeof module.logo === 'string' ? (
-                    <img src={module.logo} alt={module.name} className="size-full object-cover" />
+                    <img src={module.logo} alt={module.displayName} className="size-full object-cover" />
                   ) : module.logo ? (
                     <module.logo className="size-3.5 shrink-0 text-white" />
                   ) : null}
                 </div>
-                {module.name}
+                {module.displayName}
                 <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
               </DropdownMenuItem>
             ))}
