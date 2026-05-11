@@ -22,7 +22,7 @@ export default defineConfig(({ mode }) => ({
     alias: {
       '@': fileURLToPath(new URL('./src', import.meta.url)),
     },
-    dedupe: ['@codemirror/state', '@codemirror/view'],
+    dedupe: ['@codemirror/state', '@codemirror/view', '@lezer/common'],
   },
   test: {
     globals: true,

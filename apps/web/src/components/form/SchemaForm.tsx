@@ -184,7 +184,14 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
         // Reference and parent fields (foreign keys) set null when cleared; treat as undefined (absent) to avoid AJV type errors
         const format = (propSchema as any).format
         const fieldValue = value[key]
-        cleanedValue[key] = ((format === 'reference' || format === 'parent') && fieldValue === null) ? undefined : fieldValue
+        // PostgREST rejects empty strings for typed columns (date/time/numeric/etc.).
+        // Optional fields default to '' for type:string but should be sent as null when empty.
+        const isTypedStringFormat = format === 'date' || format === 'date-time' || format === 'time'
+        if (isTypedStringFormat && fieldValue === '') {
+          cleanedValue[key] = null
+        } else {
+          cleanedValue[key] = ((format === 'reference' || format === 'parent') && fieldValue === null) ? undefined : fieldValue
+        }
       }
       
       // DEFENSIVE: This should never happen because view mode has no submit button
