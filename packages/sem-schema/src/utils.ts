@@ -18,6 +18,7 @@ const KNOWN_FORMATS = new Set([
   'json',
   'html',
   'text',
+  'multiline',
   'code',
   'jsonata',
   'reference',

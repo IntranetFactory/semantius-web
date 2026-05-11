@@ -78,12 +78,12 @@ function getFilterVariant(property: {
 
 // Default display width for a property in the grid.
 // - boolean → 's' (fits a toggle/checkbox column)
-// - text, json, html, jsonata → 'w' (wide)
+// - multiline, json, html, jsonata → 'w' (wide)
 // - number, integer (without a format) → 's'
 // - everything else → 'm'
 function getDefaultWidthForGrid(format?: string, type?: string): 's' | 'm' | 'w' {
   if (type === 'boolean') return 's'
-  if (format === 'text' || format === 'json' || format === 'html' || format === 'jsonata') return 'w'
+  if (format === 'multiline' || format === 'json' || format === 'html' || format === 'jsonata') return 'w'
   if (!format && (type === 'number' || type === 'integer')) return 's'
   return 'm'
 }

@@ -7,7 +7,8 @@ Custom JSON Schema vocabulary (SemSchema) with additional validation features fo
 ### Custom Formats
 - **`json`**: Validates parseable JSON strings
 - **`html`**: Validates HTML markup (requires HTML tags)
-- **`text`**: Allows multiline text strings
+- **`text`**: Single-line text string (UI hint — renders as a text input)
+- **`multiline`**: Multi-line text string (UI hint — renders as a textarea)
 
 ### Standard Formats
 SemSchema also supports all standard JSON Schema formats via `ajv-formats`:
@@ -187,8 +188,8 @@ SemSchema is designed to be extensible. You can add custom formats and keywords 
 
 ### Supported Formats
 
-**Custom SemSchema formats (3):**
-- `json`, `html`, `text`
+**Custom SemSchema formats (4):**
+- `json`, `html`, `text`, `multiline`
 
 **Standard JSON Schema formats from ajv-formats (24):**
 - **Date/time:** `date`, `time`, `date-time`, `duration`
@@ -212,6 +213,7 @@ const KNOWN_FORMATS = new Set([
   'json',
   'html',
   'text',
+  'multiline',
   'phone', // ← Add your format here
   // Standard JSON Schema formats (from ajv-formats)
   // ...
@@ -415,7 +417,7 @@ Always add comprehensive tests:
 ## Vocabulary Definition
 
 The vocabulary includes:
-- Custom formats: `json`, `html`, `text`
+- Custom formats: `json`, `html`, `text`, `multiline`
 - Standard formats: All formats from `ajv-formats` (email, date, uri, uuid, etc.)
 - Custom keywords: `required` (property-level), `precision`
 

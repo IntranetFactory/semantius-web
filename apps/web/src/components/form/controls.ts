@@ -51,10 +51,10 @@ import type { FormControlProps } from './types'
  * - URI formats: uri, uri-reference, iri, iri-reference, uri-template
  * - Resource identifiers: uuid, json-pointer, relative-json-pointer
  * - Pattern: regex
- * - Custom formats: text, json, html, code, jsonata
- * 
+ * - Custom formats: multiline, json, html, code, jsonata
+ *
  * Type-based controls (when schema has only a type, used as format):
- * - boolean, integer, number, string
+ * - boolean, integer, number, string (and `text` is treated the same as `string`)
  */
 export const controls: Record<string, React.ComponentType<FormControlProps>> = {
   // Standard JSON Schema 2020-12 Time formats
@@ -91,17 +91,18 @@ export const controls: Record<string, React.ComponentType<FormControlProps>> = {
   regex: InputRegex,
   
   // Custom formats
-  text: InputTextarea,
+  multiline: InputTextarea,
   json: InputJson,
   html: InputHtml,
   code: InputCode,
   jsonata: InputJsonata,
-  
+
   // Type-based controls (when no format is specified)
   boolean: InputBoolean,
   integer: InputNumber,
   number: InputNumber,
   string: InputText,
+  text: InputText,
   
   // Enum control (when enum array is present)
   enum: InputEnum,

@@ -43,9 +43,18 @@ describe('Data Validation Tests', () => {
   });
 
   describe('Format: text', () => {
-    it('should validate text strings including multiline', () => {
+    it('should validate single-line text strings', () => {
       const schema = { type: 'string', format: 'text' };
-      
+
+      expect(validateData('Single line', schema).valid).toBe(true);
+      expect(validateData('', schema).valid).toBe(true);
+    });
+  });
+
+  describe('Format: multiline', () => {
+    it('should validate strings including multiline content', () => {
+      const schema = { type: 'string', format: 'multiline' };
+
       expect(validateData('Single line', schema).valid).toBe(true);
       expect(validateData('Multi\nline\ntext', schema).valid).toBe(true);
       expect(validateData('', schema).valid).toBe(true);

@@ -26,6 +26,13 @@ describe('Vocabulary Definition Tests', () => {
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();
     });
+
+    it('should accept schema with format: multiline', () => {
+      const schema = { type: 'string', format: 'multiline' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
   });
 
   describe('Schema Validity - Precision keyword', () => {
@@ -281,6 +288,13 @@ describe('Vocabulary Definition Tests', () => {
 
     it('should accept schema with format: text', () => {
       const schema = { type: 'string', format: 'text' };
+      const result = validateSchema(schema);
+      expect(result.valid).toBe(true);
+      expect(result.errors).toBeNull();
+    });
+
+    it('should accept schema with format: multiline', () => {
+      const schema = { type: 'string', format: 'multiline' };
       const result = validateSchema(schema);
       expect(result.valid).toBe(true);
       expect(result.errors).toBeNull();

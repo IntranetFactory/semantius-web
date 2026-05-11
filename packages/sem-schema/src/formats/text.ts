@@ -2,10 +2,9 @@ import Ajv from 'ajv';
 
 /**
  * Custom format validation for 'text' format
- * Text format allows multiline strings
+ * Text format is a single-line string (UI hint — same constraints as a plain string)
  */
 export function validateTextFormat(data: string): boolean {
-  // Text format is always valid for strings
   return typeof data === 'string';
 }
 
