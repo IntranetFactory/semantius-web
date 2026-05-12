@@ -10,13 +10,14 @@ interface CodeMirrorJsonProps {
 }
 
 export default function CodeMirrorJson({ value, onChange, onBlur, disabled, readOnly }: CodeMirrorJsonProps) {
+  const safeValue = typeof value === 'string' ? value : String(value ?? '')
   return (
-    <div 
+    <div
       className={readOnly ? 'opacity-60' : ''}
       tabIndex={readOnly ? -1 : undefined}
     >
       <CodeMirror
-        value={value}
+        value={safeValue}
         height="200px"
         extensions={[json()]}
         onChange={onChange}

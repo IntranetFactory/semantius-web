@@ -1,4 +1,4 @@
-import { lazy, Suspense } from 'react'
+import { Component, lazy, Suspense, type ReactNode } from 'react'
 import type { FormControlProps } from './types'
 import { useFormContext } from './FormContext'
 import { FormLabel } from './FormLabel'
@@ -7,6 +7,43 @@ import { FormError } from './FormError'
 
 // Lazy load CodeMirror
 const CodeMirrorEditor = lazy(() => import('./CodeMirrorJson'))
+
+// Falls back to a plain textarea if CodeMirror/Lezer throws (e.g. tree-cursor
+// crash on malformed value). Keeps the field editable instead of taking down
+// the whole form.
+interface JsonEditorBoundaryProps {
+  value: string
+  onChange: (value: string) => void
+  onBlur: () => void
+  disabled?: boolean
+  readOnly?: boolean
+  children: ReactNode
+}
+class JsonEditorBoundary extends Component<JsonEditorBoundaryProps, { hasError: boolean }> {
+  state = { hasError: false }
+  static getDerivedStateFromError() {
+    return { hasError: true }
+  }
+  componentDidCatch(error: Error) {
+    console.error('JSON editor crashed, falling back to textarea:', error)
+  }
+  render() {
+    if (this.state.hasError) {
+      const { value, onChange, onBlur, disabled, readOnly } = this.props
+      return (
+        <textarea
+          className="w-full min-h-50 p-2 font-mono text-sm outline-none"
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
+          disabled={disabled}
+          readOnly={readOnly}
+        />
+      )
+    }
+    return this.props.children
+  }
+}
 
 export function InputJson({
   name,
@@ -43,24 +80,40 @@ export function InputJson({
   return (
     <form.Field name={name} validators={validators}>
       {(field: any) => {
-        // Ensure value is a string (prettify if it's an object)
-        const stringValue = typeof field.state.value === 'string' 
-          ? field.state.value 
-          : field.state.value 
-            ? JSON.stringify(field.state.value, null, 2) 
-            : ''
+        // Ensure value is a string (prettify if it's an object). Always coerce
+        // the final result so we never hand undefined/null to CodeMirror — its
+        // Lezer tree cursor crashes on non-string input.
+        let stringValue: string
+        if (typeof field.state.value === 'string') {
+          stringValue = field.state.value
+        } else if (field.state.value == null) {
+          stringValue = ''
+        } else {
+          try {
+            stringValue = JSON.stringify(field.state.value, null, 2) ?? ''
+          } catch {
+            stringValue = String(field.state.value)
+          }
+        }
 
         return (
           <div className="pt-2 space-y-1">
             <FormLabel htmlFor={name} label={label} required={required} error={!!field.state.meta.errors?.[0]} />
             <div className={`border rounded-md overflow-hidden ${field.state.meta.errors?.[0] ? 'border-destructive' : 'border-input'}`}>
               <Suspense fallback={<div className="p-4 text-muted-foreground">Loading editor...</div>}>
-                <CodeMirrorEditor
+                <JsonEditorBoundary
                   value={stringValue}
                   onChange={field.handleChange}
                   onBlur={field.handleBlur}
                   disabled={disabled || readonly}
-                />
+                >
+                  <CodeMirrorEditor
+                    value={stringValue}
+                    onChange={field.handleChange}
+                    onBlur={field.handleBlur}
+                    disabled={disabled || readonly}
+                  />
+                </JsonEditorBoundary>
               </Suspense>
             </div>
             <FormDescription description={description} error={field.state.meta.errors?.[0]} />
