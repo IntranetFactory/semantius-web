@@ -172,10 +172,9 @@ function getWidthClasses(width: string): string {
 }
 
 export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', id, onBeforeSubmit, parentField }: SchemaFormProps) {
-  // Generate initial value if not provided
-  const defaultValue = initialValue && Object.keys(initialValue).length > 0
-    ? initialValue
-    : generateDefaultValue(schema)
+  // Merge schema defaults under initialValue so explicit values win
+  // but defaults fill gaps (e.g. parent FK pre-filled, other fields blank).
+  const defaultValue = { ...generateDefaultValue(schema), ...(initialValue || {}) }
 
   const form = useForm({
     defaultValues: defaultValue,
