@@ -1,12 +1,36 @@
+import { Fragment } from 'react'
 import { useForm } from '@tanstack/react-form'
+import jsonLogic, { type RulesLogic } from 'json-logic-js'
 import { validateData } from 'sem-schema'
 import { controls } from './controls'
 import { Button } from '@/components/ui/button'
 import type { SchemaObject } from 'ajv'
 import { InputText } from './InputText'
 import { FormProvider } from './FormContext'
+import type { InputMode } from './types'
 
 export type FormMode = 'edit' | 'create' | 'view'
+
+const VALID_INPUT_MODES: readonly InputMode[] = ['default', 'required', 'readonly', 'disabled', 'hidden']
+
+function isInputMode(value: unknown): value is InputMode {
+  return typeof value === 'string' && (VALID_INPUT_MODES as readonly string[]).includes(value)
+}
+
+/**
+ * Evaluate a per-field input_type_rule (JsonLogic) against the current form values.
+ * Returns the resulting InputMode, or null if the rule is missing/invalid/returns a
+ * non-InputMode value. Callers fall back to the static schema inputMode in that case.
+ */
+function evaluateInputTypeRule(rule: unknown, values: Record<string, any>): InputMode | null {
+  if (!rule || typeof rule !== 'object') return null
+  try {
+    const result = jsonLogic.apply(rule as RulesLogic, values)
+    return isInputMode(result) ? result : null
+  } catch {
+    return null
+  }
+}
 
 interface SchemaFormProps {
   schema: SchemaObject
@@ -456,77 +480,101 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
           {Object.entries(properties).map(([key, propSchema]) => {
             if (typeof propSchema !== 'object') return null
 
-            const type = propSchema.type
-            const format = propSchema.format
-            const hasEnum = 'enum' in propSchema && Array.isArray((propSchema as any).enum)
-            const label = propSchema.title || key
-            const description = propSchema.description
+            const inputTypeRule = (propSchema as any).input_type_rule
 
-            // Get inputMode from schema (defaults to 'default' if not specified)
-            let inputMode: 'default' | 'required' | 'readonly' | 'disabled' | 'hidden' = 
-              (propSchema as any).inputMode || 'default'
-            
-            // parentField (injected via _pf/_pv) is always forced to hidden —
-            // it carries the foreign key that links this child record to its parent
-            // and must not be visible or editable by the user
-            if (key === parentField) {
-              inputMode = 'hidden'
-            }
-            
-            // In create mode, skip fields with inputMode='readonly' or 'disabled'
-            // Exception: parentField (injected via _pf/_pv) is always rendered
-            if (formMode === 'create' && (inputMode === 'readonly' || inputMode === 'disabled') && key !== parentField) {
-              return null
-            }
-            
-            // Form-level view mode overrides schema-level inputMode (except for hidden)
-            if (formMode === 'view' && inputMode !== 'hidden') {
-              inputMode = 'readonly'
-            }
+            // Render a single field, optionally with a rule-derived inputMode override.
+            // Called both from the static path (no rule) and from inside form.Subscribe
+            // (rule present — re-renders whenever the rule result changes).
+            const renderField = (ruleResult: InputMode | null) => {
+              const type = propSchema.type
+              const format = propSchema.format
+              const hasEnum = 'enum' in propSchema && Array.isArray((propSchema as any).enum)
+              const label = propSchema.title || key
+              const description = propSchema.description
 
-            // Use format if available, otherwise check for enum, otherwise use type as format
-            const controlKey = format || (hasEnum ? 'enum' : type) as string
-            const ControlComponent = controls[controlKey] || InputText
+              let inputMode: InputMode = (propSchema as any).inputMode || 'default'
 
-            // Skip validation for readonly, disabled, and hidden fields
-            const shouldValidate = inputMode === 'default' || inputMode === 'required'
+              // input_type_rule (JsonLogic) overrides the static schema inputMode when
+              // it evaluates to a valid InputMode against current form values.
+              if (ruleResult) {
+                inputMode = ruleResult
+              }
 
-            // Determine width: explicit width from schema (excluding 'default'), or computed from format/type
-            const schemaWidth = (propSchema as any).width
-            const effectiveWidth = (!schemaWidth || schemaWidth === 'default')
-              ? getDefaultWidthForForm(format as string | undefined, type as string | undefined)
-              : schemaWidth
-            const widthClasses = getWidthClasses(effectiveWidth)
+              // parentField (injected via _pf/_pv) is always forced to hidden —
+              // it carries the foreign key that links this child record to its parent
+              // and must not be visible or editable by the user
+              if (key === parentField) {
+                inputMode = 'hidden'
+              }
 
-            if (inputMode === 'hidden') {
+              // In create mode, skip fields with inputMode='readonly' or 'disabled'
+              // Exception: parentField (injected via _pf/_pv) is always rendered
+              if (formMode === 'create' && (inputMode === 'readonly' || inputMode === 'disabled') && key !== parentField) {
+                return null
+              }
+
+              // Form-level view mode overrides schema-level inputMode (except for hidden)
+              if (formMode === 'view' && inputMode !== 'hidden') {
+                inputMode = 'readonly'
+              }
+
+              // Use format if available, otherwise check for enum, otherwise use type as format
+              const controlKey = format || (hasEnum ? 'enum' : type) as string
+              const ControlComponent = controls[controlKey] || InputText
+
+              // Skip validation for readonly, disabled, and hidden fields
+              const shouldValidate = inputMode === 'default' || inputMode === 'required'
+
+              // Determine width: explicit width from schema (excluding 'default'), or computed from format/type
+              const schemaWidth = (propSchema as any).width
+              const effectiveWidth = (!schemaWidth || schemaWidth === 'default')
+                ? getDefaultWidthForForm(format as string | undefined, type as string | undefined)
+                : schemaWidth
+              const widthClasses = getWidthClasses(effectiveWidth)
+
+              if (inputMode === 'hidden') {
+                return (
+                  <ControlComponent
+                    name={key}
+                    label={label}
+                    description={description}
+                    inputMode={inputMode}
+                    schema={propSchema as Record<string, unknown>}
+                  />
+                )
+              }
+
               return (
-                <ControlComponent
-                  key={key}
-                  name={key}
-                  label={label}
-                  description={description}
-                  inputMode={inputMode}
-                  schema={propSchema as Record<string, unknown>}
-                />
+                <div className={widthClasses}>
+                  <ControlComponent
+                    name={key}
+                    label={label}
+                    description={description}
+                    inputMode={inputMode}
+                    schema={propSchema as Record<string, unknown>}
+                    validators={shouldValidate ? {
+                      // Only validate on submit, not on blur
+                      // This prevents blur validation from canceling submit button clicks
+                      onSubmit: ({ value }) => validateField(value, propSchema, key),
+                    } : undefined}
+                  />
+                </div>
               )
             }
 
-            return (
-              <div key={key} className={widthClasses}>
-                <ControlComponent
-                  name={key}
-                  label={label}
-                  description={description}
-                  inputMode={inputMode}
-                  schema={propSchema as Record<string, unknown>}
-                  validators={shouldValidate ? {
-                    // Only validate on submit, not on blur
-                    // This prevents blur validation from canceling submit button clicks
-                    onSubmit: ({ value }) => validateField(value, propSchema, key),
-                  } : undefined}
-                />
-              </div>
-            )
+            if (inputTypeRule) {
+              return (
+                <form.Subscribe
+                  key={key}
+                  selector={(state: any) => evaluateInputTypeRule(inputTypeRule, state.values)}
+                >
+                  {(ruleResult: InputMode | null) => renderField(ruleResult)}
+                </form.Subscribe>
+              )
+            }
+
+            const rendered = renderField(null)
+            return rendered ? <Fragment key={key}>{rendered}</Fragment> : null
           })}
         </div>
       </div>
