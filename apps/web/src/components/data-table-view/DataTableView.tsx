@@ -503,6 +503,8 @@ export function DataTableView({
     }
 
     // Actions column
+    const dataColumnCount = cols.length
+    const showRecordIdentifier = dataColumnCount > 4
     cols.push({
       id: 'actions',
       header: '',
@@ -532,7 +534,14 @@ export function DataTableView({
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48" sideOffset={5}>
-              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+              <DropdownMenuLabel>
+                Actions
+                {showRecordIdentifier && displayValue != null && String(displayValue) !== '' && (
+                  <div className="text-xs font-medium text-foreground mt-0.5 truncate">
+                    {String(displayValue)}
+                  </div>
+                )}
+              </DropdownMenuLabel>
               <DropdownMenuSeparator />
               {hasOpenHandler && (
                 <DropdownMenuItem onClick={handleOpenRecord}>
@@ -557,9 +566,9 @@ export function DataTableView({
                     e.stopPropagation()
                     deleteConfirm.showConfirmation(
                       recordId as string | number,
-                      displayValue
-                        ? `${String(displayValue)} (${String(recordId)})`
-                        : String(recordId || 'this record')
+                      displayValue != null && String(displayValue) !== ''
+                        ? String(displayValue)
+                        : 'this record'
                     )
                   }}
                 >

@@ -51,6 +51,8 @@ export interface ChildRelation {
   title: string
   singular_label: string
   plural_label: string
+  singular_label_parent?: string
+  plural_label_parent?: string
   id_column: string
   label_column: string
 }

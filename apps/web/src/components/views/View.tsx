@@ -128,7 +128,7 @@ function StandaloneFormView({
                 form={FORM_ID}
                 data-child-id={child.id}
               >
-                {child.plural_label}...
+                {child.plural_label_parent || child.plural_label}...
               </Button>
             ))}
           </div>
@@ -319,7 +319,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
           form={OVERLAY_FORM_ID}
           data-child-id={child.id}
         >
-          {child.plural_label}...
+          {child.plural_label_parent || child.plural_label}...
         </Button>
       ))}
     </div>
