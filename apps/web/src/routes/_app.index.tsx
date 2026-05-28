@@ -1,5 +1,5 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { GalleryVerticalEnd, Loader2 } from 'lucide-react'
+import { GalleryVerticalEnd, Loader2, Lock, LogOut } from 'lucide-react'
 import {
   Card,
   CardContent,
@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
 import { useAuth } from '@/hooks/useAuth'
 import { useModuleNavigate } from '@/hooks/useModuleNavigate'
 import { ApiErrorDisplay } from '@/components/ApiErrorDisplay'
@@ -77,9 +78,23 @@ function IndexComponent() {
 
       {modules.length === 0 ? (
         <Card>
-          <CardContent className="flex flex-col items-center justify-center py-12 text-muted-foreground">
-            <GalleryVerticalEnd className="h-12 w-12 mb-2" />
-            <p>No modules available</p>
+          <CardContent className="flex flex-col items-center justify-center py-12 text-center">
+            <Lock className="h-12 w-12 mb-4 text-muted-foreground" />
+            <h2 className="text-lg font-semibold">
+              You don&apos;t have access to any modules
+            </h2>
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              Your account doesn&apos;t have permissions for any module yet.
+              Please contact your administrator to request access.
+            </p>
+            <Button
+              variant="outline"
+              className="mt-6"
+              onClick={() => { window.location.href = '/logout' }}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
+              Sign in with a different account
+            </Button>
           </CardContent>
         </Card>
       ) : (
