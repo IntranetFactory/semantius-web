@@ -6,7 +6,7 @@ import { useTable } from '@/hooks/useTable'
 import { useConfirmDelete } from '@/hooks/useConfirmDelete'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
-import { buildPostgRESTSelect } from '@/lib/apiClient'
+import { buildPostgRESTSelect, AUTO_LABEL } from '@/lib/apiClient'
 import {
   type SortingState,
   type Updater,
@@ -435,6 +435,11 @@ export function DataTableView({
     for (const [key, property] of Object.entries(metadata.properties)) {
       if (excludeColumns.includes(key)) continue
       if (key.startsWith('_') || key.endsWith('_at')) continue
+      // Synthetic label companions (get_schema emits fk_label/_label as properties).
+      // The owning reference column renders the label, so these must not become
+      // their own columns — otherwise each reference shows twice, and the companion
+      // column renders the embedded object as "[object Object]".
+      if (property.ctype === 'fk_label' || property.ctype === '_label') continue
       if (key.includes('[[Prototype]]')) continue
 
       const variant = getFilterVariant(property)
@@ -469,6 +474,12 @@ export function DataTableView({
 
           if (property.reference_table && property.reference_table_label_column) {
             const labelKey = `${key}_label`
+            if (AUTO_LABEL) {
+              // DB-generated _label column already holds the label string.
+              const labelValue = row.original[labelKey]
+              const text = String(labelValue || value || '-')
+              return <div className={truncateClasses} title={isTruncating ? text : undefined}>{text}</div>
+            }
             const embedded = row.original[labelKey] as Record<string, unknown> | undefined
             if (embedded && typeof embedded === 'object' && !Array.isArray(embedded)) {
               const labelValue = embedded[property.reference_table_label_column]

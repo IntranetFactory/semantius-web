@@ -114,12 +114,15 @@ describe('SchemaForm', () => {
         expect(errors.length).toBeGreaterThanOrEqual(1)
       })
 
-      // Fix error by clearing and typing valid values
+      // Fix the errors. Set values with fireEvent.change (one synchronous event)
+      // rather than user.type: the empty submit above scheduled the app's
+      // setTimeout(100) "scroll/focus to first error" logic, which under load fires
+      // mid-typing and steals focus, dropping characters (name would arrive as "J").
+      // fireEvent.change is atomic and immune to that race. It also sidesteps the
+      // jsdom + userEvent '@' focus-drift bug on the type="email" input.
       const emailInput = screen.getByLabelText(/email/i)
-      await user.clear(nameInput)
-      await user.type(nameInput, 'John Doe')
-      await user.clear(emailInput)
-      await user.type(emailInput, 'john@example.com')
+      fireEvent.change(nameInput, { target: { value: 'John Doe' } })
+      fireEvent.change(emailInput, { target: { value: 'john@example.com' } })
       
       // Submit again - should work on first click
       await user.click(submitButton)
@@ -232,7 +235,23 @@ describe('SchemaForm', () => {
       expect(ageInput).toHaveAttribute('type', 'number')
     })
 
-    it('should use TextareaInput for text format', () => {
+    it('should use TextareaInput for multiline format', () => {
+      const schemaWithMultiline: SchemaObject = {
+        type: 'object',
+        properties: {
+          bio: { format: 'multiline', title: 'Bio' },
+        },
+      }
+
+      render(<SchemaForm schema={schemaWithMultiline} />)
+
+      const textarea = screen.getByLabelText(/bio/i)
+      expect(textarea.tagName).toBe('TEXTAREA')
+    })
+
+    // `text` is a single-line input — it maps to InputText, same as `string`
+    // (see controls.ts). The multiline textarea format is `multiline`, above.
+    it('should use a single-line input for text format', () => {
       const schemaWithText: SchemaObject = {
         type: 'object',
         properties: {
@@ -242,8 +261,8 @@ describe('SchemaForm', () => {
 
       render(<SchemaForm schema={schemaWithText} />)
 
-      const textarea = screen.getByLabelText(/bio/i)
-      expect(textarea.tagName).toBe('TEXTAREA')
+      const input = screen.getByLabelText(/bio/i)
+      expect(input.tagName).toBe('INPUT')
     })
   })
 
@@ -838,10 +857,75 @@ describe('SchemaForm', () => {
       
       // Readonly fields SHOULD be submitted
       expect(submittedData).toHaveProperty('id', 123)
-      
+
       // Disabled fields should NOT be submitted
       expect(submittedData).not.toHaveProperty('created_at')
       expect(submittedData).not.toHaveProperty('updated_at')
+    })
+
+    // Regression: get_schema emits synthetic label companions (ctype '_label' and
+    // 'fk_label') as readonly properties. They are computed projections, not real
+    // columns, so including them in a PATCH/POST body makes PostgREST reject the
+    // whole write with PGRST204 "Could not find the '<col>' column". They must be
+    // excluded from the submit payload even though they are 'readonly' (and would
+    // otherwise be submitted in edit mode).
+    it('should NOT submit synthetic label companion fields (_label / fk_label)', async () => {
+      const user = userEvent.setup()
+      const onSubmit = vi.fn()
+
+      const schema: SchemaObject = {
+        type: 'object',
+        properties: {
+          name: { type: 'string', title: 'Name', inputMode: 'required' },
+          module_id: { type: 'integer', title: 'Module', inputMode: 'default' },
+          // FK label companion — composed label of the referenced row
+          module_id_label: {
+            type: 'string',
+            title: 'Module',
+            ctype: 'fk_label',
+            inputMode: 'readonly',
+            writable: false,
+          },
+          // Row-level composed label
+          _label: {
+            type: 'string',
+            title: 'Entity',
+            ctype: '_label',
+            inputMode: 'readonly',
+            writable: false,
+          },
+        },
+      }
+
+      render(
+        <SchemaForm
+          schema={schema}
+          initialValue={{ name: '', module_id: 1 }}
+          onSubmit={onSubmit}
+          formMode="edit"
+        />
+      )
+
+      await user.type(screen.getByLabelText(/name/i), 'Interview Scorecards')
+      await user.click(screen.getByRole('button', { name: /submit/i }))
+
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalled()
+      })
+
+      const submittedData = onSubmit.mock.calls[0][0]
+
+      // Real columns are submitted...
+      expect(submittedData).toHaveProperty('name', 'Interview Scorecards')
+      expect(submittedData).toHaveProperty('module_id', 1)
+      // ...but synthetic label companions must never reach the write payload.
+      expect(submittedData).not.toHaveProperty('_label')
+      expect(submittedData).not.toHaveProperty('module_id_label')
+
+      // They must also not be rendered as phantom form fields. Only the real
+      // 'Module' (module_id) field should exist, not a duplicate from the label.
+      expect(screen.getAllByLabelText(/^module$/i)).toHaveLength(1)
+      expect(screen.queryByLabelText(/^entity$/i)).not.toBeInTheDocument()
     })
   })
 })

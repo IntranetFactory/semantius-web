@@ -154,7 +154,7 @@ describe('apiClient', () => {
       expect(result).toBe('id,name,email')
     })
 
-    it('adds aliased _label field for reference columns', () => {
+    it('requests the plain generated _label column for reference fields (AUTO_LABEL mode)', () => {
       const metadata = {
         properties: {
           id: { type: 'integer' },
@@ -166,11 +166,29 @@ describe('apiClient', () => {
           },
         },
       }
-      const result = buildPostgRESTSelect(metadata)
+      // get_schema now ships <fk>_label as a real selectable column, so the new
+      // path just requests it directly — no nested embed to unwrap at render time.
+      const result = buildPostgRESTSelect(metadata, true)
+      expect(result).toBe('id,product_name,category_id,category_id_label')
+    })
+
+    it('adds aliased _label embed for reference columns (legacy mode)', () => {
+      const metadata = {
+        properties: {
+          id: { type: 'integer' },
+          product_name: { type: 'string' },
+          category_id: {
+            type: 'integer',
+            reference_table: 'product_categories',
+            reference_table_label_column: 'category_name',
+          },
+        },
+      }
+      const result = buildPostgRESTSelect(metadata, false)
       expect(result).toBe('id,product_name,category_id,category_id_label:category_id(category_name)')
     })
 
-    it('handles multiple columns referencing the same table (PGRST201 fix)', () => {
+    it('handles multiple columns referencing the same table (PGRST201 fix, legacy mode)', () => {
       // This tests the case where user_roles has two foreign keys to users table:
       // - user_id -> users(id)
       // - assigned_by -> users(id)
@@ -190,10 +208,32 @@ describe('apiClient', () => {
           role_name: { type: 'string' },
         },
       }
-      const result = buildPostgRESTSelect(metadata)
+      const result = buildPostgRESTSelect(metadata, false)
       // Each reference embeds by FK column, which disambiguates without PGRST201
       // and also works for self-joins (e.g. departments.parent_department_id → departments).
       expect(result).toBe('id,user_id,user_id_label:user_id(name),assigned_by,assigned_by_label:assigned_by(name),role_name')
+    })
+
+    it('skips synthetic label companion fields (fk_label/_label) emitted by get_schema', () => {
+      // get_schema now emits the label columns as first-class properties. They must
+      // not be selected on their own — the reference field below owns the label, so
+      // selecting the bare companion too would duplicate (AUTO_LABEL) or collide on
+      // the same output key as the embed (legacy).
+      const metadata = {
+        properties: {
+          id: { type: 'integer' },
+          product_name: { type: 'string' },
+          _label: { type: 'string', ctype: '_label' },
+          supplier_id: {
+            type: 'integer',
+            reference_table: 'suppliers',
+            reference_table_label_column: 'company_name',
+          },
+          supplier_id_label: { type: 'string', ctype: 'fk_label', reference_table: 'suppliers' },
+        },
+      }
+      expect(buildPostgRESTSelect(metadata, true)).toBe('id,product_name,supplier_id,supplier_id_label')
+      expect(buildPostgRESTSelect(metadata, false)).toBe('id,product_name,supplier_id,supplier_id_label:supplier_id(company_name)')
     })
 
     it('only adds _label field when both reference_table and reference_table_label_column are present', () => {

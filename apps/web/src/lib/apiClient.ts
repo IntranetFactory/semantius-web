@@ -181,8 +181,30 @@ export async function callRpc<TResult = unknown, TParams = Record<string, unknow
 }
 
 /**
+ * Feature flag controlling how foreign-key label values are fetched.
+ *
+ * - `false` (current behaviour): embed the referenced row via PostgREST resource
+ *   embedding and extract the label from the nested object at render time, e.g.
+ *   `category_id_label:category_id(category_name)` returns
+ *   `{ category_id_label: { category_name: "Tools" } }`.
+ * - `true` (new behaviour): the database now exposes a generated `<fk>_label`
+ *   function / computed column that returns the label string directly, so the
+ *   select only needs to request `category_id_label` and no nested-object
+ *   handling is required (`{ category_id_label: "Tools" }`).
+ *
+ * Kept as a toggle so the old query-time embedding stays available until the
+ * generated columns are confirmed to work in all aspects. Consumed here (query
+ * side) and by the grid cell renderers in DataTableView/TableView (render side),
+ * so all three must read the same flag to stay in sync.
+ *
+ * Typed as `boolean` (not the inferred `false` literal) so flipping it to `true`
+ * does not make either branch look like dead code to the type-checker.
+ */
+export const AUTO_LABEL: boolean = true
+
+/**
  * Build PostgREST select clause with embedded resources for foreign key references
- * 
+ *
  * Analyzes entity metadata to detect reference fields (foreign keys) and builds
  * a select clause that includes embedded resources using PostgREST's resource embedding.
  * 
@@ -191,13 +213,17 @@ export async function callRpc<TResult = unknown, TParams = Record<string, unknow
  * This creates a separate field with _label suffix containing the referenced label value.
  *
  * @param metadata - Entity metadata containing schema with reference field information
- * @returns PostgREST select parameter string (e.g., "id,name,category_id,category_id_label:category_id(category_name)")
+ * @param autoLabel - Whether to request the DB-generated `<fk>_label` column directly
+ *   (true) instead of the legacy query-time embed (false). Defaults to {@link AUTO_LABEL};
+ *   exposed as a parameter so both paths can be unit-tested.
+ * @returns PostgREST select parameter string (e.g., "id,name,category_id,category_id_label")
  *
  * @example
  * const select = buildPostgRESTSelect(productMetadata)
- * // Returns: "id,product_name,sku,description,price,quantity_in_stock,category_id,category_id_label:category_id(category_name),is_discontinued,created_at,updated_at"
+ * // AUTO_LABEL on:  "id,product_name,category_id,category_id_label,..."
+ * // AUTO_LABEL off: "id,product_name,category_id,category_id_label:category_id(category_name),..."
  */
-export function buildPostgRESTSelect(metadata: EntityMetadata): string {
+export function buildPostgRESTSelect(metadata: EntityMetadata, autoLabel: boolean = AUTO_LABEL): string {
   const selects: string[] = []
   
   if (!metadata.properties) {
@@ -206,6 +232,14 @@ export function buildPostgRESTSelect(metadata: EntityMetadata): string {
   
   // Iterate through all properties to build select clause
   for (const [fieldName, property] of Object.entries(metadata.properties)) {
+    // Skip synthetic label companions that get_schema now emits as properties
+    // (ctype 'fk_label' / '_label'). They must not be selected on their own:
+    // a reference field adds its own label below (embedded in the legacy path,
+    // or as the generated <fk>_label column when AUTO_LABEL is on), and selecting
+    // the bare companion alongside the embed would collide on the same output key.
+    // The row-level _label is unused by the grids.
+    if (property.ctype === 'fk_label' || property.ctype === '_label') continue
+
     // Always include the field itself (the ID)
     selects.push(fieldName)
     
@@ -214,7 +248,13 @@ export function buildPostgRESTSelect(metadata: EntityMetadata): string {
     // Embedding by FK column (rather than table!fk hint) disambiguates
     // self-joins and multiple FKs to the same table without PGRST201.
     if (property.reference_table && property.reference_table_label_column) {
-      selects.push(`${fieldName}_label:${fieldName}(${property.reference_table_label_column})`)
+      if (autoLabel) {
+        // DB-generated function / computed column returns the label string
+        // directly, so request it as a plain column (no embedding).
+        selects.push(`${fieldName}_label`)
+      } else {
+        selects.push(`${fieldName}_label:${fieldName}(${property.reference_table_label_column})`)
+      }
     }
   }
   

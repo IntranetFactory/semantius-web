@@ -12,6 +12,19 @@ export interface JsonSchemaProperty {
   pattern?: string
   items?: JsonSchemaProperty
   additionalProperties?: boolean | JsonSchemaProperty
+  // Column classification (Sem Schema extension). Notable values:
+  // 'fk_label'  — synthetic companion of a reference field, holds the composed
+  //               label of the referenced row (e.g. supplier_id_label).
+  // '_label'    — the row's own composed, human-readable label.
+  // These are display-source fields, NOT standalone grid columns.
+  ctype?: string
+  // Whether the column accepts writes. `false` marks computed/synthetic
+  // projections (e.g. ctype 'fk_label'/'_label') that are NOT real DB columns —
+  // they must be excluded from INSERT/UPDATE payloads or PostgREST returns PGRST204.
+  writable?: boolean
+  // Whether the column can appear in a PostgREST select (computed columns are
+  // selectable even though they are not writable).
+  selectable?: boolean
   // Foreign key reference fields (Sem Schema extension)
   reference_table?: string
   reference_table_id_column?: string

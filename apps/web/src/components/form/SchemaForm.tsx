@@ -11,6 +11,23 @@ import type { InputMode } from './types'
 
 export type FormMode = 'edit' | 'create' | 'view'
 
+/**
+ * Synthetic, read-only label companions that get_schema emits as properties:
+ *   - ctype '_label':   the row's own composed, human-readable label
+ *   - ctype 'fk_label': a reference field's composed label (e.g. module_id_label)
+ *
+ * These are display-only projections (computed columns / functions), NOT real
+ * writable columns. They must be excluded from form state, from rendering, and
+ * above all from the write payload: PostgREST rejects any INSERT/UPDATE that
+ * names them with PGRST204 "Could not find the '<col>' column of '<table>'".
+ * Mirrors the same skip in buildPostgRESTSelect and the grid cell renderers
+ * (DataTableView/TableView) so all consumers treat these fields consistently.
+ */
+function isSyntheticLabelField(propSchema: unknown): boolean {
+  const ctype = (propSchema as { ctype?: string } | null)?.ctype
+  return ctype === '_label' || ctype === 'fk_label'
+}
+
 const VALID_INPUT_MODES: readonly InputMode[] = ['default', 'required', 'readonly', 'disabled', 'hidden']
 
 function isInputMode(value: unknown): value is InputMode {
@@ -57,6 +74,10 @@ function generateDefaultValue(schema: SchemaObject): Record<string, any> {
   if (schema.properties && typeof schema.properties === 'object') {
     for (const [key, propSchema] of Object.entries(schema.properties)) {
       if (typeof propSchema !== 'object' || propSchema === null) continue
+
+      // Synthetic label companions are not real columns — never seed them into
+      // form state (otherwise they leak into the submit payload). See helper.
+      if (isSyntheticLabelField(propSchema)) continue
 
       // Check if default value is provided
       if ('default' in propSchema) {
@@ -192,7 +213,15 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
       for (const key of allFields) {
         const propSchema = (schema.properties as Record<string, SchemaObject>)[key]
         const inputMode = (propSchema as any).inputMode || 'default'
-        
+
+        // Synthetic label companions (ctype '_label' / 'fk_label') are computed,
+        // non-writable projections — not real columns. Including them in the body
+        // makes PostgREST reject the whole write with PGRST204. They're also
+        // 'readonly', so in edit mode they would otherwise be submitted. Skip them.
+        if (isSyntheticLabelField(propSchema)) {
+          continue
+        }
+
         // Disabled fields are NEVER submitted (HTML standard behavior)
         if (inputMode === 'disabled') {
           continue
@@ -478,6 +507,11 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
         <div className="grid-custom">
           {Object.entries(properties).map(([key, propSchema]) => {
             if (typeof propSchema !== 'object') return null
+
+            // Synthetic label companions are display-only projections, not editable
+            // columns — don't render them as form fields (mirrors the grid renderers,
+            // and avoids a duplicate label field beside the real reference field).
+            if (isSyntheticLabelField(propSchema)) return null
 
             const inputTypeRule = (propSchema as any).input_type_rule
 

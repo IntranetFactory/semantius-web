@@ -5,7 +5,7 @@ import { useTable } from '@/hooks/useTable'
 import { useConfirmDelete } from '@/hooks/useConfirmDelete'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
-import { buildPostgRESTSelect } from '@/lib/apiClient'
+import { buildPostgRESTSelect, AUTO_LABEL } from '@/lib/apiClient'
 import {
   flexRender,
   getCoreRowModel,
@@ -295,6 +295,12 @@ export function TableView({
       // 2. Be passed in the excludeColumns prop for view-specific hiding
       if (key.startsWith('_') || key.endsWith('_at')) continue
 
+      // Synthetic label companions (get_schema emits fk_label/_label as properties).
+      // The owning reference column renders the label, so these must not become
+      // their own columns — otherwise each reference shows twice, and the companion
+      // column renders the embedded object as "[object Object]".
+      if (property.ctype === 'fk_label' || property.ctype === '_label') continue
+
       // Skip columns with [[Prototype]] in the key (not real columns)
       if (key.includes('[[Prototype]]')) continue
 
@@ -322,6 +328,11 @@ export function TableView({
           // We need to extract the label value from the embedded object
           if (property.reference_table && property.reference_table_label_column) {
             const labelKey = `${key}_label`
+            if (AUTO_LABEL) {
+              // DB-generated _label column already holds the label string.
+              const labelValue = row.original[labelKey]
+              return <div className={isRequired ? 'font-medium' : ''}>{String(labelValue || value || '-')}</div>
+            }
             const embeddedData = row.original[labelKey] as { [key: string]: unknown } | undefined
             // Extract the label value from the embedded object
             if (embeddedData && typeof embeddedData === 'object' && !Array.isArray(embeddedData)) {
