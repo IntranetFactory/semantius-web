@@ -5,6 +5,7 @@
 ## Project Context
 
 **Before starting any task**, read `CONTEXT-MEMORY.md`. It contains architecture decisions, lessons learned, and project state that you MUST incorporate into your work.
+@CONTEXT-MEMORY.md
 
 You are responsible for maintaining `CONTEXT-MEMORY.md`. Update it **only** when you discover something a future session would otherwise get wrong — non-obvious platform constraints, architectural patterns, or environmental quirks. Do **not** use it as a change log or to record individual bug fixes. Ask yourself: _"Would a capable developer, reading only the code and this file, make this mistake again?"_ If no, don't record it.
 
@@ -168,6 +169,7 @@ cat .preview-url.md   # e.g. https://abc123.your-project.workers.dev
 4. Only after exit 0: create the PR with `gh pr create --title "..." --body-file .pr-comment.md`.
 
 **Never do any of the following:**
+
 - Call `gh pr create` before `approve-pr.sh` exits 0
 - Pass the PR body inline with `--body` — always use `--body-file .pr-comment.md`
 - Skip writing `.pr-comment.md` and go straight to `gh pr create`
