@@ -142,7 +142,9 @@ The `workplace/deploy-wrangler.sh` health-check curl and `message.sh` notificati
 
 ## Testing
 
-### Test Accounts
+### Test Accounts (interactive / human use only)
+
+These credentials and the `test-oidc-server` token endpoint below are for **a human manually exercising the UI** — they are **not** for automated tests or for fetching tokens in scripts. For any programmatic/agent flow use the API-key exchange in **Automated Test Auth** instead.
 
 | User         | Username | Email          | Password      | Role         |
 | ------------ | -------- | -------------- | ------------- | ------------ |
@@ -150,15 +152,38 @@ The `workplace/deploy-wrangler.sh` health-check curl and `message.sh` notificati
 | Maria Garcia | `user2`  | sales@test.com | `password456` | Sales access |
 | Wei Chen     | `user3`  | admin@test.com | `password789` | Admin        |
 
-Token endpoint: `https://test-oidc-server.ma532.workers.dev/getaccesstoken?user_id=<username>&client_id=public-client`
+Interactive-only token endpoint: `https://test-oidc-server.ma532.workers.dev/getaccesstoken?user_id=<username>&client_id=public-client`. Tokens expire after 1 hour.
 
-Tokens expire after 1 hour — always get a fresh one for testing.
+### Automated Test Auth (programmatic, no UI login)
+
+Do **not** drive the interactive OAuth2 PKCE login in automated browser tests — the IdP rejects unregistered redirect URIs (`invalid_redirect`), so preview/worker-domain logins fail. Authenticate programmatically with a platform API key instead.
+
+**1. Get a token (Node side).** Exchange a Semantius API key for an access token via the OAuth2 `client_credentials` grant:
+
+- `POST https://{orgSlug}.semantius.cloud/token` — `Content-Type: application/x-www-form-urlencoded`, header `x-api-key: <key>`, body `grant_type=client_credentials`. Returns `{ access_token }` (a JWT, ~1h expiry).
+- Helpers: `apps/web/src/test/exchangeApiKeyForToken.ts` (importable in tests) and `scripts/mint-token.mjs` (standalone `node` script that prints the token). Both reuse the same env (below).
+- Credentials: `SEMANTIUS_API_KEY` in `.env` (encrypted, **not** `VITE_`-prefixed so it never reaches the browser bundle). Org slug is reused from `VITE_CONTROL_PLANE_ORG` — do **not** add a separate `SEMANTIUS_ORG`. Node-only; run via `dotenvx run --`.
+
+**2. Hand the token to the browser app via a URL hash fragment.** Launch with `#jwt=<token>`:
+
+```bash
+TOKEN=$(dotenvx run -- node scripts/mint-token.mjs)
+agent-browser open "$PREVIEW_URL/#jwt=$TOKEN"
+```
+
+`apps/web/src/lib/devUrlToken.ts` (called first in `main.tsx`) reads `#jwt`, seeds the `SC_<mode>_token` / `SC_<mode>_tokenExpire` keys the auth lib reads (prefix from `storageKeyPrefix` in `AuthContext.tsx`), then strips the fragment. The app boots authenticated with no OAuth redirect. The fragment is never sent to the server, so the token stays out of worker/CDN logs (a `?jwt=` query string would be logged — always use the hash).
+
+**Why the hash, not `VITE_`-inlining or `agent-browser state load`:** the hash works on the already-deployed build (no rebuild per token), keeps the token out of the static bundle, and avoids the brittle storage-state file (the Node `/tmp` → `C:\tmp` vs Git-Bash `/tmp` path mismatch breaks `state load`). Fully portable across Windows and the Linux web sandbox.
+
+**Gating (deny-by-default, both must hold; see `urlTokenAllowed` in `devUrlToken.ts`):** (1) a non-empty build-time `VITE_CONTROL_PLANE_ORG` — production has none (it derives the tenant from the subdomain at runtime via `getTenantName()` in `lib/config.ts`), so this is an unforgeable test-build marker; **and** (2) host is `localhost`/`127.0.0.1` or `*.workers.dev`. Production satisfies neither, so it ignores `#jwt` entirely.
+
+Keep at most one full-UI-login smoke test (against a registered domain) to prove the real OAuth integration still works.
 
 ### API Testing Workflow
 
 Always inspect API responses with `curl` before implementing — never assume response structure.
 
-1. `TOKEN=$(curl -s "https://test-oidc-server.ma532.workers.dev/getaccesstoken?user_id=user2&client_id=public-client")`
+1. Get a token from the platform via the API-key exchange (see **Automated Test Auth**): `TOKEN=$(dotenvx run -- node scripts/mint-token.mjs)`
 2. `curl -s -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" "$API_BASE_URL/{table}?limit=1"` — inspect field names, types, casing
 3. Test filters/ordering/pagination as needed
 4. Test error cases (no auth, bad table name)

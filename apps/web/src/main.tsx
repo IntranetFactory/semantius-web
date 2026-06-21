@@ -9,7 +9,12 @@ import { Toaster } from './components/ui/sonner'
 import type { RouterContext } from './routes/__root'
 import { initConfig, getConfigError } from './lib/config'
 import { hideAppLoader } from './lib/appLoader'
+import { applyDevUrlToken } from './lib/devUrlToken'
 import './global.css'
+
+// Seed auth from a `#jwt=` URL fragment on localhost/preview builds, before the
+// router and AuthProvider read token storage. No-op + deny-by-default in prod.
+applyDevUrlToken()
 
 // Import the generated route tree
 import { routeTree } from './routeTree.gen'
