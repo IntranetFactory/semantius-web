@@ -162,13 +162,18 @@ This applies to **every** task that needs an authenticated view — "screenshot 
 
 ```bash
 # 1. mint a token (Node side; needs DOTENV_PRIVATE_KEY in env to decrypt the key)
-TOKEN=$(dotenvx run -- node scripts/mint-token.mjs)
+#    ⚠️ dotenvx prints its "injected env" banner to STDOUT (not stderr), so a bare
+#    `$(dotenvx run -- node scripts/mint-token.mjs)` captures the banner too and
+#    CORRUPTS the token — the app then seeds a bad `#jwt`, falls through to OAuth,
+#    and you screenshot app.semantius.com/oautherror instead of the page. Pipe
+#    through `tail -1` to keep only the JWT line:
+TOKEN=$(dotenvx run -- node scripts/mint-token.mjs 2>/dev/null | tail -1)
 # 2. open WITH the #jwt fragment — never without it
 agent-browser open "$PREVIEW_URL/#jwt=$TOKEN"
 # 3. confirm you're in: the URL should stay on the app (NOT redirect to app.semantius.com/oautherror)
 ```
 
-If `mint-token.mjs` fails, **stop and fix that first** — do not fall back to a bare open. Most likely cause in a fresh sandbox: `DOTENV_PRIVATE_KEY` is not set, so `SEMANTIUS_API_KEY` can't be decrypted.
+If `mint-token.mjs` fails, **stop and fix that first** — do not fall back to a bare open. Most likely cause in a fresh sandbox: `DOTENV_PRIVATE_KEY` is not set, so `SEMANTIUS_API_KEY` can't be decrypted. A subtler failure: `$TOKEN` silently contains the dotenvx banner line — verify with `echo "${TOKEN:0:10}"` (a clean JWT starts with `eyJhbGciOi`, **not** `⟐` / `injected`).
 
 **How it works.** `scripts/mint-token.mjs` exchanges the API key for an access token via the OAuth2 `client_credentials` grant: `POST https://{orgSlug}.semantius.cloud/token` (`Content-Type: application/x-www-form-urlencoded`, header `x-api-key: <key>`, body `grant_type=client_credentials`) → `{ access_token }` (JWT, ~1h). `apps/web/src/lib/devUrlToken.ts` (called first in `main.tsx`) reads `#jwt`, seeds the `SC_<mode>_token` / `SC_<mode>_tokenExpire` keys the auth lib reads (prefix from `storageKeyPrefix` in `AuthContext.tsx`), then strips the fragment. App boots authenticated, no OAuth redirect. The fragment is never sent to the server (a `?jwt=` query string would be logged — always use the hash). `apps/web/src/test/exchangeApiKeyForToken.ts` is the same exchange as an importable TS helper for in-process Vitest use.
 
