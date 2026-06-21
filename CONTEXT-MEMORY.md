@@ -154,24 +154,25 @@ These credentials and the `test-oidc-server` token endpoint below are for **a hu
 
 Interactive-only token endpoint: `https://test-oidc-server.ma532.workers.dev/getaccesstoken?user_id=<username>&client_id=public-client`. Tokens expire after 1 hour.
 
-### Automated Test Auth (programmatic, no UI login)
+### Opening ANY logged-in page (screenshots, browser checks, E2E) — MANDATORY procedure
 
-Do **not** drive the interactive OAuth2 PKCE login in automated browser tests — the IdP rejects unregistered redirect URIs (`invalid_redirect`), so preview/worker-domain logins fail. Authenticate programmatically with a platform API key instead.
+> 🔴 **NEVER open the app URL bare in a browser.** A bare open (localhost or `*.workers.dev`) hits the OAuth2 PKCE login, which the IdP rejects with **`invalid_redirect` / "Authorization Failed"** because preview/worker domains are not registered redirect URIs. If you see that error page, you skipped this procedure — you did **not** "screenshot the home page", you screenshotted the auth wall.
 
-**1. Get a token (Node side).** Exchange a Semantius API key for an access token via the OAuth2 `client_credentials` grant:
-
-- `POST https://{orgSlug}.semantius.cloud/token` — `Content-Type: application/x-www-form-urlencoded`, header `x-api-key: <key>`, body `grant_type=client_credentials`. Returns `{ access_token }` (a JWT, ~1h expiry).
-- Helpers: `apps/web/src/test/exchangeApiKeyForToken.ts` (importable in tests) and `scripts/mint-token.mjs` (standalone `node` script that prints the token). Both reuse the same env (below).
-- Credentials: `SEMANTIUS_API_KEY` in `.env` (encrypted, **not** `VITE_`-prefixed so it never reaches the browser bundle). Org slug is reused from `VITE_CONTROL_PLANE_ORG` — do **not** add a separate `SEMANTIUS_ORG`. Node-only; run via `dotenvx run --`.
-
-**2. Hand the token to the browser app via a URL hash fragment.** Launch with `#jwt=<token>`:
+This applies to **every** task that needs an authenticated view — "screenshot the home page", "check the dashboard", "verify the UI", E2E tests — not just things labelled "test". To open any logged-in page you MUST mint a token and pass it in the URL hash:
 
 ```bash
+# 1. mint a token (Node side; needs DOTENV_PRIVATE_KEY in env to decrypt the key)
 TOKEN=$(dotenvx run -- node scripts/mint-token.mjs)
+# 2. open WITH the #jwt fragment — never without it
 agent-browser open "$PREVIEW_URL/#jwt=$TOKEN"
+# 3. confirm you're in: the URL should stay on the app (NOT redirect to app.semantius.com/oautherror)
 ```
 
-`apps/web/src/lib/devUrlToken.ts` (called first in `main.tsx`) reads `#jwt`, seeds the `SC_<mode>_token` / `SC_<mode>_tokenExpire` keys the auth lib reads (prefix from `storageKeyPrefix` in `AuthContext.tsx`), then strips the fragment. The app boots authenticated with no OAuth redirect. The fragment is never sent to the server, so the token stays out of worker/CDN logs (a `?jwt=` query string would be logged — always use the hash).
+If `mint-token.mjs` fails, **stop and fix that first** — do not fall back to a bare open. Most likely cause in a fresh sandbox: `DOTENV_PRIVATE_KEY` is not set, so `SEMANTIUS_API_KEY` can't be decrypted.
+
+**How it works.** `scripts/mint-token.mjs` exchanges the API key for an access token via the OAuth2 `client_credentials` grant: `POST https://{orgSlug}.semantius.cloud/token` (`Content-Type: application/x-www-form-urlencoded`, header `x-api-key: <key>`, body `grant_type=client_credentials`) → `{ access_token }` (JWT, ~1h). `apps/web/src/lib/devUrlToken.ts` (called first in `main.tsx`) reads `#jwt`, seeds the `SC_<mode>_token` / `SC_<mode>_tokenExpire` keys the auth lib reads (prefix from `storageKeyPrefix` in `AuthContext.tsx`), then strips the fragment. App boots authenticated, no OAuth redirect. The fragment is never sent to the server (a `?jwt=` query string would be logged — always use the hash). `apps/web/src/test/exchangeApiKeyForToken.ts` is the same exchange as an importable TS helper for in-process Vitest use.
+
+**Credentials.** `SEMANTIUS_API_KEY` in `.env` (encrypted, **not** `VITE_`-prefixed so it never reaches the browser bundle). Org slug is reused from `VITE_CONTROL_PLANE_ORG` — do **not** add a separate `SEMANTIUS_ORG`. Node-only; run via `dotenvx run --`.
 
 **Why the hash, not `VITE_`-inlining or `agent-browser state load`:** the hash works on the already-deployed build (no rebuild per token), keeps the token out of the static bundle, and avoids the brittle storage-state file (the Node `/tmp` → `C:\tmp` vs Git-Bash `/tmp` path mismatch breaks `state load`). Fully portable across Windows and the Linux web sandbox.
 
