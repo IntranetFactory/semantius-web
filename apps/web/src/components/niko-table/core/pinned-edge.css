@@ -1,0 +1,36 @@
+/*
+ * Scroll-reveal for the LEFT-pinned column's edge fade (see data-table-structure).
+ *
+ * The fade dissolves the neighbouring column's scrolled-under text into the
+ * pinned edge. For a left-pinned column there is nothing underneath until the
+ * table is scrolled horizontally, so revealing the fade at rest just dims the
+ * neighbour for no reason. A scroll-driven animation ties the fade's opacity to
+ * the table's inline scroll position: invisible at scrollLeft 0, fully shown
+ * after a small scroll.
+ *
+ * Longhands (not the `animation` shorthand) are used on purpose — the shorthand
+ * resets `animation-timeline` to `auto`, which would break the scroll binding.
+ *
+ * Browsers without scroll-driven animation support (Safari, Firefox) ignore the
+ * timeline and the fade simply stays visible — the prior always-on behaviour.
+ *
+ * The right-pinned edge fade is intentionally NOT animated: it signals that more
+ * columns exist to the right and is useful even before scrolling.
+ */
+@keyframes niko-pin-edge-fade {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.niko-pin-edge-left::after {
+  opacity: 0;
+  animation-name: niko-pin-edge-fade;
+  animation-fill-mode: both;
+  animation-timing-function: linear;
+  animation-timeline: scroll(nearest inline);
+  animation-range: 0 24px;
+}

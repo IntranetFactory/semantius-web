@@ -13,6 +13,31 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { DataTableEmptyState } from "../components/data-table-empty-state"
 import { DataTableColumnHeaderRoot } from "../components/data-table-column-header"
 import { getCommonPinningStyles } from "../lib/styles"
+import "./pinned-edge.css"
+import type { Column } from "@tanstack/react-table"
+
+// Which pinned EDGE (if any) a cell sits on. Only the outermost pinned column on
+// each side borders the scrolling area, so only it gets the edge fade — inner
+// pinned columns border other pinned columns and must not.
+function getPinnedEdge(column: Column<unknown, unknown>): false | "left" | "right" {
+  const pin = column.getIsPinned()
+  if (pin === "left" && column.getIsLastColumn("left")) return "left"
+  if (pin === "right" && column.getIsFirstColumn("right")) return "right"
+  return false
+}
+
+// Classes for the full-height, page-background gradient that spills past a pinned
+// edge to dissolve scrolled-under text. The LEFT edge additionally carries the
+// scroll-reveal class so it only appears once the table is scrolled (see
+// pinned-edge.css); the RIGHT edge stays visible to signal more columns.
+function pinnedEdgeClasses(edge: false | "left" | "right"): string {
+  if (!edge) return ""
+  const base =
+    "after:pointer-events-none after:absolute after:inset-y-0 after:w-8 after:content-[''] after:from-background after:to-transparent"
+  return edge === "left"
+    ? cn(base, "after:left-full after:bg-linear-to-r niko-pin-edge-left")
+    : cn(base, "after:right-full after:bg-linear-to-l")
+}
 
 // ============================================================================
 // ScrollEvent Type
@@ -75,7 +100,10 @@ export const DataTableHeader = React.memo(function DataTableHeader({
               <TableHead
                 key={header.id}
                 style={headerStyle}
-                className={cn(header.column.getIsPinned() && "bg-background")}
+                className={cn(
+                  header.column.getIsPinned() && "bg-background",
+                  pinnedEdgeClasses(getPinnedEdge(header.column as Column<unknown, unknown>)),
+                )}
               >
                 {header.isPlaceholder ? null : (
                   <DataTableColumnHeaderRoot column={header.column}>
@@ -237,6 +265,7 @@ export function DataTableBody<TData>({
                 >
                   {row.getVisibleCells().map(cell => {
                     const size = cell.column.columnDef.size
+                    const pin = cell.column.getIsPinned()
                     const cellStyle = {
                       width: size ? `${size}px` : undefined,
                       ...getCommonPinningStyles(cell.column, false),
@@ -248,14 +277,18 @@ export function DataTableBody<TData>({
                         style={cellStyle}
                         className={cn(
                           // Pinned cells overlay the columns that scroll under
-                          // them, so their background MUST be opaque — a
-                          // translucent `bg-muted/50` would let the scrolled-under
-                          // content bleed through on hover. color-mix gives the
-                          // exact opaque equivalent of the row's `muted/50`-over-
-                          // `background` hover tint, so the sticky columns match
-                          // the rest of the hovered row instead of looking darker.
-                          cell.column.getIsPinned() &&
-                            "bg-background group-hover:bg-[color-mix(in_srgb,var(--muted)_50%,var(--background))] group-data-[state=selected]:bg-muted",
+                          // them, so they paint an OPAQUE background. On hover
+                          // they swap to `--pin-hover` (the opaque equivalent of
+                          // the row's `bg-muted/50`, set in getCommonPinningStyles)
+                          // and `transition-colors` keeps that swap in lockstep
+                          // with the row's own colour transition — without it the
+                          // pinned cells snap while the rest of the row fades,
+                          // which looked like a flicker.
+                          pin &&
+                            "bg-background transition-colors group-hover:bg-(--pin-hover) group-data-[state=selected]:bg-muted",
+                          // Edge fade — only on the outermost pinned column, and
+                          // only revealed on scroll for the left side.
+                          pinnedEdgeClasses(getPinnedEdge(cell.column as Column<unknown, unknown>)),
                         )}
                       >
                         {flexRender(

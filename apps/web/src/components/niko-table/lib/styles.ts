@@ -23,14 +23,25 @@ export const getCommonPinningStyles = <TData>(
     // Headers: z-20 to stay above other headers and body.
     // Body: z-10 to stay above other body cells.
     zIndex: isHeader ? 20 : 10,
-    // NB: background is intentionally NOT set here. An inline background-color
-    // would win over the `group-hover:bg-muted/50` / selected classes the table
-    // applies to pinned cells, killing the row hover/selection highlight on the
-    // sticky columns. Opacity is instead guaranteed by those bg-* classes
-    // (`bg-background` base + hover/selected variants) at the call sites.
-    // Create a visual separation for pinned columns
+    // Pre-resolved OPAQUE equivalent of the row's translucent `bg-muted/50`
+    // hover tint (muted at 50% composited over the page background). Pinned
+    // cells overlay the columns scrolling beneath them, so they must paint an
+    // opaque background — a translucent one lets that content bleed through.
+    // Resolving the color ONCE into a variable (instead of a `color-mix()` in a
+    // hover utility) means the hover only swaps between two solid colors, which
+    // transitions cleanly; the cell's `transition-colors` then keeps it in sync
+    // with the rest of the row instead of snapping (the cause of the flicker).
+    ["--pin-hover" as string]:
+      "color-mix(in srgb, var(--muted) 50%, var(--background))",
+    // NB: background is intentionally NOT set here so the bg-* classes at the
+    // call sites (base `bg-background` + hover/selected variants) take effect.
+    // Thin, SEMI-TRANSPARENT separator line (softer than a hard border). The
+    // wider background-coloured FADE that dissolves the scrolled-under content
+    // of the neighbouring column is a full-height ::after gradient applied via
+    // classes at the call site (a box-shadow fade was too narrow / not full
+    // height to read as a soft edge).
     boxShadow: isLeft
-      ? "1px 0 0 var(--border)" // Right border for left pinned
-      : "-1px 0 0 var(--border)", // Left border for right pinned
-  }
+      ? "1px 0 0 color-mix(in srgb, var(--border) 50%, transparent)"
+      : "-1px 0 0 color-mix(in srgb, var(--border) 50%, transparent)",
+  } as React.CSSProperties
 }
