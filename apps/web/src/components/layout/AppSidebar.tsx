@@ -11,6 +11,7 @@ import {
 
 import { NavMain } from '@/components/layout/NavMain'
 import { NavApps } from '@/components/layout/NavApps'
+import { NavBookmarks } from '@/components/layout/NavBookmarks'
 import { NavUser } from '@/components/layout/NavUser'
 import { ModuleSwitcher } from '@/components/layout/ModuleSwitcher'
 import {
@@ -177,6 +178,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
       </SidebarHeader>
       <SidebarContent>
         <NavApps moduleId={selectedModuleId} moduleSlug={selectedModuleSlug} />
+        <NavBookmarks />
         {/* <NavMain items={staticData.navMain} /> */}
       </SidebarContent>
       <SidebarFooter>

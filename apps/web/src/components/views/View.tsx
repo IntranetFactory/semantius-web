@@ -6,6 +6,7 @@ import { useRpc } from '@/hooks/useRpc'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
 import { DataTableView } from '@/components/data-table-view/DataTableView'
 import { EntityBreadcrumb } from '@/components/EntityBreadcrumb'
+import { BookmarkIcon } from '@/components/ui-ext/bookmark-icon'
 import {
   Dialog,
   DialogContent,
@@ -62,6 +63,8 @@ function StandaloneFormView({
 }) {
   const navigate = useNavigate()
   const router = useRouter()
+  // Live pathname of the current record page — the canonical URL we bookmark.
+  const currentPath = useRouterState({ select: (s) => s.location.pathname })
   const idColumn = metadata.table?.id_column || 'id'
   const labelColumn = metadata.table?.label_column || ''
   const postSaveTargetRef = useRef<string | null>(null)
@@ -105,16 +108,21 @@ function StandaloneFormView({
 
   return (
     <div className="space-y-6">
-      <EntityBreadcrumb
-        moduleId={moduleId}
-        entityLabel={metadata.table?.plural_label || 'Records'}
-        entityPath={viewName}
-        recordLabel={pageTitle}
-        parentLabel={parentLabel}
-        parentPath={parentPath}
-        parentRecordLabel={parentRecordLabel}
-        parentRecordPath={parentRecordPath}
-      />
+      <div className="flex items-center gap-1">
+        <EntityBreadcrumb
+          moduleId={moduleId}
+          entityLabel={metadata.table?.plural_label || 'Records'}
+          entityPath={viewName}
+          recordLabel={pageTitle}
+          parentLabel={parentLabel}
+          parentPath={parentPath}
+          parentRecordLabel={parentRecordLabel}
+          parentRecordPath={parentRecordPath}
+        />
+        {recordId && (
+          <BookmarkIcon url={currentPath} title={pageTitle} label={pageTitle} />
+        )}
+      </div>
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-3xl font-bold tracking-tight">
           {pageTitle}
@@ -351,15 +359,22 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
   return (
     <div className="space-y-6">
-      <EntityBreadcrumb
-        moduleId={module_name}
-        entityLabel={metadata.table?.plural_label || 'Records'}
-        entityPath={view_name}
-        parentLabel={parentLabel}
-        parentPath={parentPath}
-        parentRecordLabel={parentRecordLabel}
-        parentRecordPath={parentRecordPath}
-      />
+      <div className="flex items-center gap-1">
+        <EntityBreadcrumb
+          moduleId={module_name}
+          entityLabel={metadata.table?.plural_label || 'Records'}
+          entityPath={view_name}
+          parentLabel={parentLabel}
+          parentPath={parentPath}
+          parentRecordLabel={parentRecordLabel}
+          parentRecordPath={parentRecordPath}
+        />
+        <BookmarkIcon
+          url={pathname}
+          title={metadata.table?.plural_label || 'Records'}
+          label={metadata.table?.plural_label || 'Records'}
+        />
+      </div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">

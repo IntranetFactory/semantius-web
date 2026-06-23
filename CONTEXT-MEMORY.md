@@ -95,6 +95,12 @@ Combine with `&`: `?select=id,name&status=eq.active&order=created_at.desc&limit=
 - Config: `components.json` (points to `src/global.css`)
 - To customize: use `className` props at the call site (e.g., `<SheetContent className="border-l-0">`) — never modify `src/components/ui/*` or `src/global.css`
 
+#### `ui/` vs `ui-ext/` boundary (CRITICAL)
+
+`src/components/ui/` holds **only** pure shadcn registry output — files the CLI produces and can regenerate. Treat it as disposable/regenerable: never hand-edit (customize at the call site instead). Caveat: shadcn is **unversioned**, so "delete & re-add" pulls *latest* against the `base-nova` base — it is a regeneration that may change APIs and require call-site fixes, **not** a clean drop-in upgrade. The regenerable property only holds because nothing in `ui/` is hand-edited.
+
+`src/components/ui-ext/` holds **our** hand-written components that are NOT shadcn CLI primitives — we own and maintain these; the shadcn CLI will never touch them. Current members: `combobox`, `date-picker`, `date-time-picker` (shadcn-*documented* compositions, no `add` primitive exists), `sortable` (dnd-kit based; uses the `radix-ui` `Slot`, like the shadcn base `form.tsx`), and `bookmark-icon` (star toggle that reads/writes the row-scoped `user_bookmarks` table, matched 1:1 by `url`; insert auto-fills `user_id`/`row_order`). They import shadcn primitives from `@/components/ui/*`. No path-alias change was needed — `@/*` → `src/*` already covers `@/components/ui-ext/*`. When adding a non-registry component, put it in `ui-ext/`, not `ui/`.
+
 #### Base UI (NOT Radix)
 
 This project's shadcn primitives run on **Base UI** (`@base-ui/react`), not Radix. The base choice is encoded in `components.json` as `"style": "base-nova"` (stable shadcn CLI ≥4.11 has **no** `base` field — adding one is rejected as "Invalid configuration"; the base/preset lives in `style`). `add --overwrite` reads `style` and pulls Base UI variants. The unified **`radix-ui`** package is still a dependency — shadcn's own base `form.tsx` (`Slot`) and `sortable.tsx` use it; the individual `@radix-ui/react-*` primitive packages are gone.

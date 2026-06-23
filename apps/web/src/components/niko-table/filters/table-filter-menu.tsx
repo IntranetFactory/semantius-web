@@ -80,7 +80,7 @@ import {
   SortableItem,
   SortableItemHandle,
   SortableOverlay,
-} from "@/components/ui/sortable"
+} from "@/components/ui-ext/sortable"
 import { dataTableConfig } from "../config/data-table"
 import {
   getDefaultFilterOperator,
