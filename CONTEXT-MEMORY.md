@@ -61,7 +61,14 @@ router.history.push(`/module/table?_pf=${encodeURIComponent(pf)}&_pv=${encodeURI
 
 This applies specifically to `_pf`/`_pv` parent-filter params (and any param where you need a clean numeric ID string). Other params (`page`, `pageSize`, `sortBy`, etc.) are fine via `navigate({ search: ... })`.
 
+### Drag-and-Drop Row Reordering (`order_column`)
 
+`get_schema` may return `metadata.table.order_column` (e.g. `"row_order"`), naming an integer column whose values increment by 10. When it is **non-empty**, `DataTableView` enables drag-and-drop row reordering (dnd-kit, already a dependency); when empty/absent, the grid behaves normally.
+
+- The `order_column` **may not appear in `metadata.properties`**, so the query builder appends it to both the `select` and the `order` (`{order_column}.asc`) explicitly — never assume it is a visible column.
+- DnD is active **only** when `order_column` is set **and** no user column sort is applied (`sorting.length === 0`); a user sort takes precedence and hides the drag handles, because reordering only makes sense in the saved order.
+- On drop, `onReorder` **reuses the page's existing set of `order_column` values**, reassigning them (ascending) to the rows in their new visual order. Because the value SET is unchanged, there are never collisions with other pages and the increment-of-10 gaps are preserved. Only rows whose value actually changed are PATCHed (via `useUpdateRecord`). Optimistic local ordering is applied immediately, then cleared after refetch.
+- The drag handle is a dedicated `__drag` column, pinned far-left ahead of the (also-pinned) label column. Row DnD lives in the shared niko-table `DataTableBody` as an opt-in (`enableRowDnd` + `onReorder`); the handle cell and the sortable row each call `useSortable` with the same `row.id` (the canonical TanStack + dnd-kit pattern). Set `getRowId` on `DataTableRoot` so the sortable id is the primary key.
 
 - All data access via PostgREST — no Supabase client
 - API base URL is in `VITE_API_BASE_URL` (currently Neon Data API)

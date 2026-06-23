@@ -52,6 +52,11 @@ export interface SemSchemaTable {
   searchable?: boolean
   is_child?: boolean
   edit_mode?: 'auto' | 'modal' | 'sidebar' | 'page'
+  // Name of the integer column that stores explicit row ordering (values
+  // increment by 10). When present and non-empty, the grid enables drag-and-drop
+  // row reordering. May be absent from `properties`, but is always appended to
+  // the select/order of list queries so the rows come back in saved order.
+  order_column?: string
   created_at?: string
   updated_at?: string
 }

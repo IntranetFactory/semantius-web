@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback, useMemo, useContext } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { type EntityMetadata, type TableMetadata } from '@/types/metadata'
 import { cn } from '@/lib/utils'
 import { useTable } from '@/hooks/useTable'
+import { useUpdateRecord } from '@/hooks/useTableMutations'
 import { useConfirmDelete } from '@/hooks/useConfirmDelete'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
 import { ConfirmDeleteDialog } from '@/components/ConfirmDeleteDialog'
@@ -18,6 +19,8 @@ import {
   DataTableHeader,
   DataTableBody,
   DataTableEmptyBody,
+  RowDragContext,
+  type DataTableReorderEvent,
 } from '@/components/niko-table/core'
 import { DataTablePagination } from '@/components/niko-table/components/data-table-pagination'
 import { DataTableSearchFilter } from '@/components/niko-table/components/data-table-search-filter'
@@ -46,9 +49,35 @@ import {
   Pencil,
   Eye,
   Trash2,
+  GripVertical,
 } from 'lucide-react'
 
 type RecordType = Record<string, unknown>
+
+// Drag handle for a reorderable row. Consumes RowDragContext (provided by the
+// sortable row, which calls useSortable once) to get the activator ref +
+// listeners — no second useSortable here. Rendered as a <button> so the row's
+// click handler ignores grabs (it skips clicks inside buttons).
+function RowDragHandle() {
+  const ctx = useContext(RowDragContext)
+  if (!ctx) return null
+  return (
+    <button
+      ref={ctx.setActivatorNodeRef}
+      type="button"
+      aria-label="Drag to reorder"
+      className={cn(
+        'flex items-center justify-center text-muted-foreground hover:text-foreground',
+        'cursor-grab touch-none rounded-sm outline-none focus-visible:ring-2 focus-visible:ring-ring',
+        'active:cursor-grabbing',
+      )}
+      {...ctx.attributes}
+      {...ctx.listeners}
+    >
+      <GripVertical className="h-4 w-4" />
+    </button>
+  )
+}
 type PlainFilter = Omit<ExtendedColumnFilter<RecordType>, 'filterId'>
 
 export interface DataTableViewProps {
@@ -228,6 +257,15 @@ export function DataTableView({
   const tableName = tableMetadata.table_name
   const primaryKeyColumn = tableMetadata.id_column
   const displayColumn = tableMetadata.label_column
+  // When the schema declares an order_column, the grid is sorted by it (asc) and
+  // rows can be drag-reordered. The column may not exist in `properties`, so it
+  // is appended to the query select/order explicitly below.
+  const orderColumn = tableMetadata.order_column || ''
+
+  // Default ordering: by the order_column (handled in the query as an appended
+  // order term, so sorting state stays empty), else newest-first by primary key.
+  const defaultSorting = (): SortingState =>
+    orderColumn ? [] : [{ id: primaryKeyColumn, desc: true }]
 
   // --- URL search params (read-only, truth comes from our state) ---
   const searchParams = useSearch({
@@ -265,7 +303,7 @@ export function DataTableView({
     const exists = col && metadata.properties?.[col]
     return exists
       ? [{ id: col, desc: searchParams.sortOrder === 'desc' }]
-      : [{ id: primaryKeyColumn, desc: true }]
+      : defaultSorting()
   })
 
   // extFilters = all niko-table filter rows (AND + OR), server-side, in URL
@@ -287,7 +325,7 @@ export function DataTableView({
     setSortingState(
       exists
         ? [{ id: col, desc: searchParams.sortOrder === 'desc' }]
-        : [{ id: primaryKeyColumn, desc: true }]
+        : defaultSorting()
     )
     setExtFilters(parseFiltersFromURL(searchParams.filters))
     setSearchText(searchParams.search || '')
@@ -334,16 +372,51 @@ export function DataTableView({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pagination.pageIndex, pagination.pageSize, sorting, searchText, extFilters])
 
+  // Column the active parent filter (_pf/_pv) pins to a single value, if any.
+  // Rows are then constant in that column, so a sort on it does NOT change their
+  // order — the appended order_column.asc still governs (e.g. fields filtered to
+  // one table_name, sorted by table_name).
+  const parentFilterColumn = useMemo(() => {
+    const pf = searchParams._pf
+    const pv = searchParams._pv
+    if (!pf || pv === undefined || pv === '') return ''
+    const dot = pf.indexOf('.')
+    return dot >= 0 ? pf.slice(dot + 1) : pf
+  }, [searchParams._pf, searchParams._pv])
+
+  // Drag reordering needs the rows to actually be in order_column order. That holds
+  // when there is no sort, or every sort column is the order_column itself or the
+  // constant parent-filter column. Any OTHER column sort reorders the rows away
+  // from order_column, so DnD is disabled then. (`every` is true for an empty sort.)
+  const dndEnabled =
+    !!orderColumn &&
+    sorting.every(s => s.id === orderColumn || s.id === parentFilterColumn)
+
   // --- Build the PostgREST query (every state change triggers a new API call) ---
   const query = useMemo(() => {
     const params: string[] = []
 
-    params.push(`select=${buildPostgRESTSelect(metadata)}`)
+    // The order_column may not be part of the schema properties, so append it to
+    // the select explicitly (the grid reads it back when reordering).
+    let selectClause = buildPostgRESTSelect(metadata)
+    if (orderColumn && !selectClause.split(',').includes(orderColumn)) {
+      selectClause += `,${orderColumn}`
+    }
+    params.push(`select=${selectClause}`)
     params.push(`limit=${pagination.pageSize}`)
     params.push(`offset=${pagination.pageIndex * pagination.pageSize}`)
 
+    // Order: user-chosen sort first (if any), then the order_column.asc as the
+    // saved/tiebreaker order so reordered rows come back in their persisted order.
+    const orderParts: string[] = []
     if (sorting.length > 0) {
-      params.push(`order=${sorting.map(s => `${s.id}.${s.desc ? 'desc' : 'asc'}`).join(',')}`)
+      orderParts.push(...sorting.map(s => `${s.id}.${s.desc ? 'desc' : 'asc'}`))
+    }
+    if (orderColumn && !sorting.some(s => s.id === orderColumn)) {
+      orderParts.push(`${orderColumn}.asc`)
+    }
+    if (orderParts.length > 0) {
+      params.push(`order=${orderParts.join(',')}`)
     }
 
     // AND filters from filter menu
@@ -380,7 +453,7 @@ export function DataTableView({
     }
 
     return params.join('&')
-  }, [pagination.pageIndex, pagination.pageSize, sorting, extFilters, searchText, metadata, searchParams._pf, searchParams._pv])
+  }, [pagination.pageIndex, pagination.pageSize, sorting, extFilters, searchText, metadata, orderColumn, searchParams._pf, searchParams._pv])
 
   const { data, totalCount, isLoading, error, refetch } = useTable<RecordType>(tableName, {
     query,
@@ -397,6 +470,86 @@ export function DataTableView({
   const effectiveCanEdit = canEdit && (tableMetadata?.edit_permission ? hasEditPermission : true)
 
   const deleteConfirm = useConfirmDelete(tableName, refetch, primaryKeyColumn, tableMetadata?.singular_label)
+
+  const updateOrder = useUpdateRecord<RecordType>(tableName, primaryKeyColumn)
+
+  // Optimistic ordering applied immediately on drop so the UI doesn't wait for
+  // the PATCH round-trip. Held until the server data actually reflects the new
+  // order (see reconcile effect below) — NOT cleared on a fixed refetch, because
+  // the data API has brief read-after-write lag and an immediate refetch can
+  // return the pre-PATCH order, which would make the row snap back.
+  const [optimisticData, setOptimisticData] = useState<RecordType[] | null>(null)
+
+  // A drag reorder reuses the page's existing set of order_column values,
+  // reassigning them to rows in their new visual order. Because the value SET is
+  // unchanged, there are never collisions with other pages and the increment-of-10
+  // gaps are preserved. Only rows whose value actually changed are PATCHed.
+  const handleReorder = useCallback(
+    async ({ orderedRows }: DataTableReorderEvent<RecordType>) => {
+      if (!orderColumn) return
+
+      const existingValues = orderedRows
+        .map(r => r[orderColumn])
+        .filter((v): v is number => typeof v === 'number')
+
+      // Reuse existing values when every row has one; otherwise fall back to a
+      // clean 10,20,30,… numbering for this page.
+      const targetValues =
+        existingValues.length === orderedRows.length
+          ? [...existingValues].sort((a, b) => a - b)
+          : orderedRows.map((_, i) => (i + 1) * 10)
+
+      const recomputed = orderedRows.map((r, i) => ({
+        ...r,
+        [orderColumn]: targetValues[i],
+      }))
+      setOptimisticData(recomputed)
+
+      const updates = orderedRows
+        .map((r, i) => ({ row: r, value: targetValues[i] }))
+        .filter(u => u.row[orderColumn] !== u.value)
+
+      try {
+        await Promise.all(
+          updates.map(u =>
+            updateOrder.mutateAsync({
+              [primaryKeyColumn]: u.row[primaryKeyColumn],
+              [orderColumn]: u.value,
+            })
+          )
+        )
+        // Nudge a refetch; the reconcile effect drops the optimistic layer once
+        // the server returns rows in the new order (it may take an extra refetch
+        // due to read-after-write lag — until then the optimistic order stands).
+        refetch()
+      } catch {
+        // Persist failed — revert to whatever the server currently has.
+        setOptimisticData(null)
+      }
+    },
+    [orderColumn, primaryKeyColumn, updateOrder, refetch]
+  )
+
+  // Any deliberate query change (page/sort/filter/search) must show server data,
+  // never a held reorder overlay — drop it whenever the query changes.
+  useEffect(() => {
+    setOptimisticData(null)
+  }, [query])
+
+  // Reconcile the optimistic order with server data. Clear the overlay when the
+  // server's row id order matches the optimistic order (the PATCH is now visible),
+  // or when membership changed elsewhere (add/delete) so the server should win.
+  useEffect(() => {
+    if (!optimisticData || !data) return
+    const optIds = optimisticData.map(r => String(r[primaryKeyColumn]))
+    const dataIds = data.map(r => String(r[primaryKeyColumn]))
+    const sameSet =
+      optIds.length === dataIds.length &&
+      [...optIds].sort().join(' ') === [...dataIds].sort().join(' ')
+    if (!sameSet || optIds.join(' ') === dataIds.join(' ')) {
+      setOptimisticData(null)
+    }
+  }, [data, optimisticData, primaryKeyColumn])
 
   // --- Pagination change: from niko-table pagination component ---
   const handlePaginationChange = useCallback(
@@ -652,23 +805,46 @@ export function DataTableView({
       },
     })
 
+    // Drag-handle column (leftmost) — only when drag reordering is active.
+    if (dndEnabled) {
+      cols.unshift({
+        id: '__drag',
+        header: () => null,
+        size: 40,
+        enableHiding: false,
+        enableSorting: false,
+        enableColumnFilter: false,
+        cell: () => (
+          <div className="flex items-center justify-center">
+            <RowDragHandle />
+          </div>
+        ),
+      })
+    }
+
     return cols
-  }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn, leftPinnedKeys])
+  }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn, leftPinnedKeys, dndEnabled])
 
   // Sticky pinning state: the label column (+ anything left of it, when in
   // position 1 or 2) on the left, and the row-actions column on the right.
   // leftPinnedKeys is in column order, and those columns are sized explicitly in
   // the column build so the sticky offsets stay aligned.
+  // The drag handle pins to the far left (ahead of the label column) so it stays
+  // the first visible column while a wide table scrolls. It carries an explicit
+  // size (40px) so the sticky offsets stay aligned.
   const columnPinning = useMemo(
-    () => ({ left: leftPinnedKeys, right: ['actions'] }),
-    [leftPinnedKeys]
+    () => ({
+      left: dndEnabled ? ['__drag', ...leftPinnedKeys] : leftPinnedKeys,
+      right: ['actions'],
+    }),
+    [leftPinnedKeys, dndEnabled]
   )
 
   // Constrain the whole grid to max-w-[760px] when there are ≤ 4 data columns
   // columns includes the actions column, so threshold is columns.length <= 5
   const isConstrained = columns.length <= 5
 
-  const tableData = useMemo(() => data ?? [], [data])
+  const tableData = useMemo(() => optimisticData ?? data ?? [], [optimisticData, data])
 
   // Show empty state when first page is empty with no active search/filters
   if (!isLoading && tableData.length === 0 && pagination.pageIndex === 0 && !searchText && extFilters.length === 0) {
@@ -688,6 +864,14 @@ export function DataTableView({
           data={tableData}
           columns={columns}
           isLoading={isLoading}
+          // Row id keyed off the dynamic primary key (id_column), NOT a literal
+          // `id` property. Falls back to the row index when the PK value is
+          // missing (e.g. transient placeholder rows) so keys are always unique —
+          // a missing fallback produces duplicate keys and breaks reconciliation.
+          getRowId={(row, index) => {
+            const v = row[primaryKeyColumn]
+            return v !== undefined && v !== null ? String(v) : String(index)
+          }}
           initialState={{
             // Pin the row-actions column to the right edge so the "..." menu
             // stays visible without scrolling to the end of a wide table, plus
@@ -738,6 +922,8 @@ export function DataTableView({
             <DataTableHeader />
             <DataTableBody<RecordType>
               onRowClick={onRowClick}
+              enableRowDnd={dndEnabled}
+              onReorder={handleReorder}
             />
             <DataTableEmptyBody />
           </DataTable>

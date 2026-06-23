@@ -16,11 +16,14 @@ export {
   DataTableEmptyBody,
   DataTableSkeleton,
   DataTableLoading,
+  RowDragContext,
 } from "./data-table-structure"
 export type {
   ScrollEvent,
   DataTableHeaderProps,
   DataTableBodyProps,
+  DataTableReorderEvent,
+  RowDragContextValue,
   DataTableEmptyBodyProps,
   DataTableSkeletonProps,
   DataTableLoadingProps,

@@ -14,7 +14,25 @@ import { DataTableEmptyState } from "../components/data-table-empty-state"
 import { DataTableColumnHeaderRoot } from "../components/data-table-column-header"
 import { getCommonPinningStyles } from "../lib/styles"
 import "./pinned-edge.css"
-import type { Column } from "@tanstack/react-table"
+import type { Column, Row } from "@tanstack/react-table"
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from "@dnd-kit/core"
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers"
+import {
+  SortableContext,
+  arrayMove,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable"
+import { CSS } from "@dnd-kit/utilities"
 
 // Which pinned EDGE (if any) a cell sits on. Only the outermost pinned column on
 // each side borders the scrolling area, so only it gets the edge fade — inner
@@ -128,6 +146,17 @@ DataTableHeader.displayName = "DataTableHeader"
 // DataTableBody
 // ============================================================================
 
+// Event emitted after a drag-and-drop row reorder completes. `orderedRows`
+// holds the page's original-row objects in their new visual order; the consumer
+// recomputes the order column and persists it.
+export interface DataTableReorderEvent<TData> {
+  orderedRows: TData[]
+  oldIndex: number
+  newIndex: number
+  activeId: string
+  overId: string
+}
+
 export interface DataTableBodyProps<TData> {
   children?: React.ReactNode
   className?: string
@@ -136,6 +165,167 @@ export interface DataTableBodyProps<TData> {
   onScrolledBottom?: () => void
   scrollThreshold?: number
   onRowClick?: (row: TData) => void
+  /**
+   * Enable drag-and-drop row reordering. Rows become sortable (by `row.id`) and
+   * `onReorder` fires on drop. A drag-handle column must be provided by the
+   * caller (its cell calls `useSortable({ id: row.id })`).
+   */
+  enableRowDnd?: boolean
+  /** Called after a successful drag reorder. */
+  onReorder?: (event: DataTableReorderEvent<TData>) => void
+}
+
+// Shared, presentational render of a single body row (+ its expanded content).
+// `rowRef`/`style`/`isDragging` are supplied only in DnD mode so the row can act
+// as the sortable node; in plain mode they are undefined and the row renders as
+// before.
+function DataTableBodyRow<TData>({
+  row,
+  onRowClick,
+  rowRef,
+  style,
+  isDragging,
+}: {
+  row: Row<TData>
+  onRowClick?: (row: TData) => void
+  rowRef?: React.Ref<HTMLTableRowElement>
+  style?: React.CSSProperties
+  isDragging?: boolean
+}) {
+  const isClickable = !!onRowClick
+  const isExpanded = row.getIsExpanded()
+  const expandColumn = row
+    .getAllCells()
+    .find(cell => cell.column.columnDef.meta?.expandedContent)
+
+  return (
+    <React.Fragment>
+      <TableRow
+        ref={rowRef}
+        style={style}
+        data-row-index={row?.index}
+        data-row-id={row?.id}
+        data-state={row.getIsSelected() && "selected"}
+        onClick={event => {
+          const target = event.target as HTMLElement
+          const isInteractiveElement =
+            target.closest("button") ||
+            target.closest("input") ||
+            target.closest("a") ||
+            target.closest('[role="button"]') ||
+            target.closest('[role="checkbox"]') ||
+            target.closest("[data-radix-collection-item]") ||
+            target.closest('[data-slot="checkbox"]') ||
+            target.tagName === "INPUT" ||
+            target.tagName === "BUTTON" ||
+            target.tagName === "A"
+
+          if (!isInteractiveElement) {
+            onRowClick?.(row.original)
+          }
+        }}
+        className={cn(
+          isClickable && "cursor-pointer",
+          "group",
+          // While dragging, lift the row above its siblings so it isn't clipped
+          // by neighbouring rows' backgrounds.
+          isDragging && "relative z-10",
+        )}
+      >
+        {row.getVisibleCells().map(cell => {
+          const size = cell.column.columnDef.size
+          const pin = cell.column.getIsPinned()
+          const cellStyle = {
+            width: size ? `${size}px` : undefined,
+            ...getCommonPinningStyles(cell.column, false),
+          }
+
+          return (
+            <TableCell
+              key={cell.id}
+              style={cellStyle}
+              className={cn(
+                pin &&
+                  "bg-background transition-colors group-hover:bg-(--pin-hover) group-data-[state=selected]:bg-muted",
+                pinnedEdgeClasses(
+                  getPinnedEdge(cell.column as Column<unknown, unknown>),
+                ),
+              )}
+            >
+              {flexRender(cell.column.columnDef.cell, cell.getContext())}
+            </TableCell>
+          )
+        })}
+      </TableRow>
+
+      {/* Expanded content row */}
+      {isExpanded && expandColumn && (
+        <TableRow>
+          <TableCell colSpan={row.getVisibleCells().length} className="p-0">
+            {expandColumn.column.columnDef.meta?.expandedContent?.(row.original)}
+          </TableCell>
+        </TableRow>
+      )}
+    </React.Fragment>
+  )
+}
+
+// Per-row drag context. `useSortable` is called ONCE (in DataTableSortableRow);
+// the drag-handle cell consumes this context to get the activator ref + listeners.
+// (Calling useSortable a second time with the same id in the handle collides in
+// dnd-kit's registry and leaves only some rows draggable — avoid that.)
+export interface RowDragContextValue {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  attributes: Record<string, any>
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  listeners: Record<string, any> | undefined
+  setActivatorNodeRef: (element: HTMLElement | null) => void
+}
+
+export const RowDragContext = React.createContext<RowDragContextValue | null>(
+  null,
+)
+
+// Sortable wrapper: registers the row with dnd-kit under `row.id`, applies the
+// drag transform, and exposes the activator handle props to descendant cells via
+// RowDragContext.
+function DataTableSortableRow<TData>({
+  row,
+  onRowClick,
+}: {
+  row: Row<TData>
+  onRowClick?: (row: TData) => void
+}) {
+  const {
+    setNodeRef,
+    setActivatorNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: row.id })
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(
+      transform ? { ...transform, scaleX: 1, scaleY: 1 } : null,
+    ),
+    transition,
+  }
+  const dragContext = React.useMemo<RowDragContextValue>(
+    () => ({ attributes, listeners, setActivatorNodeRef }),
+    [attributes, listeners, setActivatorNodeRef],
+  )
+  return (
+    <RowDragContext.Provider value={dragContext}>
+      <DataTableBodyRow
+        row={row}
+        onRowClick={onRowClick}
+        rowRef={setNodeRef}
+        style={style}
+        isDragging={isDragging}
+      />
+    </RowDragContext.Provider>
+  )
 }
 
 export function DataTableBody<TData>({
@@ -146,10 +336,44 @@ export function DataTableBody<TData>({
   onScrolledBottom,
   scrollThreshold = 50,
   onRowClick,
+  enableRowDnd = false,
+  onReorder,
 }: DataTableBodyProps<TData>) {
   const { table, isLoading } = useDataTable<TData>()
   const { rows } = table.getRowModel()
   const containerRef = React.useRef<HTMLTableSectionElement>(null)
+
+  // Stable list of row ids for the SortableContext (one entry per visible row).
+  const rowIds = React.useMemo(() => rows.map(row => row.id), [rows])
+
+  const sensors = useSensors(
+    // Small distance threshold so a click on the handle doesn't start a drag.
+    useSensor(PointerSensor, { activationConstraint: { distance: 4 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
+
+  const handleDragEnd = React.useCallback(
+    (event: DragEndEvent) => {
+      const { active, over } = event
+      if (!over || active.id === over.id) return
+      const oldIndex = rowIds.indexOf(String(active.id))
+      const newIndex = rowIds.indexOf(String(over.id))
+      if (oldIndex < 0 || newIndex < 0) return
+      const orderedRows = arrayMove(
+        rows.map(row => row.original),
+        oldIndex,
+        newIndex,
+      )
+      onReorder?.({
+        orderedRows,
+        oldIndex,
+        newIndex,
+        activeId: String(active.id),
+        overId: String(over.id),
+      })
+    },
+    [rowIds, rows, onReorder],
+  )
 
   /**
    * PERFORMANCE: Memoize scroll callbacks to prevent effect re-runs
@@ -217,105 +441,48 @@ export function DataTableBody<TData>({
     return () => container.removeEventListener("scroll", handleScroll)
   }, [onScroll, handleScrollTop, handleScrollBottom, scrollThreshold])
 
+  // Only show rows when not loading
+  const showRows = !isLoading && rows?.length
+
+  if (enableRowDnd) {
+    return (
+      <DndContext
+        sensors={sensors}
+        collisionDetection={closestCenter}
+        modifiers={[restrictToVerticalAxis]}
+        onDragEnd={handleDragEnd}
+      >
+        <TableBody ref={containerRef} className={className}>
+          <SortableContext
+            items={rowIds}
+            strategy={verticalListSortingStrategy}
+          >
+            {showRows
+              ? rows.map(row => (
+                  <DataTableSortableRow
+                    key={row.id}
+                    row={row}
+                    onRowClick={onRowClick}
+                  />
+                ))
+              : null}
+          </SortableContext>
+          {children}
+        </TableBody>
+      </DndContext>
+    )
+  }
+
   return (
     <TableBody ref={containerRef} className={className}>
-      {/* Only show rows when not loading */}
-      {!isLoading && rows?.length
-        ? rows.map(row => {
-            const isClickable = !!onRowClick
-            const isExpanded = row.getIsExpanded()
-
-            // Find if any column has expandedContent meta
-            const expandColumn = row
-              .getAllCells()
-              .find(cell => cell.column.columnDef.meta?.expandedContent)
-
-            return (
-              <React.Fragment key={row.id}>
-                <TableRow
-                  data-row-index={row?.index}
-                  data-row-id={row?.id}
-                  data-state={row.getIsSelected() && "selected"}
-                  onClick={event => {
-                    // Check if the click originated from an interactive element
-                    const target = event.target as HTMLElement
-                    const isInteractiveElement =
-                      // Check for buttons, inputs, links
-                      target.closest("button") ||
-                      target.closest("input") ||
-                      target.closest("a") ||
-                      // Check for elements with interactive roles
-                      target.closest('[role="button"]') ||
-                      target.closest('[role="checkbox"]') ||
-                      // Check for Radix UI components
-                      target.closest("[data-radix-collection-item]") ||
-                      // Check for checkbox (Radix checkbox uses button with data-slot="checkbox")
-                      target.closest('[data-slot="checkbox"]') ||
-                      // Direct tag checks
-                      target.tagName === "INPUT" ||
-                      target.tagName === "BUTTON" ||
-                      target.tagName === "A"
-
-                    // Only call onRowClick if not clicking on an interactive element
-                    if (!isInteractiveElement) {
-                      onRowClick?.(row.original)
-                    }
-                  }}
-                  className={cn(isClickable && "cursor-pointer", "group")}
-                >
-                  {row.getVisibleCells().map(cell => {
-                    const size = cell.column.columnDef.size
-                    const pin = cell.column.getIsPinned()
-                    const cellStyle = {
-                      width: size ? `${size}px` : undefined,
-                      ...getCommonPinningStyles(cell.column, false),
-                    }
-
-                    return (
-                      <TableCell
-                        key={cell.id}
-                        style={cellStyle}
-                        className={cn(
-                          // Pinned cells overlay the columns that scroll under
-                          // them, so they paint an OPAQUE background. On hover
-                          // they swap to `--pin-hover` (the opaque equivalent of
-                          // the row's `bg-muted/50`, set in getCommonPinningStyles)
-                          // and `transition-colors` keeps that swap in lockstep
-                          // with the row's own colour transition — without it the
-                          // pinned cells snap while the rest of the row fades,
-                          // which looked like a flicker.
-                          pin &&
-                            "bg-background transition-colors group-hover:bg-(--pin-hover) group-data-[state=selected]:bg-muted",
-                          // Edge fade — only on the outermost pinned column, and
-                          // only revealed on scroll for the left side.
-                          pinnedEdgeClasses(getPinnedEdge(cell.column as Column<unknown, unknown>)),
-                        )}
-                      >
-                        {flexRender(
-                          cell.column.columnDef.cell,
-                          cell.getContext(),
-                        )}
-                      </TableCell>
-                    )
-                  })}
-                </TableRow>
-
-                {/* Expanded content row */}
-                {isExpanded && expandColumn && (
-                  <TableRow>
-                    <TableCell
-                      colSpan={row.getVisibleCells().length}
-                      className="p-0"
-                    >
-                      {expandColumn.column.columnDef.meta?.expandedContent?.(
-                        row.original,
-                      )}
-                    </TableCell>
-                  </TableRow>
-                )}
-              </React.Fragment>
-            )
-          })
+      {showRows
+        ? rows.map(row => (
+            <DataTableBodyRow
+              key={row.id}
+              row={row}
+              onRowClick={onRowClick}
+            />
+          ))
         : null}
 
       {children}

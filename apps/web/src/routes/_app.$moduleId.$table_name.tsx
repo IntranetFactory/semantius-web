@@ -67,7 +67,15 @@ function RouteComponent() {
   
   return (
     <Suspense fallback={<div>Loading...</div>}>
-      <Component table_name={table_name} metadata={metadata} moduleId={moduleId} recordId={key} />
+      {/* key on table_name remounts the view when switching tables. Without it
+          the SAME generic View instance is reused across tables (same route,
+          changed params), so its internal state and useTable's keep-previous
+          placeholder data bleed across tables — showing the previous table's
+          rows/row-count until the new query resolves. The key is table_name (not
+          page/sort), so pagination/sort/filter WITHIN a table keep the instance
+          and its smooth keep-previous behaviour. The lazy component is cached and
+          already resolved, so the remount does not re-trigger Suspense. */}
+      <Component key={table_name} table_name={table_name} metadata={metadata} moduleId={moduleId} recordId={key} />
     </Suspense>
   )
 }
