@@ -10,7 +10,7 @@
 | Language    | TypeScript 5.9                                      |
 | Build / Dev | Vite 7                                              |
 | Styling     | Tailwind CSS 4                                      |
-| Components  | shadcn/ui (Radix primitives + CVA + `cn()` utility) |
+| Components  | shadcn/ui on **Base UI** (`@base-ui/react`) + CVA + `cn()`  |
 | Routing     | TanStack Router (file-based)                        |
 | Data        | TanStack Query + PostgREST                          |
 | Auth        | react-oauth2-code-pkce (OAuth2/OIDC PKCE)           |
@@ -88,6 +88,22 @@ Combine with `&`: `?select=id,name&status=eq.active&order=created_at.desc&limit=
 - Config: `components.json` (points to `src/global.css`)
 - To customize: use `className` props at the call site (e.g., `<SheetContent className="border-l-0">`) — never modify `src/components/ui/*` or `src/global.css`
 
+#### Base UI (NOT Radix)
+
+This project's shadcn primitives run on **Base UI** (`@base-ui/react`), not Radix. The base choice is encoded in `components.json` as `"style": "base-nova"` (stable shadcn CLI ≥4.11 has **no** `base` field — adding one is rejected as "Invalid configuration"; the base/preset lives in `style`). `add --overwrite` reads `style` and pulls Base UI variants. The unified **`radix-ui`** package is still a dependency — shadcn's own base `form.tsx` (`Slot`) and `sortable.tsx` use it; the individual `@radix-ui/react-*` primitive packages are gone.
+
+Key API differences when writing/migrating call sites (full rules: `.agents/skills/shadcn/rules/base-vs-radix.md`):
+
+- **`asChild` → `render`**: `<Trigger asChild><Button>x</Button></Trigger>` becomes `<Trigger render={<Button />}>x</Trigger>` (inner content moves out to be the trigger's children). Sidebar/Collapsible/DropdownItem/Breadcrumb are `useRender`-based; primitive triggers (Dropdown/Popover/Tooltip/Sheet/Dialog/Button) add `nativeButton={false}` only when `render` targets a non-button (`<a>`/`<Link>`). `TooltipTrigger` has **no** `nativeButton` prop — trust `tsc`.
+- **Select**: `SelectValue` still accepts `placeholder`, but with no `items` on the Root it renders the **raw value**, not the item label — where label≠value use a children fn `<SelectValue>{(v) => labels[v]}</SelectValue>`. `onValueChange` is now `(value: string | null, details)` (null-guard); `position` prop removed.
+- **DropdownMenuItem uses `onClick`, NOT `onSelect`**: Radix's `DropdownMenuItem` had a custom `onSelect` selection prop; Base UI's `Menu.Item` does not. `onSelect={…}` silently binds to the **native DOM `onSelect`** (text-selection) event, which never fires on click — tsc accepts it (valid DOM prop) so it's a **silent no-op** (e.g. menu items that "do nothing"). Use `onClick` (it also carries `shiftKey` natively). This is **only** for `DropdownMenuItem`; `CommandItem` (cmdk) and `<Calendar>` (react-day-picker) keep their real `onSelect`.
+- **DropdownMenu groups**: `DropdownMenuLabel` maps to Base UI `Menu.GroupLabel` and **must** be inside a `<DropdownMenuGroup>` (Radix allowed it standalone). A bare `<DropdownMenuLabel>` throws at runtime: `Base UI: MenuGroupContext is missing` (tsc does NOT catch it). Same for `DropdownMenuRadioItem` → needs `<DropdownMenuRadioGroup>`. Wrap the label (and ideally the items it heads) in a group.
+- **Dialog/Sheet**: no `onOpenAutoFocus` — use `initialFocus={false}` to skip auto-focus.
+- **Calendar** (react-day-picker v10): no `initialFocus` prop.
+- **CSS vars** on Positioner/Popup: `--radix-*-trigger-width` → `--anchor-width`, `--radix-*-transform-origin` → `--transform-origin`, `--radix-popover-content-available-width` → `--available-width`. Tailwind v4 uses `(--var)` not `[--var]`.
+- **State data-attrs** differ: Radix `data-[state=open]` → Base UI `data-[popup-open]` (menu/popover triggers) or `data-[panel-open]` (collapsible trigger). Put the `group/x` marker on the element that actually receives the attribute (the trigger, not a wrapper).
+- **Tests**: jsdom needs a `ResizeObserver` polyfill (in `src/test/setup.ts`) — Base UI overlays use it at mount; checkbox state is `aria-checked`/`data-checked`, not `data-state="checked"`.
+
 ### UI Rules
 
 - Never use `alert()`, `confirm()`, `prompt()` — use shadcn Dialog/AlertDialog instead
@@ -140,6 +156,18 @@ dotenvx run -- printenv CLOUDFLARE_API_TOKEN
 
 The `workplace/deploy-wrangler.sh` health-check curl and `message.sh` notification may fail with non-fatal errors after a successful wrangler upload — the deploy is still live. The `.preview-url.md` file is written regardless of those failures.
 
+### Windows: `pnpm preview:wrangler` fails — run the script directly
+
+On Windows, `pnpm preview:wrangler` (= `dotenvx run -- turbo preview:wrangler`) fails with `'..' is not recognized` because Turbo invokes the `.sh` via cmd.exe. Run the script directly through Git Bash instead, with `dotenvx` injecting secrets:
+
+```bash
+dotenvx run -- bash workplace/deploy-wrangler.sh
+```
+
+### Turbo env passthrough gates the `#jwt` test-auth flow (CRITICAL)
+
+Turbo runs in **strict env mode** and strips any env var not declared in `turbo.json` `globalPassThroughEnv` from the build task. `VITE_CONTROL_PLANE_ORG` (the unforgeable test-build marker that enables the `#jwt` token bootstrap — see Testing) **must** be listed there, or the preview bundle is built without it inlined, `urlTokenAllowed()` returns false, the app ignores `#jwt`, and the browser lands on `app.semantius.com/oautherror?error=invalid_redirect`. Editing `turbo.json` also busts Turbo's global cache, forcing a clean rebuild (otherwise a cached env-less `dist` is re-uploaded).
+
 ## Testing
 
 ### Test Accounts (interactive / human use only)
@@ -161,12 +189,17 @@ Interactive-only token endpoint: `https://test-oidc-server.ma532.workers.dev/get
 This applies to **every** task that needs an authenticated view — "screenshot the home page", "check the dashboard", "verify the UI", E2E tests — not just things labelled "test". To open any logged-in page you MUST mint a token and pass it in the URL hash:
 
 ```bash
-# 1. mint a token (Node side; needs DOTENV_PRIVATE_KEY in env to decrypt the key)
-TOKEN=$(dotenvx run -- node scripts/mint-token.mjs)
+# 1. mint a token. MUST use --quiet AND extract only the JWT (see banner warning below).
+TOKEN=$(dotenvx run --quiet -- node scripts/mint-token.mjs 2>/dev/null \
+  | grep -oE 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' | head -1)
+# sanity-check before using it: must start with eyJ and contain exactly 2 dots
+[ "${TOKEN:0:3}" = "eyJ" ] && [ "$(printf '%s' "$TOKEN" | tr -cd '.' | wc -c)" = "2" ] || echo "BAD TOKEN"
 # 2. open WITH the #jwt fragment — never without it
 agent-browser open "$PREVIEW_URL/#jwt=$TOKEN"
 # 3. confirm you're in: the URL should stay on the app (NOT redirect to app.semantius.com/oautherror)
 ```
+
+> 🔴 **dotenvx banner pollution — the #1 cause of a bogus `oautherror`.** `dotenvx run` prints its `⟐ injecting env (N) from .env · dotenvx@x` banner (with ANSI color codes) to **stdout, not stderr** (verified, v1.58.0). So `TOKEN=$(dotenvx run -- node scripts/mint-token.mjs)` captures `<banner>\n<jwt>` even with `2>/dev/null`. That malformed `#jwt` makes `devUrlToken.ts` throw in `JSON.parse(atob(jwt.split('.')[1]))`, silently discard the token, and fall back to OAuth → `app.semantius.com/oautherror?error=invalid_redirect`. The error looks like an auth/redirect-URI problem but is really a polluted token. **Always** mint with `--quiet` **and** `grep -oE 'eyJ…\.…\.…'` to extract only the JWT, then validate it (above). Never pipe the raw `dotenvx run` stdout straight into the URL.
 
 If `mint-token.mjs` fails, **stop and fix that first** — do not fall back to a bare open. Most likely cause in a fresh sandbox: `DOTENV_PRIVATE_KEY` is not set, so `SEMANTIUS_API_KEY` can't be decrypted.
 
@@ -184,7 +217,7 @@ Keep at most one full-UI-login smoke test (against a registered domain) to prove
 
 Always inspect API responses with `curl` before implementing — never assume response structure.
 
-1. Get a token from the platform via the API-key exchange (see **Automated Test Auth**): `TOKEN=$(dotenvx run -- node scripts/mint-token.mjs)`
+1. Get a token from the platform via the API-key exchange (see **Automated Test Auth**) — use `--quiet` + JWT-extract to avoid the dotenvx-banner pollution described above: `TOKEN=$(dotenvx run --quiet -- node scripts/mint-token.mjs 2>/dev/null | grep -oE 'eyJ[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+' | head -1)`
 2. `curl -s -H "Authorization: Bearer $TOKEN" -H "Accept: application/json" "$API_BASE_URL/{table}?limit=1"` — inspect field names, types, casing
 3. Test filters/ordering/pagination as needed
 4. Test error cases (no auth, bad table name)

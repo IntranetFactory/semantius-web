@@ -38,20 +38,22 @@ export function DatePicker({
         className="bg-background pr-10"
       />
       <Popover>
-        <PopoverTrigger asChild>
-          <Button
-            variant="ghost"
-            disabled={disabled || readOnly}
-            type="button"
-            tabIndex={readOnly ? -1 : undefined}
-            className={cn(
-              "absolute top-1/2 right-2 size-6 -translate-y-1/2",
-              readOnly && "opacity-60"
-            )}
-          >
-            <CalendarIcon className="size-3.5" />
-            <span className="sr-only">Select date</span>
-          </Button>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="ghost"
+              disabled={disabled || readOnly}
+              type="button"
+              tabIndex={readOnly ? -1 : undefined}
+              className={cn(
+                "absolute top-1/2 right-2 size-6 -translate-y-1/2",
+                readOnly && "opacity-60"
+              )}
+            />
+          }
+        >
+          <CalendarIcon className="size-3.5" />
+          <span className="sr-only">Select date</span>
         </PopoverTrigger>
         <PopoverContent className="w-auto overflow-hidden p-0" align="end" alignOffset={-8} sideOffset={10}>
           <Calendar
@@ -59,7 +61,6 @@ export function DatePicker({
             selected={date}
             onSelect={onDateChange}
             captionLayout="dropdown"
-            initialFocus
           />
         </PopoverContent>
       </Popover>

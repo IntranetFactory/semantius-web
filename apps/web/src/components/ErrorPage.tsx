@@ -44,11 +44,9 @@ export function ErrorPage({ error, reset }: ErrorPageProps) {
               Try Again
             </Button>
           )}
-          <Button asChild>
-            <Link to="/">
-              <Home className="h-4 w-4 mr-2" />
-              Back to Home
-            </Link>
+          <Button nativeButton={false} render={<Link to="/" />}>
+            <Home className="h-4 w-4 mr-2" />
+            Back to Home
           </Button>
         </CardFooter>
       </Card>

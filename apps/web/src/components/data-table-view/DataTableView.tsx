@@ -34,6 +34,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -94,6 +95,13 @@ function getWidthBucket(property: { width?: string; format?: string; type?: stri
   if (property.width === 's' || property.width === 'm' || property.width === 'w') return property.width
   return getDefaultWidthForGrid(property.format, Array.isArray(property.type) ? property.type[0] : property.type)
 }
+
+// Fixed pixel widths for sticky-left-pinned columns, keyed by width bucket.
+// Unpinned columns stay size-less (natural distribution); pinned columns MUST
+// have an explicit width so the sticky offset (column.getStart('left')) matches
+// the rendered width and the cell content can be truncated to it — otherwise
+// long values overflow into the neighbouring column.
+const PINNED_WIDTH_PX: Record<'s' | 'm' | 'w', number> = { s: 100, m: 220, w: 340 }
 
 // Convert one ExtendedColumnFilter to one or more PostgREST AND query parameters.
 // Returns an array because 'between' requires two parameters.
@@ -427,6 +435,25 @@ export function DataTableView({
     setPaginationState(p => ({ ...p, pageIndex: 0 }))
   }, [])
 
+  // Sticky-left pinning target: the entity's label column (and any column to its
+  // left) — but only when the label sits in grid position 1 or 2. Keeps the row's
+  // human identifier visible while a wide table scrolls horizontally. Computed
+  // from metadata (same skip rules as the column build) so it is available while
+  // building the columns, where pinned columns need an explicit size + truncation.
+  const leftPinnedKeys = useMemo(() => {
+    if (!metadata.properties) return [] as string[]
+    const keys: string[] = []
+    for (const [key, property] of Object.entries(metadata.properties)) {
+      if (excludeColumns.includes(key)) continue
+      if (key.startsWith('_') || key.endsWith('_at')) continue
+      if (property.ctype === 'fk_label' || property.ctype === '_label') continue
+      if (key.includes('[[Prototype]]')) continue
+      keys.push(key)
+    }
+    const labelIndex = keys.indexOf(displayColumn)
+    return labelIndex === 0 || labelIndex === 1 ? keys.slice(0, labelIndex + 1) : []
+  }, [metadata.properties, excludeColumns, displayColumn])
+
   // --- Column definitions from metadata ---
   const columns = useMemo((): DataTableColumnDef<RecordType>[] => {
     const cols: DataTableColumnDef<RecordType>[] = []
@@ -443,20 +470,45 @@ export function DataTableView({
       if (key.includes('[[Prototype]]')) continue
 
       const variant = getFilterVariant(property)
+      // Numeric columns are right-aligned (cells via text-right below, header via
+      // justify-end) so the heading lines up with the right-aligned figures.
+      // Reference (FK) and enum columns have a numeric underlying type but render a
+      // left-aligned label/badge in the cell — they must NOT get a right-aligned
+      // heading. Mirror the cell logic: text-right is only reached when the column
+      // is not a reference, not a boolean, and not an enum.
+      const isNumeric =
+        (property.type === 'integer' || property.type === 'number') &&
+        !property.reference_table &&
+        !(property.enum && property.enum.length > 0)
       const columnTitle = property.title || key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
 
       const options = property.enum
         ? property.enum.map(v => ({ label: v, value: v }))
         : undefined
 
-      // Width bucket: 'w' columns truncate at max-width 400px
+      // Sticky-left-pinned columns get a fixed width and always truncate so their
+      // content cannot overflow into the next (scrolling) column. Unpinned 'w'
+      // columns truncate at a 400px max-width; everything else flows naturally.
+      const isPinned = leftPinnedKeys.includes(key)
+      const pinnedSize = isPinned ? PINNED_WIDTH_PX[getWidthBucket(property)] : undefined
       const isTruncating = getWidthBucket(property) === 'w'
-      const truncateClasses = isTruncating ? 'max-w-[400px] whitespace-nowrap overflow-hidden text-ellipsis' : undefined
+      const truncateClasses =
+        isPinned || isTruncating ? 'whitespace-nowrap overflow-hidden text-ellipsis' : undefined
+      // Cap the inner content at the column width (minus cell padding) so the
+      // ellipsis lands inside the pinned column rather than under its neighbour.
+      const truncateStyle: React.CSSProperties | undefined = isPinned
+        ? { maxWidth: pinnedSize! - 24 }
+        : isTruncating
+          ? { maxWidth: 400 }
+          : undefined
+      const showTitle = isPinned || isTruncating
 
       cols.push({
         accessorKey: key,
-        // No fixed pixel size — let the table distribute widths naturally.
-        // The actions column retains size:50 to stay compact.
+        // Pinned columns need an explicit width (sticky offsets depend on it);
+        // unpinned columns stay size-less so the table distributes widths
+        // naturally. The actions column retains size:50 to stay compact.
+        ...(pinnedSize ? { size: pinnedSize } : {}),
         enableColumnFilter: true,
         meta: {
           label: columnTitle,
@@ -464,7 +516,7 @@ export function DataTableView({
           ...(options ? { options } : {}),
         },
         header: () => (
-          <DataTableColumnHeader>
+          <DataTableColumnHeader className={isNumeric ? 'justify-end' : undefined}>
             <DataTableColumnTitle>{columnTitle}</DataTableColumnTitle>
             <DataTableColumnSortMenu />
           </DataTableColumnHeader>
@@ -478,16 +530,16 @@ export function DataTableView({
               // DB-generated _label column already holds the label string.
               const labelValue = row.original[labelKey]
               const text = String(labelValue || value || '-')
-              return <div className={truncateClasses} title={isTruncating ? text : undefined}>{text}</div>
+              return <div className={truncateClasses} style={truncateStyle} title={showTitle ? text : undefined}>{text}</div>
             }
             const embedded = row.original[labelKey] as Record<string, unknown> | undefined
             if (embedded && typeof embedded === 'object' && !Array.isArray(embedded)) {
               const labelValue = embedded[property.reference_table_label_column]
               const text = String(labelValue || value || '-')
-              return <div className={truncateClasses} title={isTruncating ? text : undefined}>{text}</div>
+              return <div className={truncateClasses} style={truncateStyle} title={showTitle ? text : undefined}>{text}</div>
             }
             const text = String(value || '-')
-            return <div className={truncateClasses} title={isTruncating ? text : undefined}>{text}</div>
+            return <div className={truncateClasses} style={truncateStyle} title={showTitle ? text : undefined}>{text}</div>
           }
 
           if (property.type === 'boolean') {
@@ -508,7 +560,7 @@ export function DataTableView({
           }
 
           const text = String(value ?? '-')
-          return <div className={truncateClasses} title={isTruncating ? text : undefined}>{text}</div>
+          return <div className={truncateClasses} style={truncateStyle} title={showTitle ? text : undefined}>{text}</div>
         },
       })
     }
@@ -534,25 +586,29 @@ export function DataTableView({
         const hasOpenHandler = !!(onEdit || onEditModal)
         return (
           <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                variant="ghost"
-                className="h-8 w-8 p-0"
-                onClick={e => e.stopPropagation()}
-              >
-                <span className="sr-only">Open menu</span>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
+            <DropdownMenuTrigger
+              render={
+                <Button
+                  variant="ghost"
+                  className="h-8 w-8 p-0"
+                  onClick={e => e.stopPropagation()}
+                />
+              }
+            >
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48" sideOffset={5}>
-              <DropdownMenuLabel>
-                Actions
-                {showRecordIdentifier && displayValue != null && String(displayValue) !== '' && (
-                  <div className="text-xs font-medium text-foreground mt-0.5 truncate">
-                    {String(displayValue)}
-                  </div>
-                )}
-              </DropdownMenuLabel>
+              <DropdownMenuGroup>
+                <DropdownMenuLabel>
+                  Actions
+                  {showRecordIdentifier && displayValue != null && String(displayValue) !== '' && (
+                    <div className="text-xs font-medium text-foreground mt-0.5 truncate">
+                      {String(displayValue)}
+                    </div>
+                  )}
+                </DropdownMenuLabel>
+              </DropdownMenuGroup>
               <DropdownMenuSeparator />
               {hasOpenHandler && (
                 <DropdownMenuItem onClick={handleOpenRecord}>
@@ -597,7 +653,16 @@ export function DataTableView({
     })
 
     return cols
-  }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn])
+  }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn, leftPinnedKeys])
+
+  // Sticky pinning state: the label column (+ anything left of it, when in
+  // position 1 or 2) on the left, and the row-actions column on the right.
+  // leftPinnedKeys is in column order, and those columns are sized explicitly in
+  // the column build so the sticky offsets stay aligned.
+  const columnPinning = useMemo(
+    () => ({ left: leftPinnedKeys, right: ['actions'] }),
+    [leftPinnedKeys]
+  )
 
   // Constrain the whole grid to max-w-[760px] when there are ≤ 4 data columns
   // columns includes the actions column, so threshold is columns.length <= 5
@@ -623,6 +688,13 @@ export function DataTableView({
           data={tableData}
           columns={columns}
           isLoading={isLoading}
+          initialState={{
+            // Pin the row-actions column to the right edge so the "..." menu
+            // stays visible without scrolling to the end of a wide table, plus
+            // the label column (and anything left of it) on the left when it
+            // sits in position 1 or 2 — see columnPinning memo above.
+            columnPinning,
+          }}
           state={{
             pagination,
             sorting,

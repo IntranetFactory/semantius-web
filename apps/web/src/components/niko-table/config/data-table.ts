@@ -1,14 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import {
-  ArrowDownAZ,
-  ArrowDownZA,
-  ArrowDown01,
-  ArrowDown10,
-  ArrowUpDown,
-  Calendar,
-  Check,
-  X as XIcon,
-} from "lucide-react"
+import { ArrowUp, ArrowDown, ArrowUpDown } from "lucide-react"
 import {
   JOIN_OPERATORS,
   FILTER_OPERATORS,
@@ -31,47 +22,26 @@ interface SortLabels {
   desc: string
 }
 
+// Plain directional arrows for every column type. Ascending = up, descending =
+// down, unsorted = both. We intentionally do NOT use the lettered/numbered
+// variants (ArrowDownAZ/ZA, ArrowDown01/10) — the arrow direction alone conveys
+// sort order; the menu LABELS (SORT_LABELS) still carry the type-specific wording
+// ("Low to High", "Oldest First", etc.).
+const DIRECTIONAL_SORT_ICONS: SortIcons = {
+  asc: ArrowUp,
+  desc: ArrowDown,
+  unsorted: ArrowUpDown,
+}
+
 export const SORT_ICONS: Record<SortIconVariant, SortIcons> = {
-  [FILTER_VARIANTS.TEXT]: {
-    asc: ArrowDownAZ,
-    desc: ArrowDownZA,
-    unsorted: ArrowUpDown,
-  },
-  [FILTER_VARIANTS.NUMBER]: {
-    asc: ArrowDown01,
-    desc: ArrowDown10,
-    unsorted: ArrowUpDown,
-  },
-  [FILTER_VARIANTS.RANGE]: {
-    asc: ArrowDown01,
-    desc: ArrowDown10,
-    unsorted: ArrowUpDown,
-  },
-  [FILTER_VARIANTS.DATE]: {
-    asc: ArrowUpDown,
-    desc: ArrowUpDown,
-    unsorted: Calendar,
-  },
-  [FILTER_VARIANTS.DATE_RANGE]: {
-    asc: ArrowUpDown,
-    desc: ArrowUpDown,
-    unsorted: Calendar,
-  },
-  [FILTER_VARIANTS.BOOLEAN]: {
-    asc: XIcon, // False First
-    desc: Check, // True First
-    unsorted: ArrowUpDown,
-  },
-  [FILTER_VARIANTS.SELECT]: {
-    asc: ArrowDownAZ,
-    desc: ArrowDownZA,
-    unsorted: ArrowUpDown,
-  },
-  [FILTER_VARIANTS.MULTI_SELECT]: {
-    asc: ArrowDownAZ,
-    desc: ArrowDownZA,
-    unsorted: ArrowUpDown,
-  },
+  [FILTER_VARIANTS.TEXT]: DIRECTIONAL_SORT_ICONS,
+  [FILTER_VARIANTS.NUMBER]: DIRECTIONAL_SORT_ICONS,
+  [FILTER_VARIANTS.RANGE]: DIRECTIONAL_SORT_ICONS,
+  [FILTER_VARIANTS.DATE]: DIRECTIONAL_SORT_ICONS,
+  [FILTER_VARIANTS.DATE_RANGE]: DIRECTIONAL_SORT_ICONS,
+  [FILTER_VARIANTS.BOOLEAN]: DIRECTIONAL_SORT_ICONS,
+  [FILTER_VARIANTS.SELECT]: DIRECTIONAL_SORT_ICONS,
+  [FILTER_VARIANTS.MULTI_SELECT]: DIRECTIONAL_SORT_ICONS,
 }
 
 export const SORT_LABELS: Record<SortIconVariant, SortLabels> = {

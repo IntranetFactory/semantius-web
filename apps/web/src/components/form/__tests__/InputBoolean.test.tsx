@@ -38,7 +38,7 @@ describe('InputBoolean', () => {
       </TestWrapper>
     )
     const checkbox = screen.getByRole('checkbox')
-    expect(checkbox).toHaveAttribute('data-state', 'checked')
+    expect(checkbox).toHaveAttribute('aria-checked', 'true')
   })
 
   it('should not show required indicator even when required prop is passed', () => {
@@ -58,7 +58,7 @@ describe('InputBoolean', () => {
       </TestWrapper>
     )
     const checkbox = screen.getByRole('checkbox')
-    expect(checkbox).toHaveAttribute('data-state', 'unchecked')
+    expect(checkbox).toHaveAttribute('aria-checked', 'false')
   })
 
   it('should handle default value of true', () => {
@@ -68,6 +68,6 @@ describe('InputBoolean', () => {
       </TestWrapper>
     )
     const checkbox = screen.getByRole('checkbox')
-    expect(checkbox).toHaveAttribute('data-state', 'checked')
+    expect(checkbox).toHaveAttribute('aria-checked', 'true')
   })
 })

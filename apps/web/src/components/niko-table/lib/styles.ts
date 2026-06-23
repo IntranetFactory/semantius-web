@@ -23,7 +23,11 @@ export const getCommonPinningStyles = <TData>(
     // Headers: z-20 to stay above other headers and body.
     // Body: z-10 to stay above other body cells.
     zIndex: isHeader ? 20 : 10,
-    backgroundColor: "var(--background)", // Ensure opaque background
+    // NB: background is intentionally NOT set here. An inline background-color
+    // would win over the `group-hover:bg-muted/50` / selected classes the table
+    // applies to pinned cells, killing the row hover/selection highlight on the
+    // sticky columns. Opacity is instead guaranteed by those bg-* classes
+    // (`bg-background` base + hover/selected variants) at the call sites.
     // Create a visual separation for pinned columns
     boxShadow: isLeft
       ? "1px 0 0 var(--border)" // Right border for left pinned

@@ -9,6 +9,10 @@ import { cn } from "@/lib/utils"
 
 interface TableColumnHeaderContextValue<TData, TValue> {
   column: Column<TData, TValue>
+  /** Whether the column's sort dropdown menu is open. */
+  sortMenuOpen: boolean
+  /** Open/close the column's sort dropdown menu. */
+  setSortMenuOpen: (open: boolean) => void
 }
 
 const TableColumnHeaderContext = React.createContext<
@@ -49,9 +53,18 @@ export function DataTableColumnHeaderRoot<TData, TValue>({
   column: Column<TData, TValue>
   children: React.ReactNode
 }) {
+  // Sort-menu open state is lifted here so the column title (case 4 below) can
+  // open the same dropdown that the sort icon owns.
+  const [sortMenuOpen, setSortMenuOpen] = React.useState(false)
   return (
     <TableColumnHeaderContext.Provider
-      value={{ column } as TableColumnHeaderContextValue<unknown, unknown>}
+      value={
+        {
+          column,
+          sortMenuOpen,
+          setSortMenuOpen,
+        } as TableColumnHeaderContextValue<unknown, unknown>
+      }
     >
       {children}
     </TableColumnHeaderContext.Provider>

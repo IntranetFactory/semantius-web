@@ -29,11 +29,9 @@ export function LogoutConfirmationPage() {
           </div>
           
           <div className="space-y-2">
-            <Button asChild className="w-full" size="lg">
-              <Link to="/">
-                <LogIn className="mr-2 h-4 w-4" />
-                Sign In Again
-              </Link>
+            <Button nativeButton={false} render={<Link to="/" />} className="w-full" size="lg">
+              <LogIn className="mr-2 h-4 w-4" />
+              Sign In Again
             </Button>
           </div>
           

@@ -247,8 +247,15 @@ export function DataTableBody<TData>({
                         key={cell.id}
                         style={cellStyle}
                         className={cn(
+                          // Pinned cells overlay the columns that scroll under
+                          // them, so their background MUST be opaque — a
+                          // translucent `bg-muted/50` would let the scrolled-under
+                          // content bleed through on hover. color-mix gives the
+                          // exact opaque equivalent of the row's `muted/50`-over-
+                          // `background` hover tint, so the sticky columns match
+                          // the rest of the hovered row instead of looking darker.
                           cell.column.getIsPinned() &&
-                            "bg-background group-hover:bg-muted/50 group-data-[state=selected]:bg-muted",
+                            "bg-background group-hover:bg-[color-mix(in_srgb,var(--muted)_50%,var(--background))] group-data-[state=selected]:bg-muted",
                         )}
                       >
                         {flexRender(

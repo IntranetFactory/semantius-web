@@ -1,5 +1,5 @@
 import type { Column, Table } from "@tanstack/react-table"
-import { Check, ChevronsUpDown, Settings2 } from "lucide-react"
+import { ChevronsUpDown, Settings2 } from "lucide-react"
 import * as React from "react"
 import { Button } from "@/components/ui/button"
 import {
@@ -15,7 +15,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover"
-import { cn } from "@/lib/utils"
 import { formatLabel } from "../lib/format"
 
 /**
@@ -63,18 +62,20 @@ export function TableViewMenu<TData>({
 
   return (
     <Popover>
-      <PopoverTrigger asChild>
-        <Button
-          aria-label="Toggle columns"
-          role="combobox"
-          variant="outline"
-          size="sm"
-          className="ml-auto hidden h-8 lg:flex"
-        >
-          <Settings2 />
-          View
-          <ChevronsUpDown className="ml-auto opacity-50" />
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button
+            aria-label="Toggle columns"
+            role="combobox"
+            variant="outline"
+            size="sm"
+            className="ml-auto hidden h-8 lg:flex"
+          />
+        }
+      >
+        <Settings2 />
+        View
+        <ChevronsUpDown className="ml-auto opacity-50" />
       </PopoverTrigger>
       <PopoverContent align="end" className="w-fit p-0">
         <Command>
@@ -85,6 +86,11 @@ export function TableViewMenu<TData>({
               {columns.map(column => (
                 <CommandItem
                   key={column.id}
+                  // CommandItem auto-renders its own right-aligned check that
+                  // shows when data-checked="true" — drive it from visibility
+                  // instead of rendering a second manual <Check> (which would
+                  // sit left of the invisible built-in one, breaking alignment).
+                  data-checked={column.getIsVisible()}
                   onSelect={() => {
                     const newVisibility = !column.getIsVisible()
                     column.toggleVisibility(newVisibility)
@@ -92,12 +98,6 @@ export function TableViewMenu<TData>({
                   }}
                 >
                   <span className="truncate">{getColumnTitle(column)}</span>
-                  <Check
-                    className={cn(
-                      "ml-auto size-4 shrink-0",
-                      column.getIsVisible() ? "opacity-100" : "opacity-0",
-                    )}
-                  />
                 </CommandItem>
               ))}
             </CommandGroup>

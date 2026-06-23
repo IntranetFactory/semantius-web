@@ -36,9 +36,18 @@ export function DataTableColumnSortMenu<TData, TValue>(
     "column" | "table"
   >,
 ) {
-  const { column } = useColumnHeaderContext<TData, TValue>(true)
+  const { column, sortMenuOpen, setSortMenuOpen } =
+    useColumnHeaderContext<TData, TValue>(true)
   const { table } = useDataTable<TData>()
-  return <TableColumnSortMenu column={column} table={table} {...props} />
+  return (
+    <TableColumnSortMenu
+      column={column}
+      table={table}
+      open={sortMenuOpen}
+      onOpenChange={setSortMenuOpen}
+      {...props}
+    />
+  )
 }
 
 DataTableColumnSortMenu.displayName = "DataTableColumnSortMenu"

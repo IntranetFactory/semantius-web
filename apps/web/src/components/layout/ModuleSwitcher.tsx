@@ -84,32 +84,34 @@ export function ModuleSwitcher({
     <SidebarMenu>
       <SidebarMenuItem>
         <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <SidebarMenuButton
-              size="lg"
-              className="data-[state=open]:bg-sidebar-accent data-[state=open]:text-sidebar-accent-foreground"
+          <DropdownMenuTrigger
+            render={
+              <SidebarMenuButton
+                size="lg"
+                className="data-[popup-open]:bg-sidebar-accent data-[popup-open]:text-sidebar-accent-foreground"
+              />
+            }
+          >
+            <div
+              className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden"
+              style={activeModule.logoColor ? { backgroundColor: activeModule.logoColor } : undefined}
             >
-              <div
-                className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden"
-                style={activeModule.logoColor ? { backgroundColor: activeModule.logoColor } : undefined}
-              >
-                {typeof activeModule.logo === 'string' ? (
-                  <img src={activeModule.logo} alt={activeModule.displayName} className="size-full object-cover" />
-                ) : activeModule.logo ? (
-                  <activeModule.logo className="size-4" />
-                ) : null}
-              </div>
-              <div className="grid flex-1 text-left text-sm leading-tight">
-                <span className="truncate font-medium">{activeModule.displayName}</span>
-                {activeModule.displayTitle && (
-                  <span className="truncate text-xs">{activeModule.displayTitle}</span>
-                )}
-              </div>
-              <ChevronsUpDown className="ml-auto" />
-            </SidebarMenuButton>
+              {typeof activeModule.logo === 'string' ? (
+                <img src={activeModule.logo} alt={activeModule.displayName} className="size-full object-cover" />
+              ) : activeModule.logo ? (
+                <activeModule.logo className="size-4" />
+              ) : null}
+            </div>
+            <div className="grid flex-1 text-left text-sm leading-tight">
+              <span className="truncate font-medium">{activeModule.displayName}</span>
+              {activeModule.displayTitle && (
+                <span className="truncate text-xs">{activeModule.displayTitle}</span>
+              )}
+            </div>
+            <ChevronsUpDown className="ml-auto" />
           </DropdownMenuTrigger>
           <DropdownMenuContent
-            className="w-(--radix-dropdown-menu-trigger-width) min-w-56 rounded-lg"
+            className="w-(--anchor-width) min-w-56 rounded-lg"
             align="start"
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}

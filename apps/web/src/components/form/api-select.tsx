@@ -259,19 +259,22 @@ export function APISelect<T>({
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button
-          variant="outline"
-          role="combobox"
-          aria-expanded={open}
-          className={cn(
-            "group cursor-pointer justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
-            disabled && "opacity-50 cursor-not-allowed",
-            triggerClassName
-          )}
-          style={{ width: width }}
-          disabled={disabled}
-        >
+      <PopoverTrigger
+        render={
+          <Button
+            variant="outline"
+            role="combobox"
+            aria-expanded={open}
+            className={cn(
+              "group cursor-pointer justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
+              disabled && "opacity-50 cursor-not-allowed",
+              triggerClassName
+            )}
+            style={{ width: width }}
+            disabled={disabled}
+          />
+        }
+      >
           {selectedOption ? (
             <div className={itemClassName}>{renderItem(selectedOption)}</div>
           ) : initialLoading ? (
@@ -305,9 +308,8 @@ export function APISelect<T>({
             )}
             {!disabled && <ChevronsUpDown className="opacity-50" size={10} />}
           </div>
-        </Button>
       </PopoverTrigger>
-      <PopoverContent className={cn("p-0 w-[var(--radix-popover-trigger-width)]", className)}>
+      <PopoverContent className={cn("p-0 w-[var(--anchor-width)]", className)}>
         <Command shouldFilter={false}>
           <div className="relative border-b w-full">
             <CommandInput

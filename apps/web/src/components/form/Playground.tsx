@@ -221,7 +221,7 @@ export function FormPlayground({ initialSchema }: FormPlaygroundProps) {
                   </Label>
                   <Select value={formMode} onValueChange={(value) => setFormMode(value as FormMode)}>
                     <SelectTrigger id="playground-form-mode" className="w-[120px] h-8">
-                      <SelectValue />
+                      <SelectValue>{(v) => ({ edit: "Edit", create: "Create", view: "View" }[v as string] ?? v)}</SelectValue>
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="edit">Edit</SelectItem>

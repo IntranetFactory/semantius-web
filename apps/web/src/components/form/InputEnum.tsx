@@ -83,44 +83,46 @@ export function InputEnum({
                 if (!isOpen) field.handleBlur()
               }}
             >
-              <PopoverTrigger asChild>
-                <Button
-                  id={name}
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={open}
-                  aria-invalid={!!field.state.meta.errors?.[0] || undefined}
-                  aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
-                  disabled={isDisabled}
-                  className={cn(
-                    "group w-full cursor-pointer justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
-                    !currentValue && "text-muted-foreground",
-                    "aria-invalid:ring-destructive/20 aria-invalid:border-destructive"
-                  )}
-                >
-                  <span className="truncate">
-                    {isDisabled ? (currentValue || '') : (currentValue || 'Select an option')}
-                  </span>
-                  <div className="flex items-center gap-1 ml-auto shrink-0 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-aria-expanded:opacity-100 transition-opacity">
-                    {!isDisabled && !required && currentValue && (
-                      <span
-                        role="button"
-                        aria-label="Clear selection"
-                        className="flex items-center justify-center"
-                        onPointerDown={(e) => {
-                          e.preventDefault()
-                          e.stopPropagation()
-                        }}
-                        onClick={handleClear}
-                      >
-                        <X className="opacity-50 hover:opacity-100 h-3 w-3" />
-                      </span>
+              <PopoverTrigger
+                render={
+                  <Button
+                    id={name}
+                    variant="outline"
+                    role="combobox"
+                    aria-expanded={open}
+                    aria-invalid={!!field.state.meta.errors?.[0] || undefined}
+                    aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
+                    disabled={isDisabled}
+                    className={cn(
+                      "group w-full cursor-pointer justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
+                      !currentValue && "text-muted-foreground",
+                      "aria-invalid:ring-destructive/20 aria-invalid:border-destructive"
                     )}
-                    {!isDisabled && <ChevronsUpDown className="opacity-50" size={10} />}
-                  </div>
-                </Button>
+                  />
+                }
+              >
+                <span className="truncate">
+                  {isDisabled ? (currentValue || '') : (currentValue || 'Select an option')}
+                </span>
+                <div className="flex items-center gap-1 ml-auto shrink-0 opacity-0 group-hover:opacity-100 group-focus:opacity-100 group-aria-expanded:opacity-100 transition-opacity">
+                  {!isDisabled && !required && currentValue && (
+                    <span
+                      role="button"
+                      aria-label="Clear selection"
+                      className="flex items-center justify-center"
+                      onPointerDown={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                      }}
+                      onClick={handleClear}
+                    >
+                      <X className="opacity-50 hover:opacity-100 h-3 w-3" />
+                    </span>
+                  )}
+                  {!isDisabled && <ChevronsUpDown className="opacity-50" size={10} />}
+                </div>
               </PopoverTrigger>
-              <PopoverContent className="w-(--radix-popover-trigger-width) p-0" align="start">
+              <PopoverContent className="w-(--anchor-width) p-0" align="start">
                 <Command>
                   {showSearch && <CommandInput placeholder="Search..." />}
                   <CommandList>

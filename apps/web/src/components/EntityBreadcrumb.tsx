@@ -60,17 +60,13 @@ export function EntityBreadcrumb({
     <Breadcrumb>
       <BreadcrumbList>
         <BreadcrumbItem>
-          <BreadcrumbLink asChild>
-            <Link to={moduleHomePath}>{moduleLabel}</Link>
-          </BreadcrumbLink>
+          <BreadcrumbLink render={<Link to={moduleHomePath} />}>{moduleLabel}</BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         {parentLabel && (
           <>
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to={parentPath || '/'}>{parentLabel}</Link>
-              </BreadcrumbLink>
+              <BreadcrumbLink render={<Link to={parentPath || '/'} />}>{parentLabel}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
           </>
@@ -78,18 +74,14 @@ export function EntityBreadcrumb({
         {parentRecordLabel && parentRecordPath && (
           <>
             <BreadcrumbItem>
-              <BreadcrumbLink asChild>
-                <Link to={parentRecordPath}>{parentRecordLabel}</Link>
-              </BreadcrumbLink>
+              <BreadcrumbLink render={<Link to={parentRecordPath} />}>{parentRecordLabel}</BreadcrumbLink>
             </BreadcrumbItem>
             <BreadcrumbSeparator />
           </>
         )}
         <BreadcrumbItem>
           {recordLabel ? (
-            <BreadcrumbLink asChild>
-              <Link to={entityPath}>{entityLabel}</Link>
-            </BreadcrumbLink>
+            <BreadcrumbLink render={<Link to={entityPath} />}>{entityLabel}</BreadcrumbLink>
           ) : (
             <BreadcrumbPage>{entityLabel}</BreadcrumbPage>
           )}

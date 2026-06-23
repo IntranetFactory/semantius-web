@@ -7,6 +7,7 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
@@ -90,6 +91,7 @@ export function TableColumnSortOptions<TData, TValue>({
     e:
       | React.MouseEvent
       | React.KeyboardEvent
+      | React.SyntheticEvent
       | Event
       | {
           detail?: { originalEvent?: { shiftKey?: boolean } }
@@ -128,15 +130,18 @@ export function TableColumnSortOptions<TData, TValue>({
   return (
     <>
       {withSeparator && <DropdownMenuSeparator />}
+      <DropdownMenuGroup>
       <DropdownMenuLabel className="flex items-center justify-between text-xs font-normal text-muted-foreground">
         <div className="flex items-center gap-2">
           <span>Column Sort</span>
           {showSortBadge && (
             <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="flex size-4 cursor-help items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground">
-                  {sortIndex + 1}
-                </span>
+              <TooltipTrigger
+                render={
+                  <span className="flex size-4 cursor-help items-center justify-center rounded-full bg-primary text-[10px] font-medium text-primary-foreground" />
+                }
+              >
+                {sortIndex + 1}
               </TooltipTrigger>
               <TooltipContent side="right">
                 Sort priority (order in which columns are sorted)
@@ -145,16 +150,17 @@ export function TableColumnSortOptions<TData, TValue>({
           )}
         </div>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <CircleHelp className="size-3.5 cursor-help" />
-          </TooltipTrigger>
+          <TooltipTrigger
+            render={<CircleHelp className="size-3.5 cursor-help" />}
+          />
           <TooltipContent side="right">
             TIP: Hold &apos;shift&apos; key to enable multi sort
           </TooltipContent>
         </Tooltip>
       </DropdownMenuLabel>
+      </DropdownMenuGroup>
       <DropdownMenuItem
-        onSelect={e => handleSort("asc", e)}
+        onClick={e => handleSort("asc", e)}
         className={cn(
           "flex items-center",
           sortState === "asc" && "bg-accent text-accent-foreground",
@@ -165,7 +171,7 @@ export function TableColumnSortOptions<TData, TValue>({
         {sortState === "asc" && <Check className="ml-2 size-4" />}
       </DropdownMenuItem>
       <DropdownMenuItem
-        onSelect={e => handleSort("desc", e)}
+        onClick={e => handleSort("desc", e)}
         className={cn(
           "flex items-center",
           sortState === "desc" && "bg-accent text-accent-foreground",
@@ -176,7 +182,7 @@ export function TableColumnSortOptions<TData, TValue>({
         {sortState === "desc" && <Check className="ml-2 size-4" />}
       </DropdownMenuItem>
       {sortState && (
-        <DropdownMenuItem onSelect={() => column.clearSorting()}>
+        <DropdownMenuItem onClick={() => column.clearSorting()}>
           <icons.unsorted className="mr-2 size-4 text-muted-foreground/70" />
           Clear Sort
         </DropdownMenuItem>
@@ -206,11 +212,16 @@ export function TableColumnSortMenu<TData, TValue>({
   table: propTable,
   variant: propVariant,
   className,
+  open: controlledOpen,
+  onOpenChange,
 }: {
   column: Column<TData, TValue>
   table?: Table<TData>
   variant?: SortIconVariant
   className?: string
+  /** Controlled open state. When provided, the menu becomes controlled. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
   const context = useDataTable<TData>()
   const table = propTable || context.table
@@ -235,30 +246,34 @@ export function TableColumnSortMenu<TData, TValue>({
   const isMultiSort = table && table.getState().sorting.length > 1
   const showSortBadge = isMultiSort && sortIndex !== -1
 
-  const [menuOpen, setMenuOpen] = React.useState(false)
+  const [uncontrolledOpen, setUncontrolledOpen] = React.useState(false)
+  const menuOpen = controlledOpen ?? uncontrolledOpen
+  const setMenuOpen = onOpenChange ?? setUncontrolledOpen
 
   return (
     <DropdownMenu open={menuOpen} onOpenChange={setMenuOpen}>
-      <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            "size-7 transition-opacity dark:text-muted-foreground",
-            sortState ? "text-primary" : (menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"),
-            className,
-          )}
-        >
-          <div className="relative flex items-center justify-center">
-            <SortIcon className="size-4" />
-            {showSortBadge && (
-              <span className="absolute -top-1 -right-2 flex size-3 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground">
-                {sortIndex + 1}
-              </span>
+      <DropdownMenuTrigger
+        render={
+          <Button
+            variant="ghost"
+            size="icon"
+            className={cn(
+              "size-7 transition-opacity dark:text-muted-foreground",
+              sortState ? "text-primary" : (menuOpen ? "opacity-100" : "opacity-0 group-hover:opacity-100"),
+              className,
             )}
-          </div>
-          <span className="sr-only">Sort column</span>
-        </Button>
+          />
+        }
+      >
+        <div className="relative flex items-center justify-center">
+          <SortIcon className="size-4" />
+          {showSortBadge && (
+            <span className="absolute -top-1 -right-2 flex size-3 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground">
+              {sortIndex + 1}
+            </span>
+          )}
+        </div>
+        <span className="sr-only">Sort column</span>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-48">
         <TableColumnSortOptions

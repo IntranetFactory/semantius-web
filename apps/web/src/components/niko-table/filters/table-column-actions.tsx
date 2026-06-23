@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuLabel,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
@@ -63,26 +64,30 @@ export function TableColumnActions({
 }: TableColumnActionsProps) {
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        {trigger ?? (
-          <Button
-            variant="ghost"
-            size="icon"
-            className={cn(
-              "size-7 transition-opacity group-hover:opacity-100 dark:text-muted-foreground",
-              isActive ? "text-primary opacity-100" : "opacity-0",
-              className,
-            )}
-          >
-            <MoreVertical className="size-4" />
-            <span className="sr-only">{label}</span>
-          </Button>
-        )}
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger
+        render={
+          (trigger as React.ReactElement) ?? (
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "size-7 transition-opacity group-hover:opacity-100 dark:text-muted-foreground",
+                isActive ? "text-primary opacity-100" : "opacity-0",
+                className,
+              )}
+            >
+              <MoreVertical className="size-4" />
+              <span className="sr-only">{label}</span>
+            </Button>
+          )
+        }
+      />
       <DropdownMenuContent align={align} className="w-48">
-        <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
-          {label}
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="text-xs font-normal text-muted-foreground">
+            {label}
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         {children}
       </DropdownMenuContent>
     </DropdownMenu>

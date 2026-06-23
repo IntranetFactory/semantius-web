@@ -397,7 +397,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
       {/* Sheet for viewing/editing record - used when field count < 10 or narrow screen */}
       <Sheet open={isOpen && !useModal} onOpenChange={(open) => !open && handleClose()}>
-        <SheetContent className="w-full sm:max-w-[540px] border-l-0" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <SheetContent className="w-full sm:max-w-[540px] border-l-0" initialFocus={false}>
           <SheetHeader>
             <div className="flex items-start justify-between gap-4">
               <SheetTitle>
@@ -423,7 +423,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
       {/* Modal for viewing/editing record - used when field count >= 10 on wide screens */}
       <Dialog open={useModal && isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" onOpenAutoFocus={(e) => e.preventDefault()}>
+        <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" initialFocus={false}>
           <DialogHeader>
             <div className="flex items-start justify-between gap-4">
               <DialogTitle>

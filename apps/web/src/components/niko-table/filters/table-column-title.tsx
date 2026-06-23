@@ -13,16 +13,19 @@ export function TableColumnTitle<TData, TValue>({
   title,
   className,
   children,
+  onClick,
 }: {
   column: Column<TData, TValue>
   title?: string
   className?: string
   children?: React.ReactNode
+  onClick?: (e: React.MouseEvent) => void
 }) {
   const derivedTitle = useDerivedColumnTitle(column, column.id, title)
 
   return (
     <div
+      onClick={onClick}
       className={cn(
         "truncate py-0.5 text-sm font-semibold transition-colors",
         className,

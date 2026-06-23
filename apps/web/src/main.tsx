@@ -77,7 +77,11 @@ initConfig().then(() => {
 
   root.render(
     <StrictMode>
-      <ThemeProvider defaultTheme="system" storageKey="semantius-ui-theme">
+      {/* attribute="class" is required: next-themes defaults to "data-theme",
+          but our dark theme is keyed on the `.dark` class (see global.css
+          @custom-variant + `.dark {}`). Without this, only color-scheme flips
+          (dark scrollbars) while the CSS variables stay light. */}
+      <ThemeProvider attribute="class" defaultTheme="system" storageKey="semantius-ui-theme">
         <QueryClientProvider client={queryClient}>
           <AuthProviderWrapper router={router}>
             <RouterProvider router={router} />

@@ -32,6 +32,17 @@ if (typeof Element !== 'undefined') {
   }
 }
 
+// Polyfill for ResizeObserver — Base UI (@base-ui/react) popover/select/tooltip
+// positioning relies on it at mount; jsdom does not provide it, so without this
+// any test that opens a Base UI overlay throws "ResizeObserver is not defined".
+if (typeof globalThis.ResizeObserver === 'undefined') {
+  globalThis.ResizeObserver = class ResizeObserver {
+    observe() {}
+    unobserve() {}
+    disconnect() {}
+  }
+}
+
 // Cleanup after each test
 afterEach(() => {
   cleanup()

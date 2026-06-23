@@ -241,9 +241,12 @@ function useFacetedContext(name: string) {
 
 interface FacetedProps<
   Multiple extends boolean = false,
-> extends React.ComponentProps<typeof Popover> {
+> extends Omit<React.ComponentProps<typeof Popover>, "onOpenChange"> {
   value?: FacetedValue<Multiple>
   onValueChange?: (value: FacetedValue<Multiple> | undefined) => void
+  // Base UI's Popover types onOpenChange as (open, eventDetails) => void, making
+  // the 2nd arg required. We only forward `open` here, so declare a 1-arg signature.
+  onOpenChange?: (open: boolean) => void
   children?: React.ReactNode
   multiple?: Multiple
 }
@@ -402,7 +405,7 @@ function FacetedContent(props: React.ComponentProps<typeof PopoverContent>) {
       {...contentProps}
       align="start"
       className={cn(
-        "w-[200px] origin-(--radix-popover-content-transform-origin) p-0",
+        "w-[200px] origin-(--transform-origin) p-0",
         className,
       )}
     >
@@ -958,24 +961,24 @@ export function TableFilterMenu<TData>({
       getItemValue={item => item.filterId}
     >
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button variant="outline" size="sm" title="Open filter menu (F)">
-            <ListFilter />
-            Filter
-            {filters.length > 0 && (
-              <Badge
-                variant="secondary"
-                className="h-[18.24px] rounded-[3.2px] px-[5.12px] font-mono text-[10.4px] font-normal"
-              >
-                {filters.length}
-              </Badge>
-            )}
-          </Button>
+        <PopoverTrigger
+          render={<Button variant="outline" size="sm" title="Open filter menu (F)" />}
+        >
+          <ListFilter />
+          Filter
+          {filters.length > 0 && (
+            <Badge
+              variant="secondary"
+              className="h-[18.24px] rounded-[3.2px] px-[5.12px] font-mono text-[10.4px] font-normal"
+            >
+              {filters.length}
+            </Badge>
+          )}
         </PopoverTrigger>
         <PopoverContent
           aria-describedby={descriptionId}
           aria-labelledby={labelId}
-          className="flex w-full max-w-(--radix-popover-content-available-width) origin-(--radix-popover-content-transform-origin) flex-col gap-3.5 p-4 sm:min-w-[380px]"
+          className="flex w-full max-w-(--available-width) origin-(--transform-origin) flex-col gap-3.5 p-4 sm:min-w-[380px]"
           {...props}
         >
           <div className="flex flex-col gap-1">
@@ -1282,7 +1285,7 @@ function FilterBooleanSelect<TData>({
       value={filter.value}
       onValueChange={value =>
         onFilterUpdate(filter.filterId, {
-          value,
+          value: value ?? undefined,
         })
       }
     >
@@ -1293,7 +1296,9 @@ function FilterBooleanSelect<TData>({
         size="sm"
         className="w-full rounded"
       >
-        <SelectValue placeholder={filter.value ? "True" : "False"} />
+        <SelectValue placeholder={filter.value ? "True" : "False"}>
+          {(v) => (v === "true" ? "True" : v === "false" ? "False" : v)}
+        </SelectValue>
       </SelectTrigger>
       <SelectContent id={inputListboxId}>
         <SelectItem value="true">True</SelectItem>
@@ -1337,28 +1342,30 @@ function FilterFacetedSelect<TData>({
       }}
       multiple={multiple}
     >
-      <FacetedTrigger asChild>
-        <Button
-          id={inputId}
-          aria-controls={inputListboxId}
-          aria-label={`${columnMeta?.label} filter value${multiple ? "s" : ""}`}
-          variant="outline"
-          size="sm"
-          className="w-full rounded font-normal"
-          title={`Select ${columnMeta?.label?.toLowerCase() ?? "option"}${multiple ? "s" : ""}`}
-        >
-          <FacetedBadgeList
-            options={columnMeta?.options}
-            placeholder={
-              columnMeta?.placeholder ??
-              `Select option${multiple ? "s" : ""}...`
-            }
+      <FacetedTrigger
+        render={
+          <Button
+            id={inputId}
+            aria-controls={inputListboxId}
+            aria-label={`${columnMeta?.label} filter value${multiple ? "s" : ""}`}
+            variant="outline"
+            size="sm"
+            className="w-full rounded font-normal"
+            title={`Select ${columnMeta?.label?.toLowerCase() ?? "option"}${multiple ? "s" : ""}`}
           />
-        </Button>
+        }
+      >
+        <FacetedBadgeList
+          options={columnMeta?.options}
+          placeholder={
+            columnMeta?.placeholder ??
+            `Select option${multiple ? "s" : ""}...`
+          }
+        />
       </FacetedTrigger>
       <FacetedContent
         id={inputListboxId}
-        className="w-[200px] origin-(--radix-popover-content-transform-origin)"
+        className="w-[200px] origin-(--transform-origin)"
       >
         <FacetedInput
           aria-label={`Search ${columnMeta?.label} options`}
@@ -1413,27 +1420,29 @@ function FilterDatePicker<TData>({
 
   return (
     <Popover open={showValueSelector} onOpenChange={setShowValueSelector}>
-      <PopoverTrigger asChild>
-        <Button
-          id={inputId}
-          aria-controls={inputListboxId}
-          aria-label={`${columnMeta?.label} date filter`}
-          variant="outline"
-          size="sm"
-          className={cn(
-            "w-full justify-start rounded text-left font-normal",
-            !filter.value && "text-muted-foreground",
-          )}
-          title={`Select ${columnMeta?.label?.toLowerCase() ?? FILTER_VARIANTS.DATE}${filter.operator === FILTER_OPERATORS.BETWEEN ? " range" : ""}`}
-        >
-          <CalendarIcon />
-          <span className="truncate">{displayValue}</span>
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button
+            id={inputId}
+            aria-controls={inputListboxId}
+            aria-label={`${columnMeta?.label} date filter`}
+            variant="outline"
+            size="sm"
+            className={cn(
+              "w-full justify-start rounded text-left font-normal",
+              !filter.value && "text-muted-foreground",
+            )}
+            title={`Select ${columnMeta?.label?.toLowerCase() ?? FILTER_VARIANTS.DATE}${filter.operator === FILTER_OPERATORS.BETWEEN ? " range" : ""}`}
+          />
+        }
+      >
+        <CalendarIcon />
+        <span className="truncate">{displayValue}</span>
       </PopoverTrigger>
       <PopoverContent
         id={inputListboxId}
         align="start"
-        className="w-auto origin-(--radix-popover-content-transform-origin) p-0"
+        className="w-auto origin-(--transform-origin) p-0"
       >
         {filter.operator === FILTER_OPERATORS.BETWEEN ? (
           <Calendar
@@ -1570,9 +1579,9 @@ function FilterJoinOperator<TData>({
     <div className="min-w-[72px] text-center">
       <Select
         value={filter.joinOperator || JOIN_OPERATORS.AND}
-        onValueChange={(value: JoinOperator) =>
-          onFilterUpdate(filter.filterId, { joinOperator: value })
-        }
+        onValueChange={(value) => {
+          if (value !== null) onFilterUpdate(filter.filterId, { joinOperator: value as JoinOperator })
+        }}
       >
         <SelectTrigger
           aria-label="Select join operator"
@@ -1584,8 +1593,7 @@ function FilterJoinOperator<TData>({
         </SelectTrigger>
         <SelectContent
           id={joinOperatorListboxId}
-          position="popper"
-          className="min-w-(--radix-select-trigger-width) lowercase"
+          className="min-w-(--anchor-width) lowercase"
         >
           {dataTableConfig.joinOperators.map(operator => (
             <SelectItem key={operator} value={operator}>
@@ -1624,25 +1632,27 @@ function FilterFieldSelector<TData>({
 
   return (
     <Popover open={showFieldSelector} onOpenChange={setShowFieldSelector}>
-      <PopoverTrigger asChild>
-        <Button
-          aria-controls={fieldListboxId}
-          variant="outline"
-          size="sm"
-          className="w-32 justify-between rounded font-normal"
-          title="Select field to filter"
-        >
-          <span className="truncate">
-            {columns.find(column => column.id === filter.id)?.columnDef.meta
-              ?.label ?? "Select field"}
-          </span>
-          <ChevronsUpDown className="opacity-50" />
-        </Button>
+      <PopoverTrigger
+        render={
+          <Button
+            aria-controls={fieldListboxId}
+            variant="outline"
+            size="sm"
+            className="w-32 justify-between rounded font-normal"
+            title="Select field to filter"
+          />
+        }
+      >
+        <span className="truncate">
+          {columns.find(column => column.id === filter.id)?.columnDef.meta
+            ?.label ?? "Select field"}
+        </span>
+        <ChevronsUpDown className="opacity-50" />
       </PopoverTrigger>
       <PopoverContent
         id={fieldListboxId}
         align="start"
-        className="w-40 origin-(--radix-popover-content-transform-origin) p-0"
+        className="w-40 origin-(--transform-origin) p-0"
       >
         <Command>
           <CommandInput placeholder="Search fields..." />
@@ -1714,16 +1724,17 @@ function FilterOperatorSelector<TData>({
       open={showOperatorSelector}
       onOpenChange={setShowOperatorSelector}
       value={filter.operator}
-      onValueChange={(value: FilterOperator) =>
-        onFilterUpdate(filter.filterId, {
-          operator: value,
-          value:
-            value === FILTER_OPERATORS.EMPTY ||
-            value === FILTER_OPERATORS.NOT_EMPTY
-              ? ""
-              : filter.value,
-        })
-      }
+      onValueChange={(value) => {
+        if (value !== null)
+          onFilterUpdate(filter.filterId, {
+            operator: value as FilterOperator,
+            value:
+              value === FILTER_OPERATORS.EMPTY ||
+              value === FILTER_OPERATORS.NOT_EMPTY
+                ? ""
+                : filter.value,
+          })
+      }}
     >
       <SelectTrigger
         aria-controls={operatorListboxId}
@@ -1731,12 +1742,16 @@ function FilterOperatorSelector<TData>({
         className="w-32 rounded lowercase"
       >
         <div className="truncate">
-          <SelectValue placeholder={filter.operator} />
+          <SelectValue placeholder={filter.operator}>
+            {(v) =>
+              filterOperators.find(op => op.value === v)?.label ?? String(v)
+            }
+          </SelectValue>
         </div>
       </SelectTrigger>
       <SelectContent
         id={operatorListboxId}
-        className="origin-(--radix-select-content-transform-origin)"
+        className="origin-(--transform-origin)"
       >
         {filterOperators.map(operator => (
           <SelectItem

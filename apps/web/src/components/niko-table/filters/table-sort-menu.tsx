@@ -122,21 +122,23 @@ function TableSortItem({
         onKeyDown={onItemKeyDown}
       >
         <Popover open={showFieldSelector} onOpenChange={setShowFieldSelector}>
-          <PopoverTrigger asChild>
-            <Button
-              id={fieldTriggerId}
-              aria-controls={fieldListboxId}
-              variant="outline"
-              size="sm"
-              className="w-44 justify-between rounded font-normal"
-            >
-              <span className="truncate">{columnLabels.get(sort.id)}</span>
-              <ChevronsUpDown className="opacity-50" />
-            </Button>
+          <PopoverTrigger
+            render={
+              <Button
+                id={fieldTriggerId}
+                aria-controls={fieldListboxId}
+                variant="outline"
+                size="sm"
+                className="w-44 justify-between rounded font-normal"
+              />
+            }
+          >
+            <span className="truncate">{columnLabels.get(sort.id)}</span>
+            <ChevronsUpDown className="opacity-50" />
           </PopoverTrigger>
           <PopoverContent
             id={fieldListboxId}
-            className="w-(--radix-popover-trigger-width) origin-(--radix-popover-content-transform-origin) p-0"
+            className="w-(--anchor-width) origin-(--transform-origin) p-0"
           >
             <Command>
               <CommandInput placeholder="Search fields..." />
@@ -161,19 +163,19 @@ function TableSortItem({
           open={showDirectionSelector}
           onOpenChange={setShowDirectionSelector}
           value={sort.desc ? "desc" : "asc"}
-          onValueChange={(value: SortDirection) =>
-            onSortUpdate(sort.id, { desc: value === "desc" })
-          }
+          onValueChange={(value) => {
+            if (value !== null) onSortUpdate(sort.id, { desc: value === "desc" })
+          }}
         >
           <SelectTrigger
             aria-controls={directionListboxId}
             className="h-8 w-24 rounded data-size:h-8"
           >
-            <SelectValue />
+            <SelectValue>{(v) => (v === "desc" ? labels.desc : labels.asc)}</SelectValue>
           </SelectTrigger>
           <SelectContent
             id={directionListboxId}
-            className="min-w-(--radix-select-trigger-width) origin-(--radix-select-content-transform-origin)"
+            className="min-w-(--anchor-width) origin-(--transform-origin)"
           >
             <SelectItem value="asc">{labels.asc}</SelectItem>
             <SelectItem value="desc">{labels.desc}</SelectItem>
@@ -358,29 +360,31 @@ export function TableSortMenu<TData>({
       getItemValue={item => item.id}
     >
       <Popover open={open} onOpenChange={setOpen}>
-        <PopoverTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            onKeyDown={onTriggerKeyDown}
-            className={className}
-          >
-            <ArrowDownUp />
-            Sort
-            {sorting.length > 0 && (
-              <Badge
-                variant="secondary"
-                className="h-[18.24px] rounded-[3.2px] px-[5.12px] font-mono text-[10.4px] font-normal"
-              >
-                {sorting.length}
-              </Badge>
-            )}
-          </Button>
+        <PopoverTrigger
+          render={
+            <Button
+              variant="outline"
+              size="sm"
+              onKeyDown={onTriggerKeyDown}
+              className={className}
+            />
+          }
+        >
+          <ArrowDownUp />
+          Sort
+          {sorting.length > 0 && (
+            <Badge
+              variant="secondary"
+              className="h-[18.24px] rounded-[3.2px] px-[5.12px] font-mono text-[10.4px] font-normal"
+            >
+              {sorting.length}
+            </Badge>
+          )}
         </PopoverTrigger>
         <PopoverContent
           aria-labelledby={labelId}
           aria-describedby={descriptionId}
-          className="flex w-full max-w-(--radix-popover-content-available-width) origin-(--radix-popover-content-transform-origin) flex-col gap-3.5 p-4 sm:min-w-[380px]"
+          className="flex w-full max-w-(--available-width) origin-(--transform-origin) flex-col gap-3.5 p-4 sm:min-w-[380px]"
           {...props}
         >
           <div className="flex flex-col gap-1">
@@ -390,9 +394,9 @@ export function TableSortMenu<TData>({
               </h4>
               {sorting.length > 1 && (
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <CircleHelp className="size-3.5 cursor-help text-muted-foreground" />
-                  </TooltipTrigger>
+                  <TooltipTrigger
+                    render={<CircleHelp className="size-3.5 cursor-help text-muted-foreground" />}
+                  />
                   <TooltipContent side="right">
                     The order of fields determines sort priority
                   </TooltipContent>
