@@ -4,6 +4,7 @@ import jsonLogic, { type RulesLogic } from 'json-logic-js'
 import { validateData } from 'sem-schema'
 import { controls } from './controls'
 import { Button } from '@/components/ui/button'
+import { StickyContainer } from '@/components/ui-ext/sticky-container'
 import type { SchemaObject } from 'ajv'
 import { InputText } from './InputText'
 import { FormProvider } from './FormContext'
@@ -613,7 +614,7 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
       </div>
 
       {formMode !== 'view' && (
-        <div className="flex gap-4">
+        <StickyContainer sticky="bottom" className="flex gap-4 py-4">
           <Button type="submit">Submit</Button>
           <Button
             type="button"
@@ -622,7 +623,7 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
           >
             Reset
           </Button>
-        </div>
+        </StickyContainer>
       )}
     </form>
     </FormProvider>

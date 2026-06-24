@@ -1,5 +1,5 @@
 import { useNavigate, useRouter, useRouterState, useSearch, Link } from '@tanstack/react-router'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { type ViewProps, type ChildRelation } from "@/types/metadata"
 import { useTable } from '@/hooks/useTable'
 import { useRpc } from '@/hooks/useRpc'
@@ -180,11 +180,12 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const escapedViewName = view_name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 
   const children: ChildRelation[] = metadata.children || []
-  const editMode = metadata.table?.edit_mode || 'auto'
-
-  // When edit_mode is 'auto' and the entity has child relations, treat it as 'page'
-  // so that child navigation buttons work correctly (child tables need a stable parent URL)
-  const effectiveEditMode = editMode === 'auto' && children.length > 0 ? 'page' : editMode
+  // 'auto' always resolves to an overlay sidebar (wide/two-column on large screens with
+  // many fields, narrow otherwise — see resolveDisplayMode/useWideSidebar below). Child
+  // navigation still works from the sidebar: the child buttons save the record and then
+  // navigate to the child table (handleOverlayBeforeSubmit), so no stable page URL is
+  // needed. Only an explicit edit_mode of 'page' / 'modal' / 'sidebar' overrides this.
+  const effectiveEditMode = metadata.table?.edit_mode || 'auto'
 
   // Read parent-filter params from URL
   const { _pf, _pv } = useSearch({
@@ -258,9 +259,45 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const isStandaloneNew = pathname === `${view_name}/new`
   const isStandalone = !!standaloneViewMatch || isStandaloneNew
 
+  // --- Overlay open-state detection (computed before the early return so the
+  // width-capture hooks below run unconditionally — see rules-of-hooks note). ---
+  const CREATE_SEGMENT = 'create'
+  const isCreateMode = pathname === `${view_name}/${CREATE_SEGMENT}`
+
+  const editMatch = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)\/edit$`))
+  const viewMatchResult = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)$`))
+  // Exclude 'create' from being treated as a record ID
+  const viewMatch =
+    viewMatchResult && !editMatch && viewMatchResult[1] !== CREATE_SEGMENT
+      ? viewMatchResult
+      : null
+
+  const isEditMode = !!editMatch
+  const recordId = editMatch?.[1] || viewMatch?.[1]
+  const isOpen = isCreateMode || !!recordId
+
+  const fieldCount = Object.keys(metadata.properties || {}).length
+
   // All hooks (useNavigate, useRouter, useRouterState, useUserHasPermission, useRef) must be called
   // unconditionally before any early return to satisfy React's rules of hooks.
   const overlayPostSaveTargetRef = useRef<string | null>(null)
+
+  // Capture the viewport width at the moment the overlay opens and freeze it for the
+  // lifetime of that open. We adjust state during render when `isOpen` flips (React's
+  // recommended derived-state pattern) rather than reading window.innerWidth live: this
+  // re-checks the size on every open with no post-mount flash, and keeps the chosen
+  // display mode stable while the form is open even if the window is resized.
+  // Lazy initializer handles the deep-link case where the overlay is already open on the
+  // first render (e.g. loading /module/entity/25 directly): wasOpen would equal isOpen, so
+  // the flip below never fires — without this seed openWidth would stay null.
+  const [openWidth, setOpenWidth] = useState<number | null>(() =>
+    isOpen && typeof window !== 'undefined' ? window.innerWidth : null
+  )
+  const [wasOpen, setWasOpen] = useState(isOpen)
+  if (isOpen !== wasOpen) {
+    setWasOpen(isOpen)
+    setOpenWidth(isOpen && typeof window !== 'undefined' ? window.innerWidth : null)
+  }
 
   // Render standalone form (with breadcrumbs, no data table)
   if (isStandalone) {
@@ -281,40 +318,28 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   }
 
   // --- Overlay mode: list + sheet/dialog ---
-
-  // Inline create mode: /module/entity/create opens a blank form in the overlay
-  const CREATE_SEGMENT = 'create'
-  const isCreateMode = pathname === `${view_name}/${CREATE_SEGMENT}`
-
-  const editMatch = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)\/edit$`))
-  const viewMatchResult = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)$`))
-  // Exclude 'create' from being treated as a record ID
-  const viewMatch =
-    viewMatchResult && !editMatch && viewMatchResult[1] !== CREATE_SEGMENT
-      ? viewMatchResult
-      : null
-
-  const isEditMode = !!editMatch
-  const recordId = editMatch?.[1] || viewMatch?.[1]
-  const isOpen = isCreateMode || !!recordId
-
-  const fieldCount = Object.keys(metadata.properties || {}).length
+  // (open-state detection + open-width capture computed above the early return)
 
   // Determine overlay display mode based on edit_mode from schema metadata.
-  // 'auto' (or unset): decide by field count and screen width.
+  // 'auto' (or unset): always a sidebar — wide (two-column) on large screens with
+  //   many fields, narrow otherwise.
   // 'modal': always use modal.
-  // 'sidebar': always use sidebar.
+  // 'sidebar': always use sidebar (narrow).
   // 'page': not applicable here (handled by isStandalone above).
+  //
+  // "Large screen" is the Tailwind `lg` breakpoint (>= 1024px), measured against the
+  // viewport width captured when the overlay opened (openWidth).
+  const isLargeScreen = (openWidth ?? 0) >= 1024
   const resolveDisplayMode = (): 'modal' | 'sidebar' => {
     if (effectiveEditMode === 'modal') return 'modal'
-    if (effectiveEditMode === 'sidebar') return 'sidebar'
-    // auto: wide screen + many fields → modal
-    return typeof window !== 'undefined' && window.innerWidth > 900 && fieldCount >= 10
-      ? 'modal'
-      : 'sidebar'
+    return 'sidebar'
   }
   const displayMode = resolveDisplayMode()
   const useModal = displayMode === 'modal'
+  // Wide sidebar (~900px) renders the form in two columns via the container-query grid.
+  // Only in auto mode, on a large screen, when the form has enough fields to benefit.
+  const useWideSidebar =
+    !useModal && effectiveEditMode !== 'sidebar' && isLargeScreen && fieldCount > 10
 
   const OVERLAY_FORM_ID = 'overlay-record-form'
 
@@ -410,9 +435,18 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         excludeColumns={['created_at', 'updated_at', ...(pfColumn ? [pfColumn] : [])]}
       />
 
-      {/* Sheet for viewing/editing record - used when field count < 10 or narrow screen */}
+      {/* Sheet for viewing/editing record. Wide (~900px, two-column form) on large
+          screens with many fields in auto mode; otherwise the default 540px column. */}
       <Sheet open={isOpen && !useModal} onOpenChange={(open) => !open && handleClose()}>
-        <SheetContent className="w-full sm:max-w-[540px] border-l-0" initialFocus={false}>
+        <SheetContent
+          // NB: the override must carry the same `data-[side=right]:sm:` variant as the
+          // base SheetContent class (`data-[side=right]:sm:max-w-sm`). tailwind-merge only
+          // dedupes classes with identical modifiers, and the base attribute-scoped class
+          // also out-specifies a plain `sm:max-w-*`. A bare `sm:max-w-[900px]` is therefore
+          // silently ignored — the sidebar stays pinned at max-w-sm (384px).
+          className={`w-full border-l-0 ${useWideSidebar ? 'data-[side=right]:sm:max-w-[900px]' : 'data-[side=right]:sm:max-w-[540px]'}`}
+          initialFocus={false}
+        >
           <SheetHeader>
             <div className="flex items-start justify-between gap-4">
               <SheetTitle>
@@ -423,7 +457,11 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
               {childButtons}
             </div>
           </SheetHeader>
-          <div className="flex-1 overflow-y-auto p-6 pt-0">
+          {/* No bottom padding: the sticky form footer (StickyContainer) must sit flush
+              with the scroll container's bottom edge. A `pb-*` here would (a) add dead
+              space below the action bar and (b) make the pinned position differ from the
+              resting position, causing the bar to "jump" up when scrolled to the end. */}
+          <div className="flex-1 overflow-y-auto px-6">
             <DataFormPage
               schema={metadata}
               recordId={isCreateMode ? null : recordId}
@@ -438,7 +476,10 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
 
       {/* Modal for viewing/editing record - used when field count >= 10 on wide screens */}
       <Dialog open={useModal && isOpen} onOpenChange={(open) => !open && handleClose()}>
-        <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto" initialFocus={false}>
+        {/* pb-0: the form's sticky footer must sit flush with the scroll edge — see the
+            StickyContainer note. The dialog's base p-6 bottom padding would otherwise make
+            the action bar gap/jump at the scroll end. */}
+        <DialogContent className="w-full max-w-[90vw] sm:max-w-[800px] max-h-[90vh] overflow-y-auto pb-0" initialFocus={false}>
           <DialogHeader>
             <div className="flex items-start justify-between gap-4">
               <DialogTitle>
