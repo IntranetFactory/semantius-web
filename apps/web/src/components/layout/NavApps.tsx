@@ -62,7 +62,7 @@ export function NavApps({
     return (
       <SidebarGroup className="group-data-[collapsible=icon]:hidden">
         <SidebarGroupLabel>Apps</SidebarGroupLabel>
-        <div className="text-sm text-muted-foreground px-2 py-1">Loading...</div>
+        <div className="text-sm text-muted-foreground px-2 py-1">Loading ...</div>
       </SidebarGroup>
     )
   }

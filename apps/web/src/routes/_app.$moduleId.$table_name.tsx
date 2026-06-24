@@ -2,6 +2,7 @@
 import { createFileRoute, notFound, useParams } from '@tanstack/react-router'
 import { lazy, Suspense, useMemo } from 'react'
 import { NotFoundPage } from '@/components/NotFoundPage'
+import { ViewSkeleton } from '@/components/ViewSkeleton'
 
 // Discover all view components - lazy load for code splitting
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -66,7 +67,7 @@ function RouteComponent() {
   }
   
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<ViewSkeleton />}>
       {/* key on table_name remounts the view when switching tables. Without it
           the SAME generic View instance is reused across tables (same route,
           changed params), so its internal state and useTable's keep-previous

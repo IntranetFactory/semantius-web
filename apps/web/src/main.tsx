@@ -6,6 +6,7 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools'
 import { AuthProviderWrapper } from './contexts/AuthContext'
 import { ThemeProvider } from './components/ThemeProvider'
 import { Toaster } from './components/ui/sonner'
+import { TooltipProvider } from './components/ui/tooltip'
 import type { RouterContext } from './routes/__root'
 import { initConfig, getConfigError } from './lib/config'
 import { hideAppLoader } from './lib/appLoader'
@@ -83,9 +84,11 @@ initConfig().then(() => {
           (dark scrollbars) while the CSS variables stay light. */}
       <ThemeProvider attribute="class" defaultTheme="system" storageKey="semantius-ui-theme">
         <QueryClientProvider client={queryClient}>
-          <AuthProviderWrapper router={router}>
-            <RouterProvider router={router} />
-          </AuthProviderWrapper>
+          <TooltipProvider>
+            <AuthProviderWrapper router={router}>
+              <RouterProvider router={router} />
+            </AuthProviderWrapper>
+          </TooltipProvider>
           <ReactQueryDevtools initialIsOpen={false} />
           <Toaster position="top-right" />
         </QueryClientProvider>
