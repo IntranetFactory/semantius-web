@@ -1,11 +1,11 @@
 "use client"
 
 import {
-  BadgeCheck,
   ChevronsUpDown,
   LogOut,
 } from "lucide-react"
 import { Link } from '@tanstack/react-router'
+import { useTable } from '@/hooks/useTable'
 
 import {
   Avatar,
@@ -51,6 +51,14 @@ export function NavUser({
 }) {
   const { isMobile } = useSidebar()
   const userInitials = getUserInitials(user.name)
+
+  // Show the "Manage Favorites" entry only when the user actually has favorites.
+  // Reuse NavBookmarks' exact query string so react-query serves both from one
+  // cached fetch (query key is ['table', tableName, query, count]).
+  const { data: bookmarks } = useTable('user_bookmarks', {
+    query: 'select=id,title,url&order=row_order.asc',
+  })
+  const hasFavorites = (bookmarks?.length ?? 0) > 0
 
   const handleLogout = () => {
     // Navigate to /logout route which handles the logout flow
@@ -102,9 +110,20 @@ export function NavUser({
             <DropdownMenuSeparator />
             <DropdownMenuGroup>
               <DropdownMenuItem render={<Link to="/settings" />}>
-                <BadgeCheck />
-                Account
+                Settings
               </DropdownMenuItem>
+              {hasFavorites && (
+                <DropdownMenuItem
+                  render={
+                    <Link
+                      to="/$moduleId/$table_name"
+                      params={{ moduleId: 'admin', table_name: 'user_bookmarks' }}
+                    />
+                  }
+                >
+                  Manage Favorites
+                </DropdownMenuItem>
+              )}
             </DropdownMenuGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleLogout}>

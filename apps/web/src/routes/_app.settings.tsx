@@ -42,22 +42,24 @@ function SettingsComponent() {
 
       <ApiKeysCard />
 
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-2">
-            <Key className="h-5 w-5" />
-            <CardTitle>Debug Information</CardTitle>
-          </div>
-          <CardDescription>
-            Current authentication token (for debugging purposes)
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="rounded-md bg-muted p-4 font-mono text-xs break-all">
-            {token || 'No token available'}
-          </div>
-        </CardContent>
-      </Card>
+      {import.meta.env.DEV && (
+        <Card>
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <Key className="h-5 w-5" />
+              <CardTitle>Debug Information</CardTitle>
+            </div>
+            <CardDescription>
+              Current authentication token (for debugging purposes)
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="rounded-md bg-muted p-4 font-mono text-xs break-all">
+              {token || 'No token available'}
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   )
 }

@@ -1,9 +1,11 @@
 "use client"
 
 import * as React from "react"
-import { ChevronsUpDown } from "lucide-react"
+import { ChevronsUpDown, Search } from "lucide-react"
 import { useParams } from '@tanstack/react-router'
 import { useModuleNavigate } from '@/hooks/useModuleNavigate'
+import { openCommandPalette } from './CommandPalette'
+import { PlatformShortcut } from '@/components/ui-ext/platform-shortcut'
 
 import {
   DropdownMenu,
@@ -11,7 +13,6 @@ import {
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
-  DropdownMenuShortcut,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import {
@@ -116,7 +117,18 @@ export function ModuleSwitcher({
             side={isMobile ? "bottom" : "right"}
             sideOffset={4}
           >
-            {modules.map((module, index) => (
+            <DropdownMenuItem
+              onClick={openCommandPalette}
+              className="gap-2 p-2"
+            >
+              <div className="flex size-6 items-center justify-center rounded-md border">
+                <Search className="size-3.5 shrink-0" />
+              </div>
+              Quick navigation
+              <PlatformShortcut modifier="mod" keyLabel="K" className="ml-auto" />
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            {modules.map((module) => (
               <DropdownMenuItem
                 key={module.slug}
                 onClick={() => handleModuleClick(module)}
@@ -133,7 +145,6 @@ export function ModuleSwitcher({
                   ) : null}
                 </div>
                 {module.displayName}
-                <DropdownMenuShortcut>⌘{index + 1}</DropdownMenuShortcut>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
