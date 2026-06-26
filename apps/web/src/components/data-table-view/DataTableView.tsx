@@ -622,6 +622,9 @@ export function DataTableView({
       if (property.ctype === 'fk_label' || property.ctype === '_label') continue
       if (key.includes('[[Prototype]]')) continue
 
+      // Rich-text and structured-data fields are too large to be useful in a grid cell.
+      if (property.format === 'json' || property.format === 'markdown' || property.format === 'html') continue
+
       const variant = getFilterVariant(property)
       // Numeric columns are right-aligned (cells via text-right below, header via
       // justify-end) so the heading lines up with the right-aligned figures.

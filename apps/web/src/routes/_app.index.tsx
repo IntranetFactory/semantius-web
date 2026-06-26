@@ -1,5 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
-import { GalleryVerticalEnd, Loader2, Lock, LogOut } from 'lucide-react'
+import { Loader2, Lock, LogOut } from 'lucide-react'
+import { NamedIcon } from '@/components/ui-ext/named-icon'
 import {
   Card,
   CardContent,
@@ -112,11 +113,7 @@ function IndexComponent() {
                     className="flex size-16 items-center justify-center rounded-xl overflow-hidden shrink-0 shadow-md transition-transform group-hover:scale-110"
                     style={module.logo_color ? { backgroundColor: module.logo_color } : { backgroundColor: '#0000FF' }}
                   >
-                    {module.logo_url ? (
-                      <img src={module.logo_url} alt={displayName} className="size-full object-cover" />
-                    ) : (
-                      <GalleryVerticalEnd className="size-7 text-white" />
-                    )}
+                    <NamedIcon name={module.icon_name || 'form'} className="size-7 text-white" />
                   </div>
                   <div className="flex-1 space-y-1.5">
                     <CardTitle className="text-xl font-semibold group-hover:text-primary transition-colors">

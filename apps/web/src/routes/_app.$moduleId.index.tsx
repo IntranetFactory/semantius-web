@@ -1,6 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { useCallback, useState, useEffect } from 'react'
-import { GalleryVerticalEnd } from 'lucide-react'
+import { NamedIcon } from '@/components/ui-ext/named-icon'
 import { AnalyticsDashboard, CubeProvider } from 'drizzle-cube/client'
 import type { DashboardConfig } from 'drizzle-cube/client'
 import { customCharts } from '@/charts'
@@ -69,11 +69,7 @@ function ModuleHomeComponent() {
         className="flex size-16 items-center justify-center rounded-xl overflow-hidden shrink-0 shadow-md"
         style={module.logo_color ? { backgroundColor: module.logo_color } : { backgroundColor: '#0000FF' }}
       >
-        {module.logo_url ? (
-          <img src={module.logo_url} alt={displayName} className="size-full object-cover" />
-        ) : (
-          <GalleryVerticalEnd className="size-7 text-white" />
-        )}
+        <NamedIcon name={module.icon_name || 'form'} className="size-7 text-white" />
       </div>
       <div>
         <h1 className="text-3xl font-bold tracking-tight">{displayName}</h1>

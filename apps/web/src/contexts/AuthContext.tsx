@@ -23,6 +23,7 @@ export interface Module {
   id: number
   alias: string
   logo_url: string | null
+  icon_name: string | null
   home_page: string
   created_at: string
   logo_color: string | null

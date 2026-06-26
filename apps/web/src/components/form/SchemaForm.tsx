@@ -614,7 +614,7 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
       </div>
 
       {formMode !== 'view' && (
-        <StickyContainer sticky="bottom" className="flex gap-4 py-4">
+        <StickyContainer sticky="bottom" className="flex gap-4 py-4 -mx-6 px-6">
           <Button type="submit">Submit</Button>
           <Button
             type="button"

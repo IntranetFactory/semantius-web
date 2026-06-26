@@ -2,16 +2,20 @@
 
 import * as React from "react"
 import { ChevronsUpDown, Search } from "lucide-react"
+import { NamedIcon } from '@/components/ui-ext/named-icon'
 import { useParams } from '@tanstack/react-router'
 import { useModuleNavigate } from '@/hooks/useModuleNavigate'
 import { openCommandPalette } from './CommandPalette'
 import { PlatformShortcut } from '@/components/ui-ext/platform-shortcut'
+import { getModuleDisplay } from '@/contexts/AuthContext'
+import type { Module } from '@/contexts/AuthContext'
+import { useTable } from '@/hooks/useTable'
+import { Skeleton } from '@/components/ui/skeleton'
 
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
-  DropdownMenuLabel,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
@@ -22,33 +26,71 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar'
 
+type ModuleItem = {
+  name: string
+  displayName: string
+  displayTitle: string
+  slug: string
+  alias?: string
+  logoName: string
+  logoColor?: string | null
+  id?: number
+  home_page?: string
+}
+
+function useModules(): { modules: ModuleItem[]; loading: boolean } {
+  const { data, isLoading } = useTable<Module>('modules', {
+    query: 'order=module_name.asc',
+  })
+
+  const modules = React.useMemo<ModuleItem[]>(() =>
+    (data ?? []).map((module) => {
+      const { displayName, displayTitle } = getModuleDisplay(module)
+      return {
+        name: module.module_name,
+        displayName,
+        displayTitle,
+        slug: module.module_slug,
+        alias: module.alias,
+        logoName: module.icon_name || 'form',
+        logoColor: module.logo_color || '#0000FF',
+        id: module.id,
+        home_page: module.home_page,
+      }
+    }), [data])
+
+  return { modules, loading: isLoading }
+}
+
 export function ModuleSwitcher({
-  modules,
   onModuleChange,
 }: {
-  modules: {
-    name: string
-    displayName: string
-    displayTitle: string
-    slug: string
-    alias?: string
-    logo: React.ElementType | string | null
-    plan: string
-    logoColor?: string | null
-    id?: number
-    home_page?: string
-  }[]
   onModuleChange?: (moduleId: number | null, moduleSlug: string | null) => void
 }) {
+  const { modules, loading } = useModules()
   const params = useParams({ strict: false })
-  const { moduleId } = params as { moduleId?: string; table_name?: string; key?: string }
+  const { moduleId } = params as { moduleId?: string }
   const navigateToModule = useModuleNavigate()
-
   const { isMobile } = useSidebar()
-  const [activeModule, setActiveModule] = React.useState(modules[0])
+  const [activeModule, setActiveModule] = React.useState<ModuleItem | undefined>(undefined)
 
-  // Handler for module click - navigate to home_page if available
-  const handleModuleClick = React.useCallback((module: typeof modules[0]) => {
+  React.useEffect(() => {
+    if (modules.length === 0) return
+    if (moduleId) {
+      const lower = moduleId.toLowerCase()
+      const match = modules.find(m => m.slug.toLowerCase() === lower)
+      if (match) { setActiveModule(match); return }
+    }
+    if (!activeModule) setActiveModule(modules[0])
+  }, [moduleId, modules])
+
+  React.useEffect(() => {
+    if (activeModule && onModuleChange) {
+      onModuleChange(activeModule.id ?? null, activeModule.slug ?? null)
+    }
+  }, [activeModule, onModuleChange])
+
+  const handleModuleClick = React.useCallback((module: ModuleItem) => {
     setActiveModule(module)
     navigateToModule({
       homePage: module.home_page,
@@ -58,28 +100,23 @@ export function ModuleSwitcher({
     })
   }, [navigateToModule])
 
-  // Update active module when URL changes (moduleId from params matches slug)
-  React.useEffect(() => {
-    if (moduleId && modules.length > 0) {
-      // Find module by matching the slug
-      const moduleIdLower = moduleId.toLowerCase()
-      const module = modules.find(m => m.slug.toLowerCase() === moduleIdLower)
-      if (module && module !== activeModule) {
-        setActiveModule(module)
-      }
-    }
-  }, [moduleId, modules, activeModule])
-
-  // Notify parent when active module changes
-  React.useEffect(() => {
-    if (activeModule && onModuleChange) {
-      onModuleChange(activeModule.id || null, activeModule.slug || null)
-    }
-  }, [activeModule, onModuleChange])
-
-  if (!activeModule) {
-    return null
+  if (loading) {
+    return (
+      <SidebarMenu>
+        <SidebarMenuItem>
+          <SidebarMenuButton size="lg" disabled>
+            <Skeleton className="size-8 rounded-lg shrink-0" />
+            <div className="grid flex-1 gap-1.5">
+              <Skeleton className="h-3.5 w-24" />
+              <Skeleton className="h-3 w-16" />
+            </div>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+      </SidebarMenu>
+    )
   }
+
+  if (!activeModule) return null
 
   return (
     <SidebarMenu>
@@ -97,11 +134,7 @@ export function ModuleSwitcher({
               className="bg-sidebar-primary text-sidebar-primary-foreground flex aspect-square size-8 items-center justify-center rounded-lg overflow-hidden"
               style={activeModule.logoColor ? { backgroundColor: activeModule.logoColor } : undefined}
             >
-              {typeof activeModule.logo === 'string' ? (
-                <img src={activeModule.logo} alt={activeModule.displayName} className="size-full object-cover" />
-              ) : activeModule.logo ? (
-                <activeModule.logo className="size-4" />
-              ) : null}
+              <NamedIcon name={activeModule.logoName} className="size-4 text-white" />
             </div>
             <div className="grid flex-1 text-left text-sm leading-tight">
               <span className="truncate font-medium">{activeModule.displayName}</span>
@@ -135,14 +168,10 @@ export function ModuleSwitcher({
                 className="gap-2 p-2"
               >
                 <div
-                  className="flex size-6 items-center justify-center rounded-md border overflow-hidden"
+                  className="flex size-6 items-center justify-center rounded-md overflow-hidden"
                   style={module.logoColor ? { backgroundColor: module.logoColor } : undefined}
                 >
-                  {typeof module.logo === 'string' ? (
-                    <img src={module.logo} alt={module.displayName} className="size-full object-cover" />
-                  ) : module.logo ? (
-                    <module.logo className="size-3.5 shrink-0 text-white" />
-                  ) : null}
+                  <NamedIcon name={module.logoName} className="size-3.5 shrink-0 text-white" />
                 </div>
                 {module.displayName}
               </DropdownMenuItem>
