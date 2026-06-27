@@ -136,11 +136,8 @@ export function ModuleSwitcher({
             >
               <NamedIcon name={activeModule.logoName} className="size-4 text-white" />
             </div>
-            <div className="grid flex-1 text-left text-sm leading-tight">
-              <span className="truncate font-medium">{activeModule.displayName}</span>
-              {activeModule.displayTitle && (
-                <span className="truncate text-xs">{activeModule.displayTitle}</span>
-              )}
+            <div className="grid min-w-0 flex-1 text-left text-sm leading-tight">
+              <span className="line-clamp-2 font-medium whitespace-normal">{activeModule.displayName}</span>
             </div>
             <ChevronsUpDown className="ml-auto" />
           </DropdownMenuTrigger>
@@ -168,12 +165,12 @@ export function ModuleSwitcher({
                 className="gap-2 p-2"
               >
                 <div
-                  className="flex size-6 items-center justify-center rounded-md overflow-hidden"
+                  className="flex size-6 shrink-0 items-center justify-center rounded-md overflow-hidden"
                   style={module.logoColor ? { backgroundColor: module.logoColor } : undefined}
                 >
                   <NamedIcon name={module.logoName} className="size-3.5 shrink-0 text-white" />
                 </div>
-                {module.displayName}
+                <span className="line-clamp-2">{module.displayName}</span>
               </DropdownMenuItem>
             ))}
           </DropdownMenuContent>
