@@ -9,6 +9,9 @@ export interface JsonSchemaProperty {
   default?: unknown
   minimum?: number
   maximum?: number
+  // Sem-schema number precision: fixed decimal places (0–4). Drives locale number
+  // formatting in the grid and the number form control (see lib/number-format.ts).
+  precision?: number
   pattern?: string
   items?: JsonSchemaProperty
   additionalProperties?: boolean | JsonSchemaProperty

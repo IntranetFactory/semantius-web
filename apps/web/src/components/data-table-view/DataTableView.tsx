@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useContext } from 'react'
 import { useNavigate, useSearch } from '@tanstack/react-router'
 import { type EntityMetadata, type TableMetadata } from '@/types/metadata'
 import { cn } from '@/lib/utils'
+import { formatNumberForDisplay, resolvePrecision } from '@/lib/number-format'
 import { useTable } from '@/hooks/useTable'
 import { useUpdateRecord } from '@/hooks/useTableMutations'
 import { useConfirmDelete } from '@/hooks/useConfirmDelete'
@@ -671,12 +672,19 @@ export function DataTableView({
           variant,
           ...(options ? { options } : {}),
         },
-        header: () => (
-          <DataTableColumnHeader className={isNumeric ? 'justify-end' : undefined}>
-            <DataTableColumnTitle>{columnTitle}</DataTableColumnTitle>
-            <DataTableColumnSortMenu />
-          </DataTableColumnHeader>
-        ),
+        header: ({ column }) => {
+          // Show the sort control only when the column is actually sorted — no hover-reveal
+          // arrow — consistently for EVERY column format. Titles stay click-to-sort. Numeric
+          // columns right-align (so unsorted captions sit flush against the figures); when a
+          // numeric column is sorted, a tight (size-5) arrow shows to the right of the caption.
+          const showSort = Boolean(column.getIsSorted())
+          return (
+            <DataTableColumnHeader className={isNumeric ? 'justify-end gap-0.5' : undefined}>
+              <DataTableColumnTitle>{columnTitle}</DataTableColumnTitle>
+              {showSort && <DataTableColumnSortMenu className={isNumeric ? 'size-5' : undefined} />}
+            </DataTableColumnHeader>
+          )
+        },
         cell: ({ row }) => {
           const value = row.original[key]
 
@@ -712,7 +720,14 @@ export function DataTableView({
           }
 
           if (property.type === 'integer' || property.type === 'number') {
-            return <div className="text-right">{String(value ?? '0')}</div>
+            const precision = resolvePrecision(property)
+            // Locale-aware number formatting (see lib/number-format.ts). Suppress thousands
+            // grouping for the primary-key id column — a grouped id like "1,002" reads wrong.
+            return (
+              <div className="text-right tabular-nums">
+                {formatNumberForDisplay(value, precision, { grouping: key !== primaryKeyColumn })}
+              </div>
+            )
           }
 
           const text = String(value ?? '-')

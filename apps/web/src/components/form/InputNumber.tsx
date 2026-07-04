@@ -1,9 +1,10 @@
-import { Input } from '@/components/ui/input'
 import type { FormControlProps } from './types'
 import { useFormContext } from './FormContext'
 import { FormLabel } from './FormLabel'
 import { FormDescription } from './FormDescription'
 import { FormError } from './FormError'
+import { NumberInput } from '@/components/ui-ext/number-input'
+import { resolvePrecision } from '@/lib/number-format'
 
 export function InputNumber({
   name,
@@ -14,13 +15,19 @@ export function InputNumber({
   schema,
 }: FormControlProps) {
   const { form } = useFormContext()
-  
+
   // Derive props from inputMode
   const required = inputMode === 'required'
   const readonly = inputMode === 'readonly'
   const disabled = inputMode === 'disabled'
   const hidden = inputMode === 'hidden'
-  
+
+  // `precision` (sem-schema keyword) drives the fixed decimal places; integer type → 0.
+  const precision = resolvePrecision({
+    type: schema?.type as string | string[] | undefined,
+    precision: schema?.precision as number | undefined,
+  })
+
   return (
     <form.Field name={name} validators={validators}>
       {(field: any) => (
@@ -29,17 +36,15 @@ export function InputNumber({
           {!hidden && (
             <div className="pt-2 space-y-1">
               <FormLabel htmlFor={name} label={label} required={required} error={!!field.state.meta.errors?.[0]} />
-              <Input
+              <NumberInput
                 id={name}
                 name={readonly ? undefined : name}
-                type="number"
-                value={field.state.value === undefined || field.state.value === null ? '' : field.state.value}
-                onChange={(e) => {
-                  const val = e.target.value
-                  field.handleChange(val === '' ? undefined : Number(val))
-                }}
+                value={field.state.value}
+                precision={precision}
+                onValueChange={(v) => field.handleChange(v)}
                 onBlur={field.handleBlur}
                 disabled={disabled || readonly}
+                readOnly={readonly}
                 aria-invalid={!!field.state.meta.errors?.[0]}
                 aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
               />

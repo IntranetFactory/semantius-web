@@ -127,6 +127,12 @@ All form controls must render with the **same surface as the base `Input`** (the
 - Non-`<input>` controls (comboboxes, enum/reference/date/date-time pickers) must **NOT** use `<Button variant="outline">` (forces `bg-background` white + border) or override to `bg-background`. Use `<Button variant="ghost">` plus the shared `inputSurfaceClassName` from `@/lib/utils-ext` — the Button base already supplies matching radius, focus ring, `disabled:opacity-50`, and aria-invalid states, so the trigger renders identically to a text field.
 - When adding any new picker-style form control, reuse `inputSurfaceClassName` — do not reintroduce `variant="outline"`.
 
+#### Number formatting (grid + form) — single source of truth
+
+Locale-aware number display lives in **`lib/number-format.ts`** (`getNumberSeparators`, `resolvePrecision`, `formatNumberForDisplay`) and is used by **both** the grid (`DataTableView` numeric cell) and the number form control. Do not re-implement number formatting at call sites. Formatting is driven by the browser locale and the sem-schema **`precision`** keyword (fixed decimal places, 0–4) — `precision` is now declared on `JsonSchemaProperty`. Integer type → 0 decimals; `number` with no `precision` → free decimals. The grid suppresses thousands grouping for the `id_column` only (a grouped id like `1,002` reads wrong).
+
+The number **form control** (`ui-ext/number-input.tsx`) is built on **react-number-format** (`NumericFormat`). It does **NOT** use `customInput={Input}`: the CLI-owned base `Input` (`ui/input.tsx`) is a plain function component that does not forward `ref`, and react-number-format needs the input ref for caret management (without it the cursor jumps to the end while typing). Instead it lets `NumericFormat` render its own `<input>` and replicates the base Input surface in a local `NUMBER_INPUT_SURFACE` constant — **keep that constant in sync with `ui/input.tsx`** (same pattern/reason as `inputSurfaceClassName`). Value contract is unchanged: it stores/emits `number | undefined` (from `floatValue`), matching the old native `InputNumber`.
+
 ### UI Rules
 
 - Never use `alert()`, `confirm()`, `prompt()` — use shadcn Dialog/AlertDialog instead
