@@ -135,35 +135,24 @@ export function DataFormPage({ schema, recordId, onClose, formMode, formId, onBe
       ? { ...(recordData || {}), [parentField]: parentValue }
       : recordData
 
-  return (
-    <>
-      <SchemaForm
-        id={formId}
-        onBeforeSubmit={onBeforeSubmit}
-        schema={schema}
-        initialValue={effectiveInitialValue}
-        onSubmit={handleSubmit}
-        formMode={resolvedFormMode}
-        parentField={parentField}
-      />
+  // Mutation errors render inside the form's sticky footer (above the buttons) so
+  // they stay visible even when the footer is pinned to the bottom of a scroll area.
+  const mutationError = createRecord.error ? (
+    <ApiErrorDisplay error={createRecord.error} title="Error creating record" />
+  ) : updateRecord.error ? (
+    <ApiErrorDisplay error={updateRecord.error} title="Error updating record" />
+  ) : null
 
-      {/* Display mutation errors */}
-      {createRecord.error && (
-        <div className="mt-4">
-          <ApiErrorDisplay
-            error={createRecord.error}
-            title="Error creating record"
-          />
-        </div>
-      )}
-      {updateRecord.error && (
-        <div className="mt-4">
-          <ApiErrorDisplay
-            error={updateRecord.error}
-            title="Error updating record"
-          />
-        </div>
-      )}
-    </>
+  return (
+    <SchemaForm
+      id={formId}
+      onBeforeSubmit={onBeforeSubmit}
+      schema={schema}
+      initialValue={effectiveInitialValue}
+      onSubmit={handleSubmit}
+      formMode={resolvedFormMode}
+      parentField={parentField}
+      footerContent={mutationError}
+    />
   )
 }

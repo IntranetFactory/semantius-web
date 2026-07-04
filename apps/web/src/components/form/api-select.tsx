@@ -4,7 +4,7 @@ import { useDebounce } from "@/hooks/use-debounce";
 import { useQuery } from "@tanstack/react-query";
 
 import { cn } from "@/lib/utils";
-import { interpolate } from "@/lib/utils-ext";
+import { interpolate, inputSurfaceClassName } from "@/lib/utils-ext";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -263,11 +263,12 @@ export function APISelect<T>({
       <PopoverTrigger
         render={
           <Button
-            variant="outline"
+            variant="ghost"
             role="combobox"
             aria-expanded={open}
             className={cn(
-              "group cursor-pointer justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
+              "group cursor-pointer justify-between font-normal px-3",
+              inputSurfaceClassName,
               disabled && "opacity-50 cursor-not-allowed",
               triggerClassName
             )}
@@ -348,10 +349,17 @@ export function APISelect<T>({
                     onSelect={handleSelect}
                     className="cursor-pointer bg-transparent! hover:bg-accent!"
                   >
+                    {/* Left-aligned check with reserved space (opacity toggle) — matches the
+                        InputEnum dropdown so enum and reference selects look identical. A
+                        right-aligned `ml-auto` check floats in the empty row space and reads
+                        as misaligned. */}
+                    <Check
+                      className={cn(
+                        "mr-2 size-4 shrink-0 text-foreground",
+                        isSelected ? "opacity-100" : "opacity-0"
+                      )}
+                    />
                     <div className={listItemClassName}>{(renderListItem ?? renderItem)(option)}</div>
-                    {isSelected && (
-                      <Check className="ml-auto size-3 shrink-0 text-foreground" />
-                    )}
                   </CommandItem>
                 );
               })}

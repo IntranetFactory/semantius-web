@@ -119,6 +119,14 @@ Key API differences when writing/migrating call sites (full rules: `.agents/skil
 - **State data-attrs** differ: Radix `data-[state=open]` → Base UI `data-[popup-open]` (menu/popover triggers) or `data-[panel-open]` (collapsible trigger). Put the `group/x` marker on the element that actually receives the attribute (the trigger, not a wrapper).
 - **Tests**: jsdom needs a `ResizeObserver` polyfill (in `src/test/setup.ts`) — Base UI overlays use it at mount; checkbox state is `aria-checked`/`data-checked`, not `data-state="checked"`.
 
+#### Form field surface consistency (CRITICAL for new input controls)
+
+All form controls must render with the **same surface as the base `Input`** (the `bg-input/50` filled look from `ui/input.tsx`) so field appearance is driven by the theme token, not by component type. State (readonly/disabled vs active) is then distinguished only by `disabled:opacity-50`, not by different backgrounds.
+
+- Text-family inputs already use the base `Input` (filled) — correct by default.
+- Non-`<input>` controls (comboboxes, enum/reference/date/date-time pickers) must **NOT** use `<Button variant="outline">` (forces `bg-background` white + border) or override to `bg-background`. Use `<Button variant="ghost">` plus the shared `inputSurfaceClassName` from `@/lib/utils-ext` — the Button base already supplies matching radius, focus ring, `disabled:opacity-50`, and aria-invalid states, so the trigger renders identically to a text field.
+- When adding any new picker-style form control, reuse `inputSurfaceClassName` — do not reintroduce `variant="outline"`.
+
 ### UI Rules
 
 - Never use `alert()`, `confirm()`, `prompt()` — use shadcn Dialog/AlertDialog instead

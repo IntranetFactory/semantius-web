@@ -3,6 +3,7 @@ import { format } from "date-fns"
 import { CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
+import { inputSurfaceClassName } from "@/lib/utils-ext"
 import { Button } from "@/components/ui/button"
 import { Calendar } from "@/components/ui/calendar"
 import { Input } from "@/components/ui/input"
@@ -80,9 +81,10 @@ export function DateTimePicker({
           <PopoverTrigger
             render={
               <Button
-                variant={"outline"}
+                variant="ghost"
                 className={cn(
                   "w-full justify-start text-left font-normal",
+                  inputSurfaceClassName,
                   !date && "text-muted-foreground",
                   readOnly && "opacity-60"
                 )}

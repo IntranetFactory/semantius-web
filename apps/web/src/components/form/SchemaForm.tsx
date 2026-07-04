@@ -1,4 +1,4 @@
-import { Fragment } from 'react'
+import { Fragment, type ReactNode } from 'react'
 import { useForm } from '@tanstack/react-form'
 import jsonLogic, { type RulesLogic } from 'json-logic-js'
 import { validateData } from 'sem-schema'
@@ -64,6 +64,14 @@ interface SchemaFormProps {
    * the foreign key value that ties the new child record to its parent.
    */
   parentField?: string
+  /**
+   * Content rendered inside the sticky footer, directly above the action buttons.
+   * Used for submit-time API errors (e.g. create/update failures) so the message
+   * pins together with the buttons and stays visible — a footer that is
+   * `position: sticky; bottom: 0` would otherwise push any error rendered *after*
+   * the form off-screen, since the footer's height never grows to reveal it.
+   */
+  footerContent?: React.ReactNode
 }
 
 /**
@@ -84,11 +92,26 @@ function generateDefaultValue(schema: SchemaObject): Record<string, any> {
       if ('default' in propSchema) {
         defaults[key] = (propSchema as any).default
       } else {
-        // Generate default based on type
-        const type = (propSchema as any).type || ((propSchema as any).format ? 'string' : undefined)
+        // Generate default based on type.
+        //
+        // get_schema emits json (and some other) columns with a *union* `type`
+        // array, e.g. ["object","array","string","number","integer","boolean","null"].
+        // A bare `type === 'object'` comparison never matches an array, so such a
+        // field would fall through and seed `undefined` — which InputJson renders as a
+        // completely BLANK CodeMirror editor. This is masked only while get_schema
+        // also supplies an explicit `default`; the moment it doesn't (older/cached
+        // metadata, or any json field the author left without a default) the editor
+        // shows nothing. Normalize the union to its first non-null member, and always
+        // seed valid empty JSON for `format: 'json'` so the editor is never blank.
         const format = (propSchema as any).format
-        
-        if (type === 'boolean') {
+        const rawType = (propSchema as any).type
+        const type = Array.isArray(rawType)
+          ? rawType.find((t) => t !== 'null')
+          : (rawType || (format ? 'string' : undefined))
+
+        if (format === 'json') {
+          defaults[key] = {}
+        } else if (type === 'boolean') {
           defaults[key] = false
         } else if (format === 'reference' || format === 'parent') {
           defaults[key] = null
@@ -193,7 +216,7 @@ function getWidthClasses(width: string): string {
   }
 }
 
-export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', id, onBeforeSubmit, parentField }: SchemaFormProps) {
+export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', id, onBeforeSubmit, parentField, footerContent }: SchemaFormProps) {
   // Merge schema defaults under initialValue so explicit values win
   // but defaults fill gaps (e.g. parent FK pre-filled, other fields blank).
   const defaultValue = { ...generateDefaultValue(schema), ...(initialValue || {}) }
@@ -240,7 +263,24 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
         // PostgREST rejects empty strings for typed columns (date/time/numeric/etc.).
         // Optional fields default to '' for type:string but should be sent as null when empty.
         const isTypedStringFormat = format === 'date' || format === 'date-time' || format === 'time'
-        if (isTypedStringFormat && fieldValue === '') {
+        if (format === 'json' && typeof fieldValue === 'string') {
+          // InputJson/CodeMirror always hand back a *string*. A json column expects a
+          // real JSON value (object/array/etc.), so parse before it reaches the write
+          // payload — otherwise an edited `[]` is sent as the literal string `"[]"` and
+          // the DB rejects it (e.g. an `..._is_array` check constraint). Empty → null;
+          // invalid JSON is left as-is so schema/DB validation surfaces the error
+          // rather than silently dropping the user's input.
+          const trimmed = fieldValue.trim()
+          if (trimmed === '') {
+            cleanedValue[key] = null
+          } else {
+            try {
+              cleanedValue[key] = JSON.parse(trimmed)
+            } catch {
+              cleanedValue[key] = fieldValue
+            }
+          }
+        } else if (isTypedStringFormat && fieldValue === '') {
           cleanedValue[key] = null
         } else {
           cleanedValue[key] = ((format === 'reference' || format === 'parent') && fieldValue === null) ? undefined : fieldValue
@@ -614,15 +654,20 @@ export function SchemaForm({ schema, initialValue, onSubmit, formMode = 'edit', 
       </div>
 
       {formMode !== 'view' && (
-        <StickyContainer sticky="bottom" className="flex gap-4 py-4 -mx-6 px-6">
-          <Button type="submit">Submit</Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => form.reset()}
-          >
-            Reset
-          </Button>
+        <StickyContainer sticky="bottom" className="py-4 -mx-6 px-6">
+          {/* Submit-time errors render here (inside the pinned footer) so they stay
+              visible; a sibling after the sticky bar would be pushed off-screen. */}
+          {footerContent && <div className="mb-4">{footerContent}</div>}
+          <div className="flex gap-4">
+            <Button type="submit">Submit</Button>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => form.reset()}
+            >
+              Reset
+            </Button>
+          </div>
         </StickyContainer>
       )}
     </form>

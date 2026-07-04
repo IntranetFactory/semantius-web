@@ -80,6 +80,28 @@ export function InputJson({
   return (
     <form.Field name={name} validators={validators}>
       {(field: any) => {
+        // Resolve the field's schema default so an unseeded json field shows valid
+        // JSON instead of a BLANK editor. This is the last line of defence: even when
+        // form state was never seeded — get_schema emits json columns with a *union*
+        // `type` array (["object","array",...]) so a value-less field can slip through
+        // generateDefaultValue as undefined, and `shouldReload: false` can keep an
+        // older, default-less schema cached for a whole session — the editor must
+        // never be empty. get_schema may give the default as a real object/array OR
+        // as a JSON string (e.g. "[]"); accept either, else fall back to "{}".
+        const schemaDefault = (schema as { default?: unknown } | undefined)?.default
+        let defaultString: string
+        if (typeof schemaDefault === 'string') {
+          defaultString = schemaDefault
+        } else if (schemaDefault != null) {
+          try {
+            defaultString = JSON.stringify(schemaDefault, null, 2)
+          } catch {
+            defaultString = '{}'
+          }
+        } else {
+          defaultString = '{}'
+        }
+
         // Ensure value is a string (prettify if it's an object). Always coerce
         // the final result so we never hand undefined/null to CodeMirror — its
         // Lezer tree cursor crashes on non-string input.
@@ -87,10 +109,10 @@ export function InputJson({
         if (typeof field.state.value === 'string') {
           stringValue = field.state.value
         } else if (field.state.value == null) {
-          stringValue = ''
+          stringValue = defaultString
         } else {
           try {
-            stringValue = JSON.stringify(field.state.value, null, 2) ?? ''
+            stringValue = JSON.stringify(field.state.value, null, 2) ?? defaultString
           } catch {
             stringValue = String(field.state.value)
           }

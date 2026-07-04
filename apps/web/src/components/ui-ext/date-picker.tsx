@@ -35,7 +35,7 @@ export function DatePicker({
         placeholder={placeholder}
         disabled={disabled}
         readOnly
-        className="bg-background pr-10"
+        className="pr-10"
       />
       <Popover>
         <PopoverTrigger

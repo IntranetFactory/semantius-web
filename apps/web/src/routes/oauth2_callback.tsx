@@ -10,6 +10,12 @@ export const Route = createFileRoute('/oauth2_callback')({
   component: CallbackComponent,
 })
 
+// Caps automatic recovery from a failed token exchange (expired/replayed code,
+// PKCE race) at a single fresh logIn(). sessionStorage (not localStorage) so the
+// budget is scoped to this tab/session and resets naturally; it survives the
+// logIn() redirect because that stays in the same tab.
+const RETRY_KEY = 'SC_oauth_retry'
+
 function CallbackComponent() {
   const { token, error, logIn, loginInProgress } = useAuth()
   const navigate = useNavigate()
@@ -34,8 +40,26 @@ function CallbackComponent() {
     return () => clearTimeout(timer)
   }, [])
 
+  // Auto-recover once from a failed token exchange. The auth code is single-use
+  // and short-lived, so we never re-submit it — logIn() requests a brand-new
+  // code. The retry counter caps this at one automatic attempt: a persistent
+  // failure (clock skew, PKCE/config mismatch) then falls through to the manual
+  // error UI instead of looping /login → provider → callback → error forever.
+  const [autoRetrying, setAutoRetrying] = useState(false)
+  useEffect(() => {
+    if (!error) return
+    const attempts = Number(sessionStorage.getItem(RETRY_KEY) || '0')
+    if (attempts < 1) {
+      sessionStorage.setItem(RETRY_KEY, String(attempts + 1))
+      setAutoRetrying(true)
+      logIn()
+    }
+  }, [error, logIn])
+
   useEffect(() => {
     if (token) {
+      // Successful exchange — reset the auto-retry budget for next time.
+      sessionStorage.removeItem(RETRY_KEY)
       navigate({ to: redirectTarget || '/' })
     } else if (!hadOAuthCode && !error) {
       // Arrived at /oauth2_callback without an OAuth code — no active flow, send to login
@@ -48,8 +72,10 @@ function CallbackComponent() {
     }
   }, [token, hadOAuthCode, error, loginInProgress, timedOut, navigate, redirectTarget, logIn])
 
-  if (error) {
-    // Auth error needs user interaction — hide the loading overlay to show the error UI
+  if (error && !autoRetrying) {
+    // Auth error that we won't auto-recover from — needs user interaction, so
+    // hide the loading overlay to show the error UI. (While autoRetrying is
+    // true a fresh logIn() redirect is in flight; keep the spinner up.)
     hideAppLoader()
     return (
       <div className="flex h-screen items-center justify-center">

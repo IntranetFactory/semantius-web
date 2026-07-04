@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { Check, ChevronsUpDown, X } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { inputSurfaceClassName } from '@/lib/utils-ext'
 import { Button } from '@/components/ui/button'
 import {
   Command,
@@ -87,14 +88,15 @@ export function InputEnum({
                 render={
                   <Button
                     id={name}
-                    variant="outline"
+                    variant="ghost"
                     role="combobox"
                     aria-expanded={open}
                     aria-invalid={!!field.state.meta.errors?.[0] || undefined}
                     aria-describedby={field.state.meta.errors?.[0] ? `${name}-error` : undefined}
                     disabled={isDisabled}
                     className={cn(
-                      "group w-full cursor-pointer justify-between font-normal px-3 hover:bg-transparent hover:text-foreground dark:hover:bg-input/30",
+                      "group w-full cursor-pointer justify-between font-normal px-3",
+                      inputSurfaceClassName,
                       !currentValue && "text-muted-foreground",
                       "aria-invalid:ring-destructive/20 aria-invalid:border-destructive"
                     )}
