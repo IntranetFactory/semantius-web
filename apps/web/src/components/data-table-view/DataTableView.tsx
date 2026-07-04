@@ -3,6 +3,7 @@ import { useNavigate, useSearch } from '@tanstack/react-router'
 import { type EntityMetadata, type TableMetadata } from '@/types/metadata'
 import { cn } from '@/lib/utils'
 import { formatNumberForDisplay, resolvePrecision } from '@/lib/number-format'
+import { formatDateForDisplay, isDateFormat } from '@/lib/date-format'
 import { useTable } from '@/hooks/useTable'
 import { useUpdateRecord } from '@/hooks/useTableMutations'
 import { useConfirmDelete } from '@/hooks/useConfirmDelete'
@@ -728,6 +729,11 @@ export function DataTableView({
                 {formatNumberForDisplay(value, precision, { grouping: key !== primaryKeyColumn })}
               </div>
             )
+          }
+
+          if (isDateFormat(property.format)) {
+            const text = formatDateForDisplay(value, property.format) || '-'
+            return <div className={truncateClasses} style={truncateStyle} title={showTitle ? text : undefined}>{text}</div>
           }
 
           const text = String(value ?? '-')
