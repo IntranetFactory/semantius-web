@@ -168,7 +168,12 @@ export function ModuleSwitcher({
                   className="flex size-6 shrink-0 items-center justify-center rounded-md overflow-hidden"
                   style={module.logoColor ? { backgroundColor: module.logoColor } : undefined}
                 >
-                  <NamedIcon name={module.logoName} className="size-3.5 shrink-0 text-white" />
+                  {/* color="#fff" (Lucide prop → SVG stroke attribute), NOT a text-white class:
+                      DropdownMenuItem applies `focus:**:text-accent-foreground` to every descendant
+                      on hover. A text-* class loses that specificity fight; a hardcoded stroke
+                      attribute sidesteps the currentColor cascade entirely, keeping the icon white
+                      against its colored logo box without needing !important. */}
+                  <NamedIcon name={module.logoName} className="size-3.5 shrink-0" color="#fff" />
                 </div>
                 <span className="line-clamp-2">{module.displayName}</span>
               </DropdownMenuItem>
