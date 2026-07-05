@@ -14,8 +14,10 @@
  * Browsers without scroll-driven animation support (Safari, Firefox) ignore the
  * timeline and the fade simply stays visible — the prior always-on behaviour.
  *
- * The right-pinned edge fade is intentionally NOT animated: it signals that more
- * columns exist to the right and is useful even before scrolling.
+ * The right-pinned edge fade signals that more columns exist to the right, so it
+ * is visible by default (useful even before scrolling) but fades OUT over the
+ * last stretch of horizontal scroll — once the table is scrolled fully to the
+ * right there is nothing hidden underneath, so the fade should disappear.
  */
 @keyframes niko-pin-edge-fade {
   from {
@@ -26,6 +28,15 @@
   }
 }
 
+@keyframes niko-pin-edge-fade-out {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
 .niko-pin-edge-left::after {
   opacity: 0;
   animation-name: niko-pin-edge-fade;
@@ -33,4 +44,20 @@
   animation-timing-function: linear;
   animation-timeline: scroll(nearest inline);
   animation-range: 0 24px;
+}
+
+/*
+ * Gated on scroll-timeline support: browsers without it (Safari, Firefox) fall
+ * back to the always-visible fade (the ::after base opacity of 1), preserving
+ * the "more columns" signal. The `both` fill holds opacity 1 before the range
+ * (more to scroll) and 0 after it (scrolled to the end).
+ */
+@supports (animation-timeline: scroll()) {
+  .niko-pin-edge-right::after {
+    animation-name: niko-pin-edge-fade-out;
+    animation-fill-mode: both;
+    animation-timing-function: linear;
+    animation-timeline: scroll(nearest inline);
+    animation-range: calc(100% - 24px) 100%;
+  }
 }

@@ -46,15 +46,16 @@ function getPinnedEdge(column: Column<unknown, unknown>): false | "left" | "righ
 
 // Classes for the full-height, page-background gradient that spills past a pinned
 // edge to dissolve scrolled-under text. The LEFT edge additionally carries the
-// scroll-reveal class so it only appears once the table is scrolled (see
-// pinned-edge.css); the RIGHT edge stays visible to signal more columns.
+// scroll-reveal class so it only appears once the table is scrolled; the RIGHT
+// edge carries a scroll-driven fade-OUT so it disappears once scrolled fully to
+// the right (nothing hidden there). See pinned-edge.css.
 function pinnedEdgeClasses(edge: false | "left" | "right"): string {
   if (!edge) return ""
   const base =
     "after:pointer-events-none after:absolute after:inset-y-0 after:w-8 after:content-[''] after:from-background after:to-transparent"
   return edge === "left"
     ? cn(base, "after:left-full after:bg-linear-to-r niko-pin-edge-left")
-    : cn(base, "after:right-full after:bg-linear-to-l")
+    : cn(base, "after:right-full after:bg-linear-to-l niko-pin-edge-right")
 }
 
 // ============================================================================
