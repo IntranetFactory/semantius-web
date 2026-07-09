@@ -82,6 +82,21 @@ function RowDragHandle() {
 }
 type PlainFilter = Omit<ExtendedColumnFilter<RecordType>, 'filterId'>
 
+/**
+ * Descriptor for an extra per-row entry appended to the row "..." menu.
+ * Declarative (not raw JSX) so DataTableView keeps ownership of the Base-UI
+ * DropdownMenuItem wrapping, stopPropagation, icon spacing, and destructive
+ * styling — consistent with the built-in Edit/Delete items.
+ */
+export interface RowMenuItem {
+  key: string
+  label: string
+  icon?: React.ComponentType<{ className?: string }>
+  onClick?: (record: RecordType) => void
+  disabled?: boolean
+  destructive?: boolean
+}
+
 export interface DataTableViewProps {
   metadata: EntityMetadata
   onRowClick?: (record: RecordType) => void
@@ -92,6 +107,8 @@ export interface DataTableViewProps {
   emptyMessage?: string
   emptyIcon?: React.ReactNode
   excludeColumns?: string[]
+  /** Optional per-row extra "..." menu entries, computed from the row record. */
+  getRowMenuItems?: (record: RecordType) => RowMenuItem[]
 }
 
 // Helper to map metadata property type to niko-table filter variant
@@ -248,6 +265,7 @@ export function DataTableView({
   emptyMessage,
   emptyIcon: _emptyIcon,
   excludeColumns = [],
+  getRowMenuItems,
 }: DataTableViewProps) {
   const tableMetadata = metadata.table as TableMetadata | undefined
 
@@ -761,6 +779,7 @@ export function DataTableView({
             ; (onEdit || onEditModal)?.(record)
         }
         const hasOpenHandler = !!(onEdit || onEditModal)
+        const extraItems = getRowMenuItems?.(record) ?? []
         return (
           <DropdownMenu>
             <DropdownMenuTrigger
@@ -802,7 +821,25 @@ export function DataTableView({
                   )}
                 </DropdownMenuItem>
               )}
-              {effectiveCanEdit && hasOpenHandler && <DropdownMenuSeparator />}
+              {extraItems.length > 0 && hasOpenHandler && <DropdownMenuSeparator />}
+              {extraItems.map((item) => {
+                const Icon = item.icon
+                return (
+                  <DropdownMenuItem
+                    key={item.key}
+                    disabled={item.disabled}
+                    className={item.destructive ? 'text-destructive focus:text-destructive focus:bg-destructive/10' : undefined}
+                    onClick={e => {
+                      e.stopPropagation()
+                      item.onClick?.(record)
+                    }}
+                  >
+                    {Icon && <Icon className="mr-2 h-4 w-4" />}
+                    {item.label}
+                  </DropdownMenuItem>
+                )
+              })}
+              {effectiveCanEdit && (hasOpenHandler || extraItems.length > 0) && <DropdownMenuSeparator />}
               {effectiveCanEdit && (
                 <DropdownMenuItem
                   className="text-destructive focus:text-destructive focus:bg-destructive/10"
@@ -820,7 +857,7 @@ export function DataTableView({
                   Delete
                 </DropdownMenuItem>
               )}
-              {!hasOpenHandler && !effectiveCanEdit && (
+              {!hasOpenHandler && !effectiveCanEdit && extraItems.length === 0 && (
                 <div className="px-2 py-1.5 text-sm text-muted-foreground">No actions available</div>
               )}
             </DropdownMenuContent>
@@ -847,7 +884,7 @@ export function DataTableView({
     }
 
     return cols
-  }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn, leftPinnedKeys, dndEnabled])
+  }, [metadata, excludeColumns, effectiveCanEdit, onEdit, editRoute, onEditModal, deleteConfirm, primaryKeyColumn, displayColumn, leftPinnedKeys, dndEnabled, getRowMenuItems])
 
   // Sticky pinning state: the label column (+ anything left of it, when in
   // position 1 or 2) on the left, and the row-actions column on the right.

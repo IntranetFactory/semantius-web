@@ -4,7 +4,7 @@ import { type ViewProps, type ChildRelation } from "@/types/metadata"
 import { useTable } from '@/hooks/useTable'
 import { useRpc } from '@/hooks/useRpc'
 import { useUserHasPermission } from '@/hooks/useUserPermissions'
-import { DataTableView } from '@/components/data-table-view/DataTableView'
+import { DataTableView, type RowMenuItem } from '@/components/data-table-view/DataTableView'
 import { EntityBreadcrumb } from '@/components/EntityBreadcrumb'
 import { BookmarkIcon } from '@/components/ui-ext/bookmark-icon'
 import {
@@ -154,7 +154,7 @@ function StandaloneFormView({
   )
 }
 
-export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _recordId, metadata }: ViewProps) {
+export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _recordId, metadata, getRowMenuItems }: ViewProps & { getRowMenuItems?: (record: Record<string, unknown>) => RowMenuItem[] }) {
   const navigate = useNavigate()
   const router = useRouter()
   const routerState = useRouterState()
@@ -433,6 +433,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
         emptyMessage={`No ${metadata.table?.plural_label?.toLowerCase() || 'records'} found`}
         emptyIcon={<Users className="h-12 w-12 mb-2" />}
         excludeColumns={['created_at', 'updated_at', ...(pfColumn ? [pfColumn] : [])]}
+        getRowMenuItems={getRowMenuItems}
       />
 
       {/* Sheet for viewing/editing record. Wide (~900px, two-column form) on large
