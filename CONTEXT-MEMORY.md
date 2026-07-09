@@ -201,6 +201,19 @@ Turbo runs in **strict env mode** and strips any env var not declared in `turbo.
 
 ## Testing
 
+### Load / performance tests (`apps/load-tests`)
+
+k6 load tests live in `apps/load-tests` (an **app**, not a package — it exports nothing, it's run standalone via `k6 run`). k6 runs on its own JS runtime (goja), **not Node**, so it cannot `import` `scripts/mint-token.mjs`; `lib/auth.js` reimplements the same `client_credentials` exchange natively, reading `SEMANTIUS_API_KEY` / `VITE_CONTROL_PLANE_ORG` from `__ENV`.
+
+- **Entry point is `load-test.sh`** (from `apps/load-tests`): `peak [minutes]` (auto-find peak req/s → sustain); `maxusers` (omit minutes = just find & print the max user count; `maxusers <minutes>` = find then run); `users <m> <minutes>` (explicit m users for n minutes, n default 1); plus `smoke`, `probe`, `sustain`. Leading bare integers after the scenario are positional (most = minutes; `users` = `<m> <n>`); anything after passes through to `k6 run`. It locates k6 and wraps every run in dotenvx — prefer it over calling k6 directly.
+- **k6 is not on PATH by default** in Git Bash here — winget installs it to `C:\Program Files\k6`; `load-test.sh` adds it, but for a bare `k6` call `export PATH="$PATH:/c/Program Files/k6"` first.
+- **dotenvx must inject the root .env**: `dotenvx run -f ../../.env -- k6 run scenarios/<x>.js`. k6 reads secrets from `__ENV`; note `k6 inspect` (unlike `k6 run`) does **not** inherit OS env into `__ENV` — pass `--env KEY=val` explicitly when inspecting.
+- **Auto discovery is two chained runs** (k6 arrival-rate/VU stages are static, so one run can't feed a discovered value into a hold): `probe.js` floods at constant overload and its `handleSummary` writes the sustainable rate (successful req/s ÷ 3 requests-per-iter) to `.probe-result.json`; `load-test.sh` reads it and runs the second phase. `peak` sustains at that req/s (`sustain.js`); `maxusers` converts it to a user count (`saturation ≈ ceiling_req/s × (avg_think + ~0.5s active)`, then ×`HEADROOM` default 0.9 for a clean run) and runs `users.js`. The endpoint is connection-capped (~6–10 req/s, and it **fluctuates run-to-run**), returning `400 Too many connections` above it, so successful throughput under overload *is* the peak.
+- **`users.js` models real users**: `constant-vus`, 1 VU = 1 user, session = grid→think→record→think→product→think with `think()` (random `THINK_MIN`–`THINK_MAX`, default 8–12s) from `lib/http.js`. Throughput scenarios (probe/sustain) have no think time.
+- **`read -r a b < <(node …)` + `set -e` gotcha**: `read` returns non-zero at EOF, which aborts under `set -e` even though the vars are populated. Emit a trailing `\n` from node **and** append `|| true` to the read (see the `maxusers` block).
+- **Exit code 99 = thresholds crossed** (the run still completed) — `load-test.sh`'s `run_k6` treats 99 as success so orchestration continues.
+- k6 built-in `http_*` metrics are tagged at request time (before the status is known), so a **response-status breakdown needs a custom `Counter` incremented after the response**, not a request tag. Non-200 bodies are logged once per status **per VU** (VUs are isolated JS runtimes with no shared state — per-VU is the tightest dedup possible in-script). Per-request-type latency/error rows come from trivially-true thresholds on `{name:...}`-tagged metrics.
+
 ### Test Accounts (interactive / human use only)
 
 These credentials and the `test-oidc-server` token endpoint below are for **a human manually exercising the UI** — they are **not** for automated tests or for fetching tokens in scripts. For any programmatic/agent flow use the API-key exchange in **Automated Test Auth** instead.

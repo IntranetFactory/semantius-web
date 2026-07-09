@@ -1,0 +1,10 @@
+{
+  "name": "@semantius/load-tests",
+  "version": "0.0.0",
+  "private": true,
+  "description": "k6 performance / load tests against the Semantius PostgREST (Neon) data API.",
+  "scripts": {
+    "smoke": "bash load-test.sh smoke",
+    "peak": "bash load-test.sh peak"
+  }
+}
