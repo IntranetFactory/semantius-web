@@ -1652,7 +1652,7 @@ function FilterFieldSelector<TData>({
       <PopoverContent
         id={fieldListboxId}
         align="start"
-        className="w-40 origin-(--transform-origin) p-0"
+        className="w-52 origin-(--transform-origin) p-0"
       >
         <Command>
           <CommandInput placeholder="Search fields..." />
@@ -1677,7 +1677,7 @@ function FilterFieldSelector<TData>({
                     setShowFieldSelector(false)
                   }}
                 >
-                  <span className="truncate">
+                  <span className="min-w-0 flex-1 truncate">
                     {column.columnDef.meta?.label}
                   </span>
                   <Check

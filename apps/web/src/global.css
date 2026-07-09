@@ -143,12 +143,14 @@
     cursor: pointer;
   }
 
-  /* Ensure all clickable dropdown menu items show pointer cursor */
+  /* Ensure all clickable dropdown/command menu items show pointer cursor */
   [data-slot="dropdown-menu-item"]:not([data-disabled]),
   [data-slot="dropdown-menu-checkbox-item"]:not([data-disabled]),
   [data-slot="dropdown-menu-radio-item"]:not([data-disabled]),
   [data-slot="dropdown-menu-sub-trigger"]:not([data-disabled]),
-  [role="menuitem"]:not([disabled]):not([aria-disabled="true"]) {
+  [data-slot="command-item"]:not([data-disabled]),
+  [role="menuitem"]:not([disabled]):not([aria-disabled="true"]),
+  [role="option"]:not([disabled]):not([aria-disabled="true"]) {
     cursor: pointer !important;
   }
   html {
