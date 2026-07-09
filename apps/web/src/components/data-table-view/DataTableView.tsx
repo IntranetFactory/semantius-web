@@ -698,7 +698,7 @@ export function DataTableView({
           // numeric column is sorted, a tight (size-5) arrow shows to the right of the caption.
           const showSort = Boolean(column.getIsSorted())
           return (
-            <DataTableColumnHeader className={isNumeric ? 'justify-end gap-0.5' : undefined}>
+            <DataTableColumnHeader className={isNumeric ? 'justify-end gap-0.5' : 'justify-start'}>
               <DataTableColumnTitle>{columnTitle}</DataTableColumnTitle>
               {showSort && <DataTableColumnSortMenu className={isNumeric ? 'size-5' : undefined} />}
             </DataTableColumnHeader>
