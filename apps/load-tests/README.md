@@ -1,6 +1,9 @@
 # @semantius/load-tests
 
-k6 performance / load tests against the Semantius PostgREST (Neon) data API.
+k6 performance / load tests against the Semantius data APIs (PostgREST on Neon, and the Cube.js
+analytics endpoint). Every scenario runs a selectable **load profile** — the request mix per
+iteration — so the same `peak` / `maxusers` / `users` flows work against `orders`, `analytics`,
+or profiles you add later.
 
 ## Why `apps/` and not `packages/`
 
@@ -36,7 +39,12 @@ injects the encrypted root `.env` via dotenvx, and runs the scenario. From this 
 ./load-test.sh probe        # just the throughput-discovery flood (prints the number)
 RATE=8 ./load-test.sh sustain 5   # sustain a fixed rate, for 5 minutes
 
-# pass extra k6 flags through (after scenario [minutes]):
+# choose a load profile (word after the scenario, before the numbers; default 'orders'):
+./load-test.sh maxusers analytics       # find max users for the analytics profile
+./load-test.sh users analytics 30 5     # 30 users, analytics profile, 5 minutes
+./load-test.sh peak analytics 5         # peak req/s for the analytics profile
+
+# pass extra k6 flags through (after scenario/profile/numbers):
 ./load-test.sh peak 5 --out json=results.json
 ```
 
@@ -64,14 +72,30 @@ single run can't feed a *discovered* rate into a hold — hence two runs):
 2. **Sustain** (`scenarios/sustain.js`) — the script reads that rate and holds it for **`MINUTES`**
    minutes (default 1; the bare number passed to `load-test.sh`), characterising steady state.
 
-Each **iteration** fires the three request types in sequence — within a VU the pattern is
-`1,2,3,1,2,3,…` — and each is tagged so the summary breaks latency/errors down per type:
+Each **iteration** runs the selected profile's actions in sequence, each tagged so the summary
+breaks latency/errors down per action. The rate is in **iterations/second**; with N actions per
+iteration, total req/s ≈ N × the rate (so `peak`/`probe` divide by N to report iters/s).
 
-1. `orders-list` — a random **page 1–80** of `orders` (`limit=10`, `offset=(page-1)*10`, `order=id.desc`)
-2. `order` — a single order by random id in **10250–11000** (`orders?id=eq.<n>`)
-3. `product` — a single product by random id in **1–75** (`products?id=eq.<n>`)
+## Load profiles
 
-The rate is in **iterations/second**; with 3 requests per iteration, total req/s ≈ 3× the rate.
+A **profile** is the request mix run per iteration, defined in `lib/profiles.js`. Select one with
+the word after the scenario (default `orders`) or the `PROFILE` env var. Every scenario
+(`probe`/`sustain`/`users`) runs the selected profile, so the flows are profile-agnostic.
+
+| Profile | Actions per iteration | Endpoint |
+| --- | --- | --- |
+| `orders` (default) | `orders-list` (random page 1–80), `order` (id 10250–11000), `product` (id 1–75) | PostgREST / Neon `GET` |
+| `analytics` | `analytics` — one Cube.js query batch (`POST`, total freight by product category) | `https://<org>.semantius.io/nwind/cubejs-api/v1/batch` |
+
+Both use the same bearer token. The `maxusers` math is profile-agnostic: in a user session each
+action is followed by one think, so a user issues one request per `(think + active)` regardless
+of action count — `saturation users ≈ ceiling_req/s × (avg_think + ~0.5s)`.
+
+**Adding a profile:** add an entry to `PROFILES` in `lib/profiles.js` — a `label` and an
+`actions` array of `{ name, build }`, where `build()` returns a `{ method, url, body? }`
+descriptor. Reuse the request builders in `lib/orders.js` / `lib/products.js` / `lib/analytics.js`
+or add new ones. Combined profiles (e.g. mixing orders + analytics actions) are just a longer
+`actions` array.
 
 Tunables (env vars): `MINUTES`, `PROBE_RATE`, `PROBE_DURATION`, `MAX_VUS`, and
 `LOADTEST_API_HOST` (point at a different instance). `RATE` overrides the sustain rate if you
@@ -144,22 +168,27 @@ THINK_MIN=3 THINK_MAX=6 ./load-test.sh users 30 5  # 30 impatient power users
 
 ```
 lib/auth.js       token exchange (k6-native port of scripts/mint-token.mjs)
-lib/http.js       shared GET helper (bearer auth, per-{status,name} counter, non-200 log) + think()
-lib/orders.js     orders URL builders: random-page list + single order by random id
-lib/products.js   products URL builder: single product by random id
-scenarios/smoke.js    wiring validation (all three request types)
+lib/http.js       shared request helper apiRequest() (bearer auth, GET/POST, per-{status,name}
+                    counter, non-200 log) + think() + randomInt()
+lib/profiles.js   PROFILES registry + runThroughput/runSession/taggedThresholds — the abstraction
+lib/orders.js     orders request builders: random-page list + single order by random id
+lib/products.js   products request builder: single product by random id
+lib/analytics.js  analytics request builder: Cube.js query batch (POST)
+scenarios/smoke.js    wiring validation (runs the selected profile once)
 scenarios/probe.js    flood to discover the throughput ceiling (writes .probe-result.json)
 scenarios/sustain.js  hold a fixed request rate for MINUTES minutes
 scenarios/users.js    constant-vus real-user model (1 VU = 1 user, with think time)
-load-test.sh          CLI + orchestration (peak, maxusers)
+load-test.sh          CLI + orchestration (peak, maxusers); parses scenario/profile/numbers
 ```
 
 > `peak` and `maxusers` are not scenario files — they're `load-test.sh` orchestrations that run
 > `probe` first, then `sustain` (peak) or `users` (maxusers) with the discovered value. `probe`,
 > `sustain` and `users` can also be run on their own.
 
-## Adding users / scenarios
+## Extending
 
-`mintToken()` currently returns one token in `setup()`. To load-test as multiple users,
-return an array of tokens and pick one per-VU (e.g. by `__VU`). New scenarios go under
-`scenarios/` and reuse `lib/`.
+- **New request mix** → add a profile to `PROFILES` in `lib/profiles.js` (see *Load profiles*).
+- **New executor/shape** → add a scenario under `scenarios/` that calls `activeProfile()` +
+  `runThroughput`/`runSession` and `taggedThresholds(profile)`, so it works for every profile.
+- **Multiple test users** → `mintToken()` currently returns one token in `setup()`; return an
+  array of tokens and pick one per-VU (e.g. by `__VU`) to load-test as distinct principals.

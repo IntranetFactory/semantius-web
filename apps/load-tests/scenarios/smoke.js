@@ -1,12 +1,14 @@
-// Smoke test — validates auth + endpoint wiring before running the heavy peak test.
-// 1 VU, a handful of iterations. Fails fast if the token exchange or endpoint is broken.
+// Smoke test — validates auth + endpoint wiring for the selected profile before running the
+// heavy tests. 1 VU, a handful of iterations. Fails fast if the token exchange or any of the
+// profile's requests are broken.
 //
-//   pnpm --filter @semantius/load-tests smoke
-//   (or) dotenvx run -f ../../.env -- k6 run scenarios/smoke.js
+//   ./load-test.sh smoke                # profile 'orders'
+//   ./load-test.sh smoke analytics      # profile 'analytics'
 import { sleep } from 'k6'
 import { mintToken } from '../lib/auth.js'
-import { getRandomOrdersPage, getRandomOrderById } from '../lib/orders.js'
-import { getRandomProductById } from '../lib/products.js'
+import { activeProfile, runThroughput } from '../lib/profiles.js'
+
+const profile = activeProfile()
 
 export const options = {
   vus: 1,
@@ -22,8 +24,6 @@ export function setup() {
 }
 
 export default function (data) {
-  getRandomOrdersPage(data.token)
-  getRandomOrderById(data.token)
-  getRandomProductById(data.token)
+  runThroughput(data.token, profile)
   sleep(0.5)
 }

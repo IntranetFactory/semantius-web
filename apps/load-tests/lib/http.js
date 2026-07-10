@@ -32,34 +32,31 @@ export function randomInt(min, max) {
   return Math.floor(Math.random() * (max - min + 1)) + min
 }
 
-// GET a PostgREST URL with the bearer token, tagged by `name` so every request type gets
-// its own metric row in the summary. Returns the k6 response.
-export function apiGet(token, url, name) {
-  const res = http.get(url, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-      Accept: 'application/json',
-    },
-    tags: { name },
-  })
-
+function record(res, name) {
   // Break responses down by status code (status 0 = connection error / timeout in k6).
   responsesByStatus.add(1, { status: String(res.status), name })
-
-  check(
-    res,
-    {
-      'status is 200': (r) => r.status === 200,
-      'body is a JSON array': (r) => r.status === 200 && Array.isArray(r.json()),
-    },
-    { name }, // tag the checks by request type too
-  )
-
+  check(res, { 'status is 200': (r) => r.status === 200 }, { name })
   const key = `${name}:${res.status}`
   if (res.status !== 200 && !seenStatuses.has(key)) {
     seenStatuses.add(key)
     console.warn(`${name} non-200: status=${res.status} body=${(res.body || '').slice(0, 200)}`)
   }
-
   return res
+}
+
+// Perform one tagged request from a descriptor `{ method, url, body? }` with the bearer token.
+// `name` tags the request so each action gets its own metric row in the summary. Handles GET
+// and POST (a `body` implies JSON). Returns the k6 response. This is the single request path
+// used by every profile action.
+export function apiRequest(token, name, req) {
+  const params = {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      ...(req.body ? { 'Content-Type': 'application/json' } : {}),
+    },
+    tags: { name },
+  }
+  const res = req.method === 'POST' ? http.post(req.url, req.body, params) : http.get(req.url, params)
+  return record(res, name)
 }

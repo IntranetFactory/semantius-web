@@ -12,11 +12,14 @@
 #   ./load-test.sh probe         # just the throughput-discovery flood (prints the number)
 #   RATE=8 ./load-test.sh sustain 5   # just sustain, at an explicit rate, for 5 minutes
 #
-# `peak` is the headline command: it needs NO manual rate — phase 1 discovers the endpoint's
-# sustainable throughput, phase 2 holds at exactly that for N minutes.
+# LOAD PROFILE: an optional profile name (orders | analytics) goes right after the scenario,
+# BEFORE the numbers. Default 'orders'. It selects the request mix each scenario runs:
+#   ./load-test.sh maxusers analytics       # find max users for the analytics profile
+#   ./load-test.sh users analytics 30 5     # 30 users, analytics profile, 5 minutes
+#   ./load-test.sh peak analytics 5         # peak req/s for the analytics profile
 #
-# Tunables (env vars): MINUTES, PROBE_RATE, PROBE_DURATION, MAX_VUS, LOADTEST_API_HOST.
-# Trailing args after the (scenario [minutes]) pass straight through to `k6 run`.
+# Tunables (env vars): PROFILE, MINUTES, PROBE_RATE, PROBE_DURATION, MAX_VUS, THINK_MIN/MAX,
+# HEADROOM, LOADTEST_API_HOST. Trailing args (after scenario/profile/numbers) pass to `k6 run`.
 #
 # Works on Windows Git Bash and the Linux sandbox alike.
 set -euo pipefail
@@ -43,6 +46,14 @@ fi
 
 SCENARIO="${1:-peak}"
 shift || true
+
+# Optional load-profile name right after the scenario (a non-numeric, non-flag token). It
+# selects the request mix; the scenario JS validates it (getProfile throws on unknown).
+if [[ -n "${1:-}" && ! "${1}" =~ ^[0-9]+$ && "${1}" != -* ]]; then
+  export PROFILE="$1"
+  shift
+fi
+PROFILE_LABEL="${PROFILE:-orders}"
 
 # Collect the leading bare-integer positional args; their meaning depends on the scenario:
 #   most scenarios:  <minutes>
@@ -84,7 +95,7 @@ run_phase() {
 # `peak` is orchestrated (two chained runs), not a single scenario file.
 if [ "$SCENARIO" = "peak" ]; then
   MINUTES="${N1:-1}"
-  echo ">>> Phase 1/2 — probing for peak throughput..."
+  echo ">>> Phase 1/2 — probing for peak throughput (profile '${PROFILE_LABEL}')..."
   rm -f .probe-result.json
   run_phase "PROBE" scenarios/probe.js
   if [ ! -f .probe-result.json ]; then
@@ -112,7 +123,7 @@ fi
 if [ "$SCENARIO" = "maxusers" ]; then
   export THINK_MIN="${THINK_MIN:-8}"
   export THINK_MAX="${THINK_MAX:-12}"
-  echo ">>> Probing backend throughput ceiling..."
+  echo ">>> Probing backend throughput ceiling (profile '${PROFILE_LABEL}')..."
   rm -f .probe-result.json
   run_phase "PROBE" scenarios/probe.js
   if [ ! -f .probe-result.json ]; then
@@ -136,16 +147,19 @@ if [ "$SCENARIO" = "maxusers" ]; then
   SUCC_RPS=$(node -e "process.stdout.write(String(require('./.probe-result.json').successRps))")
   echo ">>> Ceiling ${SUCC_RPS} req/s + ${THINK_MIN}-${THINK_MAX}s think → saturates ~${SATURATION_USERS} users, max ${MAX_USERS} (${HEADROOM} headroom)"
 
+  # Include the profile token in the hints only when it is not the default, so they reproduce.
+  [ "$PROFILE_LABEL" != "orders" ] && PROF_TOKEN=" ${PROFILE_LABEL}" || PROF_TOKEN=""
+
   # (a) find-only: no minutes arg → print and stop.
   if [ -z "$N1" ]; then
-    echo ">>> MAX USERS = ${MAX_USERS}"
-    echo ">>> Run them:  ./load-test.sh users ${MAX_USERS} <minutes>   # this exact count (no re-probe)"
-    echo ">>>      or :  ./load-test.sh maxusers <minutes>            # re-probes; may differ (ceiling fluctuates)"
+    echo ">>> MAX USERS = ${MAX_USERS}  (profile '${PROFILE_LABEL}')"
+    echo ">>> Run them:  ./load-test.sh users${PROF_TOKEN} ${MAX_USERS} <minutes>   # this exact count (no re-probe)"
+    echo ">>>      or :  ./load-test.sh maxusers${PROF_TOKEN} <minutes>            # re-probes; may differ (ceiling fluctuates)"
     exit 0
   fi
 
   # (b) find & run for N1 minutes.
-  echo ">>> Running ${MAX_USERS} users for ${N1} min..."
+  echo ">>> Running ${MAX_USERS} users (profile '${PROFILE_LABEL}') for ${N1} min..."
   export USERS="$MAX_USERS"
   export MINUTES="$N1"
   run_phase "USERS" scenarios/users.js "$@"
