@@ -902,7 +902,8 @@ export function DataTableView({
   )
 
   // Constrain the whole grid to max-w-[760px] when there are ≤ 4 data columns
-  // columns includes the actions column, so threshold is columns.length <= 5
+  // columns includes the actions column, so threshold is columns.length <= 5.
+  // Constrained grids are centered horizontally (mx-auto) rather than left-pinned.
   const isConstrained = columns.length <= 5
 
   const tableData = useMemo(() => optimisticData ?? data ?? [], [optimisticData, data])
@@ -919,7 +920,7 @@ export function DataTableView({
 
   return (
     <>
-      <div className={cn("w-full", isConstrained && "max-w-[760px]")}>
+      <div className={cn("w-full", isConstrained && "mx-auto max-w-[760px]")}>
         <DataTableRoot<RecordType, unknown>
           key={tableName}
           data={tableData}
