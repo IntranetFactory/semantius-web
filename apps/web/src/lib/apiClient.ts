@@ -34,7 +34,16 @@ globalThis.fetch = function interceptedFetch(
   if (url.startsWith('/')) {
     const { baseUrl } = getApiConfig()
     // Strip trailing slash from baseUrl to avoid double slashes
-    const resolvedUrl = baseUrl.replace(/\/+$/, '') + url
+    const cleanBase = baseUrl.replace(/\/+$/, '')
+    // Most call sites already build `${apiBaseUrl}/path` themselves. When baseUrl
+    // is ABSOLUTE (http…) that result doesn't start with "/" and never reaches
+    // here — one prefix, correct. But when baseUrl is RELATIVE (e.g. "/api", for
+    // same-origin proxying) the call site's URL already starts with "/api", so
+    // prefixing again would double it → "/api/api/…". Guard against that: if the
+    // URL is already under a relative base, treat it as resolved.
+    const alreadyPrefixed =
+      cleanBase.startsWith('/') && (url === cleanBase || url.startsWith(cleanBase + '/'))
+    const resolvedUrl = alreadyPrefixed ? url : cleanBase + url
 
     if (_currentToken) {
       const authHeaders = createApiHeaders(_currentToken)

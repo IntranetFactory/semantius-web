@@ -194,11 +194,10 @@ Cut a release with the helper — it tags the current commit and pushes the tag,
 which is what triggers the workflow (multi-arch build + publish):
 
 ```bash
-docker/release.sh v0.1.0        # tag + push (asks to confirm); add -y to skip the prompt
+docker/release.sh v0.1.0        # tag the current commit + push it
 ```
 
-`release.sh` refuses to run on a dirty tree or a duplicate tag, and does no local
-build/push itself — publishing happens entirely in CI.
+It does no local build/push itself — publishing happens entirely in CI.
 
 ## Files
 

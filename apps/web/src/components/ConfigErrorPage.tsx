@@ -1,3 +1,4 @@
+import { useEffect } from 'react'
 import { AlertTriangle } from 'lucide-react'
 import {
   Card,
@@ -6,12 +7,19 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
+import { hideAppLoader } from '@/lib/appLoader'
 
 interface ConfigErrorPageProps {
   missingVars: string[]
 }
 
 export function ConfigErrorPage({ missingVars }: ConfigErrorPageProps) {
+  // Hide the index.html loading overlay — otherwise this error renders behind the
+  // opaque overlay and the app looks like it's stuck on "Loading…" forever.
+  useEffect(() => {
+    hideAppLoader()
+  }, [])
+
   return (
     <div className="flex items-center justify-center min-h-screen bg-background p-4">
       <Card className="max-w-2xl w-full border-destructive">
