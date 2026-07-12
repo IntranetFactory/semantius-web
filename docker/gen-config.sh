@@ -1,17 +1,20 @@
 #!/bin/sh
 # Generate the SPA's runtime config file (window.__ENV__) from the container
-# environment. Runs at container start (via /docker-entrypoint.d) and is also
+# environment. Runs at container start (via entrypoint.sh) and is also
 # runnable standalone on a host for inspection:  ./gen-config.sh /tmp/config.js
 #
-# Value precedence for each key:
-#   real environment variable  >  $ENV_FILE (docker/.env) default  >
-#   OIDC discovery (OAuth endpoints only)  >  built-in default
+# This is a pure env -> JS emitter: every value comes from a real environment
+# variable, or from $ENV_FILE (docker/.env) as a default. Value precedence:
+#   real environment variable  >  $ENV_FILE (docker/.env) default  >  empty
 #
-# The OAuth endpoint mapping mirrors apps/web/scripts/genconfig.js so the Docker
-# path and the interactive generator stay consistent.
+# OIDC discovery is NOT done here anymore. Set VITE_OAUTH_CONFIG (a
+# .well-known/openid-configuration URL) and the SPA fetches it at runtime,
+# filling any OAuth endpoint left blank (see apps/web/src/lib/config.ts). That
+# keeps this script dependency-free (no curl/jq) and unifies discovery across
+# dev / Vercel / Cloudflare / Docker.
 set -eu
 
-OUT="${1:-/usr/share/nginx/html/config.js}"
+OUT="${1:-/srv/config.js}"   # Caddy static root (was nginx's /usr/share/nginx/html)
 ENV_FILE="${ENV_FILE:-/config/.env}"
 
 # Keep this list in sync with apps/web/public/config.js.
@@ -19,6 +22,7 @@ CANONICAL_VARS="
 VITE_API_BASE_URL
 VITE_API_TYPE
 VITE_SUPABASE_APIKEY
+VITE_OAUTH_CONFIG
 VITE_OAUTH_CLIENT_ID
 VITE_OAUTH_AUTH_ENDPOINT
 VITE_OAUTH_TOKEN_ENDPOINT
@@ -51,27 +55,8 @@ if [ -f "$ENV_FILE" ]; then
   done < "$ENV_FILE"
 fi
 
-# 2. Expand OAuth endpoints from the OIDC discovery document when OIDC_CONFIG is
-#    set and the endpoint is still empty (an explicit value always wins).
-if [ -n "${OIDC_CONFIG:-}" ]; then
-  if disc=$(curl -fsS "$OIDC_CONFIG"); then
-    : "${VITE_OAUTH_AUTH_ENDPOINT:=$(printf '%s' "$disc" | jq -r '.authorization_endpoint // empty')}"
-    : "${VITE_OAUTH_TOKEN_ENDPOINT:=$(printf '%s' "$disc" | jq -r '.token_endpoint // empty')}"
-    : "${VITE_OAUTH_USERINFO_ENDPOINT:=$(printf '%s' "$disc" | jq -r '.userinfo_endpoint // empty')}"
-    : "${VITE_OAUTH_LOGOUT_ENDPOINT:=$(printf '%s' "$disc" | jq -r '.end_session_endpoint // empty')}"
-    if [ -z "${VITE_OAUTH_SCOPE:-}" ]; then
-      VITE_OAUTH_SCOPE=$(printf '%s' "$disc" | jq -r '
-        (.scopes_supported // []) as $s
-        | if   ($s | index("openid")) then "openid profile email"
-          elif ($s | length) > 0     then ($s | join(" "))
-          else "openid profile email" end')
-    fi
-  else
-    echo "[gen-config] WARNING: could not fetch OIDC_CONFIG=$OIDC_CONFIG — leaving OAuth endpoints as provided" >&2
-  fi
-fi
-
-# 3. Emit config.js (a JS object literal; trailing comma is legal JS).
+# 2. Emit config.js (a JS object literal; trailing comma is legal JS).
+#    OAuth endpoints left blank are resolved by the SPA from VITE_OAUTH_CONFIG.
 {
   echo "window.__ENV__ = {"
   for k in $CANONICAL_VARS; do

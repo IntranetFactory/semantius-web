@@ -6,14 +6,17 @@
 // the app uses the values Vite baked from .env at build time (unchanged behavior).
 //
 // In Docker, docker/gen-config.sh rewrites this file at container start with the
-// real values (from the container environment + docker/.env + OIDC discovery),
-// so the same image can be reconfigured per deployment without a rebuild.
+// real values (from the container environment + docker/.env), so the same image
+// can be reconfigured per deployment without a rebuild. OAuth endpoints left
+// blank are resolved by the app at runtime from VITE_OAUTH_CONFIG (an OIDC
+// .well-known/openid-configuration URL — see apps/web/src/lib/config.ts).
 //
 // Keep this key list in sync with the CANONICAL_VARS list in docker/gen-config.sh.
 window.__ENV__ = {
   "VITE_API_BASE_URL": "__VITE_API_BASE_URL__",
   "VITE_API_TYPE": "__VITE_API_TYPE__",
   "VITE_SUPABASE_APIKEY": "__VITE_SUPABASE_APIKEY__",
+  "VITE_OAUTH_CONFIG": "__VITE_OAUTH_CONFIG__",
   "VITE_OAUTH_CLIENT_ID": "__VITE_OAUTH_CLIENT_ID__",
   "VITE_OAUTH_AUTH_ENDPOINT": "__VITE_OAUTH_AUTH_ENDPOINT__",
   "VITE_OAUTH_TOKEN_ENDPOINT": "__VITE_OAUTH_TOKEN_ENDPOINT__",

@@ -115,6 +115,11 @@ export async function initConfig(): Promise<AppConfig> {
   // fall through to the control-plane resolution below (where the tenant's
   // postgrest_url is fetched from api.semantius.cloud).
   if (fallback.apiBaseUrl) {
+    // Resolve OAuth endpoints from the OIDC discovery document (VITE_OAUTH_CONFIG)
+    // into any endpoint left blank; explicit VITE_OAUTH_*_ENDPOINT values win.
+    // A failed discovery records _configError, which blocks app boot (main.tsx).
+    const rawScope = (runtimeEnv('VITE_OAUTH_SCOPE', import.meta.env.VITE_OAUTH_SCOPE) ?? '').trim()
+    await applyOidcDiscovery(fallback, rawScope)
     _config = fallback
     return _config
   }
@@ -182,6 +187,64 @@ export async function initConfig(): Promise<AppConfig> {
 
   _config = fallback
   return _config
+}
+
+/**
+ * OIDC discovery. When VITE_OAUTH_CONFIG (a `.well-known/openid-configuration`
+ * URL) is set, fetch it and fill any OAuth endpoint/scope that was NOT provided
+ * explicitly via VITE_OAUTH_*. Explicit env values always win — discovery only
+ * supplies the blanks.
+ *
+ * This replaces the old shell-side discovery in docker/gen-config.sh (curl+jq at
+ * container start): the container now passes plain env vars and the app resolves
+ * endpoints uniformly across dev / Vercel / Cloudflare / Docker. IdPs serve the
+ * discovery document with permissive CORS, so a browser fetch is fine.
+ *
+ * A failed fetch records _configError; main.tsx turns any config error into a
+ * blocking boot screen, so a broken VITE_OAUTH_CONFIG never silently degrades.
+ */
+async function applyOidcDiscovery(cfg: AppConfig, rawScope: string): Promise<void> {
+  const url = (runtimeEnv('VITE_OAUTH_CONFIG', import.meta.env.VITE_OAUTH_CONFIG) ?? '').trim()
+  if (!url) return
+
+  let doc: {
+    authorization_endpoint?: string
+    token_endpoint?: string
+    userinfo_endpoint?: string
+    end_session_endpoint?: string
+    scopes_supported?: string[] | string
+  }
+  try {
+    const res = await fetch(url)
+    if (!res.ok) {
+      _configError = `OIDC discovery failed: ${res.status} ${res.statusText} (${url})`
+      return
+    }
+    doc = await res.json()
+  } catch (err) {
+    _configError = `OIDC discovery failed: ${err instanceof Error ? err.message : String(err)} (${url})`
+    return
+  }
+
+  // Fill only the blanks — an explicit VITE_OAUTH_* value already in cfg wins.
+  if (!cfg.oauthAuthEndpoint) cfg.oauthAuthEndpoint = doc.authorization_endpoint ?? ''
+  if (!cfg.oauthTokenEndpoint) cfg.oauthTokenEndpoint = doc.token_endpoint ?? ''
+  if (!cfg.oauthUserinfoEndpoint) cfg.oauthUserinfoEndpoint = doc.userinfo_endpoint || undefined
+  if (!cfg.oauthLogoutEndpoint) cfg.oauthLogoutEndpoint = doc.end_session_endpoint || undefined
+  if (!rawScope) cfg.oauthScope = deriveScope(doc.scopes_supported)
+}
+
+/** Mirror the old gen-config.sh scope logic: prefer the standard trio when the
+ *  IdP advertises `openid`, else the advertised scopes, else the standard trio. */
+function deriveScope(scopesSupported: string[] | string | undefined): string {
+  const scopes = Array.isArray(scopesSupported)
+    ? scopesSupported
+    : typeof scopesSupported === 'string'
+      ? scopesSupported.split(/\s+/).filter(Boolean)
+      : []
+  if (scopes.includes('openid')) return 'openid profile email'
+  if (scopes.length > 0) return scopes.join(' ')
+  return 'openid profile email'
 }
 
 /** Get the current config. Throws if initConfig() has not been awaited. */

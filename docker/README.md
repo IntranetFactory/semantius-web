@@ -1,8 +1,13 @@
 # Docker — runtime-configurable image
 
-A single, environment-agnostic image of the web SPA. Built **once**, configured
-**at container start** — no rebuild to point it at a different API, tenant, or
-OAuth provider.
+A single, environment-agnostic image of the web SPA, served by **Caddy**. Built
+**once**, configured **at container start** — no rebuild to point it at a
+different API, tenant, or OAuth provider.
+
+Caddy also lets this be the **one exposed endpoint** for a whole stack: it
+reverse-proxies `/api` and `/api-docs` to sibling containers (see
+[Reverse proxy](#reverse-proxy-single-endpoint)), so PostgREST/Scalar never need
+their own published ports.
 
 ## How it works
 
@@ -14,14 +19,52 @@ binding a build to one environment. This image breaks that binding:
 2. The committed `apps/web/public/config.js` holds only placeholder tokens, so
    **local dev and Vercel/Cloudflare builds are unchanged** — they ignore the
    placeholders and use Vite's build-time values.
-3. At container start, [`gen-config.sh`](gen-config.sh) regenerates `/config.js`
-   from the container environment, so the running app uses real values.
+3. At container start, [`entrypoint.sh`](entrypoint.sh) runs
+   [`gen-config.sh`](gen-config.sh) to regenerate `/srv/config.js` from the
+   container environment, then execs Caddy — so the running app uses real values.
+   (The Caddy image has no `/docker-entrypoint.d/*.sh` hook like nginx, hence the
+   explicit entrypoint.)
 
 Value precedence per key:
 
 ```
-real env var  >  docker/.env  >  OIDC discovery (OAuth endpoints)  >  built-in default
+real env var  >  docker/.env  >  built-in default
 ```
+
+## Reverse proxy (single endpoint)
+
+The [`Caddyfile`](Caddyfile) serves the SPA **and** reverse-proxies two path
+prefixes to sibling containers, so the entire stack is reachable through this one
+published port:
+
+| Request path | Proxied to (default) | Override env | Prefix |
+| --- | --- | --- | --- |
+| `/api/*` | `postgrest:3000` | `API_UPSTREAM` | stripped (`/api/customers` → `/customers`) |
+| `/api-docs/*` | `scalar:8080` | `DOCS_UPSTREAM` | stripped (`/api-docs/...` → `/...`) |
+| everything else | static SPA (`/srv`) | — | — |
+
+- Add the upstreams as services on the **same compose network with no `ports:`**
+  (internal-only). See the commented `postgrest`/`scalar` block in
+  [`docker-compose.yml`](docker-compose.yml).
+- Caddy re-resolves upstream DNS per request, so an upstream that starts later or
+  is recreated just works — no `depends_on` ordering, no nginx `resolver` dance.
+  When an upstream is absent the route 502s but the SPA still serves.
+- To make the **SPA call the proxied API**, set `VITE_API_BASE_URL=/api` in
+  `docker/.env` (it otherwise defaults to an absolute external URL, so the proxy
+  is opt-in).
+
+### HTTPS
+
+`SITE_ADDRESS` controls the listen address (default `:80`, plain HTTP behind an
+outer TLS terminator like Dokploy/Cloudflare/an LB). Set it to a domain to enable
+Caddy's automatic HTTPS:
+
+```
+SITE_ADDRESS=app.example.com
+```
+
+Then also publish `443` (`- "443:443"` in compose) and mount a persistent volume
+at `/data` so issued certificates survive restarts.
 
 ## Two ways to run
 
@@ -80,17 +123,20 @@ Key variables (see `.env.example` for the full list and comments):
 
 | Variable | Purpose |
 | --- | --- |
-| `OIDC_CONFIG` | OIDC discovery URL. When set, the OAuth endpoints below are filled automatically. |
+| `VITE_OAUTH_CONFIG` | OIDC discovery URL. When set, the SPA fetches it at runtime and fills the OAuth endpoints below. |
 | `VITE_OAUTH_CLIENT_ID` | OAuth client id. |
 | `VITE_API_BASE_URL` | PostgREST API base URL. |
-| `VITE_OAUTH_*_ENDPOINT` | OAuth endpoints — **usually leave blank** and let `OIDC_CONFIG` resolve them; set to override. |
+| `VITE_OAUTH_*_ENDPOINT` | OAuth endpoints — **usually leave blank** and let `VITE_OAUTH_CONFIG` resolve them; set to override. |
 | `VITE_CONTROL_PLANE_URL` / `VITE_CONTROL_PLANE_ORG` | Optional control-plane tenant lookup. |
 
-**`OIDC_CONFIG` shortcut:** instead of setting each `VITE_OAUTH_*_ENDPOINT`,
-point `OIDC_CONFIG` at a `.well-known/openid-configuration` URL. At start the
-container fetches it and maps `authorization_endpoint`, `token_endpoint`,
+**`VITE_OAUTH_CONFIG` shortcut:** instead of setting each `VITE_OAUTH_*_ENDPOINT`,
+point `VITE_OAUTH_CONFIG` at a `.well-known/openid-configuration` URL. The **app**
+fetches it at boot and maps `authorization_endpoint`, `token_endpoint`,
 `userinfo_endpoint`, `end_session_endpoint`, and `scopes_supported` to the
-matching variables (only the ones you left blank).
+matching config (only the ones you left blank). Discovery now runs in the SPA —
+not in `gen-config.sh` — so it works the same in dev/Vercel/Cloudflare/Docker and
+the container just passes plain env vars. If the discovery URL is unreachable at
+boot, the app shows a blocking configuration-error screen.
 
 ### Providing config
 
@@ -115,8 +161,8 @@ ENV_FILE=/dev/null
 VITE_API_BASE_URL=https://api.example.com
 VITE_OAUTH_CLIENT_ID=your-client-id
 # either resolve the OAuth endpoints from discovery…
-OIDC_CONFIG=https://your-idp/.well-known/openid-configuration
-# …or set them explicitly instead of OIDC_CONFIG:
+VITE_OAUTH_CONFIG=https://your-idp/.well-known/openid-configuration
+# …or set them explicitly instead of VITE_OAUTH_CONFIG:
 # VITE_OAUTH_AUTH_ENDPOINT=…  VITE_OAUTH_TOKEN_ENDPOINT=…  VITE_OAUTH_USERINFO_ENDPOINT=…
 ```
 
@@ -145,11 +191,11 @@ docker run -p 7070:80 --env-file docker/.env ghcr.io/intranetfactory/semantius-w
 
 | File | Role |
 | --- | --- |
-| `Dockerfile` | Multi-stage build (`node:22-slim` → `nginx:stable-alpine`). |
+| `Dockerfile` | Multi-stage build (`node:22-slim` → `caddy:2-alpine`). |
 | `Dockerfile.dockerignore` | BuildKit ignore rules (kept beside the Dockerfile). |
-| `gen-config.sh` | Generates `config.js` from env + `.env` + OIDC discovery. |
-| `docker-entrypoint.sh` | Installed to `/docker-entrypoint.d/` so nginx runs it at start. |
-| `nginx.conf` | Static serving + SPA fallback + cache headers. |
+| `gen-config.sh` | Generates `config.js` from env + `.env` (pure env→JS, no curl/jq). |
+| `entrypoint.sh` | Container ENTRYPOINT: runs `gen-config.sh`, then execs Caddy. |
+| `Caddyfile` | Static serving + SPA fallback + cache headers + `/api` & `/api-docs` reverse proxy. |
 | `docker-compose.yml` | LOCAL build/run definition. |
 | `docker-compose.ghcr.yml` | Run the PUBLISHED GHCR image (no build). |
 | `build.sh` / `start.sh` | Build / run the local image. |

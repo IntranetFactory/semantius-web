@@ -8,6 +8,9 @@ services:
   web:
     image: ghcr.io/intranetfactory/semantius-web:${TAG:-latest}
     container_name: semantius-web
+    # Single exposed endpoint (Caddy). For auto-HTTPS, set SITE_ADDRESS to a
+    # domain in docker/.env and also publish 443 (- "443:443"). To proxy /api and
+    # /api-docs, add sibling services on the same network (see docker-compose.yml).
     ports:
       - "${WEB_PORT:-7070}:80"
     env_file:

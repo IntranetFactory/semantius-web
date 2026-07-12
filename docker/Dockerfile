@@ -25,23 +25,27 @@ RUN pnpm install --frozen-lockfile
 COPY . .
 RUN pnpm --filter=@semantius/frontend build
 
-# ---- runtime stage: nginx serves static assets + injects runtime config ----
-FROM nginx:stable-alpine AS runtime
-RUN apk add --no-cache curl jq
+# ---- runtime stage: Caddy serves static assets, reverse-proxies /api + /api-docs
+#      to sibling containers, and injects runtime config at start ----
+FROM caddy:2-alpine AS runtime
+# No extra packages needed: gen-config.sh is a pure env -> JS emitter (OIDC
+# discovery now happens in the SPA, so curl/jq are no longer required).
 
-COPY --from=build /app/apps/web/dist /usr/share/nginx/html
-COPY docker/nginx.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/apps/web/dist /srv
+COPY docker/Caddyfile /etc/caddy/Caddyfile
 COPY docker/gen-config.sh /usr/local/bin/gen-config.sh
-COPY docker/docker-entrypoint.sh /docker-entrypoint.d/40-gen-config.sh
+COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 # Baked default config (placeholder values). Override at runtime with
 # `-e VITE_X=…`, compose `env_file`, a mounted /config/.env, or k8s env.
 COPY docker/.env.example /config/.env
 
 # Normalize line endings (repo may be checked out with CRLF on Windows) and make
-# the scripts executable so the nginx entrypoint can run the config generator.
-RUN sed -i 's/\r$//' /usr/local/bin/gen-config.sh /docker-entrypoint.d/40-gen-config.sh \
- && chmod +x /usr/local/bin/gen-config.sh /docker-entrypoint.d/40-gen-config.sh
+# the scripts executable so the entrypoint can run the config generator.
+RUN sed -i 's/\r$//' /usr/local/bin/gen-config.sh /usr/local/bin/entrypoint.sh \
+ && chmod +x /usr/local/bin/gen-config.sh /usr/local/bin/entrypoint.sh
 
-EXPOSE 80
-# Uses the nginx image's own ENTRYPOINT (which runs /docker-entrypoint.d/*.sh
-# before starting nginx) and its default CMD (`nginx -g 'daemon off;'`).
+# 80 for HTTP; 443 is only used when SITE_ADDRESS is a domain (Caddy auto-HTTPS).
+EXPOSE 80 443
+# Custom ENTRYPOINT: the Caddy image has no /docker-entrypoint.d/*.sh hook, so we
+# regenerate /srv/config.js and then exec `caddy run` ourselves (see entrypoint.sh).
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
