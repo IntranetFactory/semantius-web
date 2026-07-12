@@ -166,6 +166,18 @@ https://raw.githubusercontent.com/IntranetFactory/semantius-web/copilot/fix-data
 
 ## Secrets & Deployment
 
+### Docker runtime config — "build once, run anywhere" (`docker/`)
+
+The `docker/` image is **environment-agnostic**: the Vite bundle is compiled against placeholder config and the real values are injected at **container start**, so one image serves any environment without a rebuild. This is a **parallel config channel to the Vite `.env` path — the two never overlap and only meet at `runtimeEnv()`**.
+
+- **Accessor:** every `VITE_*` read in `lib/config.ts` and `lib/devUrlToken.ts` goes through `runtimeEnv(key, import.meta.env.VITE_X)` (`lib/runtimeEnv.ts`). It returns `window.__ENV__[key]` when that holds a real value, else the Vite build-time value.
+- **Placeholder guard is the linchpin:** `apps/web/public/config.js` ships `window.__ENV__` with all values as `__VITE_X__` placeholder tokens. `runtimeEnv()` treats any `__…__` token as absent. So in **dev / Vercel / Cloudflare** (where nothing rewrites `config.js`) the app falls back to `import.meta.env` and behaves exactly as before. Only the Docker entrypoint replaces the tokens. **Do not "simplify" this guard away** — it is what keeps the non-Docker builds unchanged.
+- **`config.js` is loaded by a plain, blocking `<script src="/config.js">` in `index.html` `<head>`** (before the deferred app module) so `window.__ENV__` exists at boot.
+- **`docker/gen-config.sh` generates `config.js`** at container start (via `/docker-entrypoint.d/40-gen-config.sh` — it uses nginx's own entrypoint hook, not a custom `ENTRYPOINT`). Precedence per key: **real env var > `docker/.env` file > OIDC discovery (OAuth endpoints only) > built-in default**. Keep its `CANONICAL_VARS` list in sync with `apps/web/public/config.js`.
+- **`OIDC_CONFIG`** (a `.well-known/openid-configuration` URL) auto-fills the `VITE_OAUTH_*_ENDPOINT` + scope vars that are left blank — same field mapping as the interactive `apps/web/scripts/genconfig.js`.
+- **`docker/.env` is a Docker-only file, NOT a Vite env file.** It is git-ignored (holds real values); only `docker/.env.example` is committed (and baked into the image as the default `/config/.env`). The bare-name `docker/.env` needed an explicit `.gitignore` entry because the repo's `.env.*` rule does not match a suffix-less `.env`.
+- **The image builds with no secrets.** CI (`.github/workflows/docker-publish.yml`) pushes to `ghcr.io/intranetfactory/semantius-web` on a `v*` tag. `sem-schema` is consumed from source (its `exports` point at `src/index.ts`), so only `pnpm --filter=@semantius/frontend build` runs — no package pre-build. Build stage is `node:22-slim` (Debian/glibc) to avoid musl native-binary issues with the Tailwind v4 oxide / lightningcss binaries.
+
 ### `.env` File (CRITICAL — read before every deploy)
 
 The encrypted `.env` file is **not committed in `main`** — it was deleted in commit `114aed6`. If `.env` is missing at session start, `dotenvx run` injects 0 variables and `CLOUDFLARE_API_TOKEN` will be empty, causing deployment to fail with `Error: CLOUDFLARE_API_TOKEN is not set`.

@@ -18,8 +18,12 @@
  *   2. Origin is localhost or a Cloudflare preview (`*.workers.dev`).
  * hostname is the browser's real origin and cannot be spoofed by a link.
  */
+import { runtimeEnv } from './runtimeEnv'
+
 function urlTokenAllowed(host: string): boolean {
-  const isTestBuild = !!(import.meta.env.VITE_CONTROL_PLANE_ORG ?? '').trim()
+  // Runtime-aware like the rest of the app (window.__ENV__ wins in Docker); the
+  // host gate below still restricts #jwt to localhost/*.workers.dev regardless.
+  const isTestBuild = !!(runtimeEnv('VITE_CONTROL_PLANE_ORG', import.meta.env.VITE_CONTROL_PLANE_ORG) ?? '').trim()
   const isDevOrPreviewHost =
     host === 'localhost' || host === '127.0.0.1' || host.endsWith('.workers.dev')
   return isTestBuild && isDevOrPreviewHost

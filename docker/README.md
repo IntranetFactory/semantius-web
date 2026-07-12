@@ -1,0 +1,159 @@
+# Docker — runtime-configurable image
+
+A single, environment-agnostic image of the web SPA. Built **once**, configured
+**at container start** — no rebuild to point it at a different API, tenant, or
+OAuth provider.
+
+## How it works
+
+Vite normally inlines `VITE_*` variables into the JS bundle at build time,
+binding a build to one environment. This image breaks that binding:
+
+1. The app reads config from a global `window.__ENV__`, loaded from `/config.js`
+   before the bundle (via `apps/web/src/lib/runtimeEnv.ts`).
+2. The committed `apps/web/public/config.js` holds only placeholder tokens, so
+   **local dev and Vercel/Cloudflare builds are unchanged** — they ignore the
+   placeholders and use Vite's build-time values.
+3. At container start, [`gen-config.sh`](gen-config.sh) regenerates `/config.js`
+   from the container environment, so the running app uses real values.
+
+Value precedence per key:
+
+```
+real env var  >  docker/.env  >  OIDC discovery (OAuth endpoints)  >  built-in default
+```
+
+## Two ways to run
+
+There are two independent modes — pick one:
+
+### A. Develop — build from your working tree and run (local)
+
+```bash
+docker/build.sh          # build the LOCAL image (semantius-web:local) — does NOT publish
+docker/start.sh          # run the local image (does NOT rebuild) → http://localhost:7070
+docker/logs.sh           # follow logs
+docker/stop.sh           # stop but KEEP the container (restart with start.sh)
+docker/delete.sh         # stop AND delete the container (keeps the image)
+```
+
+### B. Run a release — pull and run the PUBLISHED image (GHCR)
+
+```bash
+docker/start-published.sh            # pull ghcr.io/…:latest and run → http://localhost:7070
+TAG=v1.2.3 docker/start-published.sh # or pin a specific release tag
+docker/stop.sh                       # stop (keep) · docker/delete.sh to delete
+```
+
+`build.sh` / `start.sh` never push anything. **Publishing happens only in CI**
+when a `v*` tag is pushed (see below). The local build is tagged
+`semantius-web:local`; the published image is `ghcr.io/intranetfactory/semantius-web`.
+
+The host port defaults to **7070**; override with `WEB_PORT` (env var or a line
+in `docker/.env`), e.g. `WEB_PORT=9000 docker/start.sh`.
+
+### Stop / delete
+
+```bash
+docker/stop.sh                       # stop but KEEP it → restart with docker/start.sh
+docker/delete.sh                     # stop AND delete the container (network too)
+docker rm -f semantius-web           # delete directly by container name
+docker rmi semantius-web:local       # also delete the local image (reclaim ~108MB)
+```
+
+### Plain Docker (no compose)
+
+```bash
+docker build -f docker/Dockerfile -t semantius-web:local .
+docker run -p 7070:80 --env-file docker/.env semantius-web:local
+```
+
+## Configuration
+
+Copy the template and edit it (git-ignored; holds your real values):
+
+```bash
+cp docker/.env.example docker/.env
+```
+
+Key variables (see `.env.example` for the full list and comments):
+
+| Variable | Purpose |
+| --- | --- |
+| `OIDC_CONFIG` | OIDC discovery URL. When set, the OAuth endpoints below are filled automatically. |
+| `VITE_OAUTH_CLIENT_ID` | OAuth client id. |
+| `VITE_API_BASE_URL` | PostgREST API base URL. |
+| `VITE_OAUTH_*_ENDPOINT` | OAuth endpoints — **usually leave blank** and let `OIDC_CONFIG` resolve them; set to override. |
+| `VITE_CONTROL_PLANE_URL` / `VITE_CONTROL_PLANE_ORG` | Optional control-plane tenant lookup. |
+
+**`OIDC_CONFIG` shortcut:** instead of setting each `VITE_OAUTH_*_ENDPOINT`,
+point `OIDC_CONFIG` at a `.well-known/openid-configuration` URL. At start the
+container fetches it and maps `authorization_endpoint`, `token_endpoint`,
+`userinfo_endpoint`, `end_session_endpoint`, and `scopes_supported` to the
+matching variables (only the ones you left blank).
+
+### Providing config
+
+Any standard mechanism works — `gen-config.sh` just reads the process env:
+
+- **Compose:** `env_file` in `docker-compose.yml` loads `docker/.env`.
+- **docker run:** `--env-file docker/.env` or `-e VITE_API_BASE_URL=…`.
+- **Docker secrets / configs:** mount a file and set `ENV_FILE=/path`.
+- **Kubernetes / Dokploy / any PaaS:** set plain env vars — **no `.env` file needed**.
+
+### Plain env vars (Dokploy and other PaaS)
+
+The `.env` file is optional. Point the platform at the GHCR image and set the
+variables directly; `gen-config.sh` reads them at container start. Recommended:
+also set **`ENV_FILE=/dev/null`** so the image's baked demo defaults are ignored
+and the config comes solely from your env vars.
+
+Minimal set for a template:
+
+```
+ENV_FILE=/dev/null
+VITE_API_BASE_URL=https://api.example.com
+VITE_OAUTH_CLIENT_ID=your-client-id
+# either resolve the OAuth endpoints from discovery…
+OIDC_CONFIG=https://your-idp/.well-known/openid-configuration
+# …or set them explicitly instead of OIDC_CONFIG:
+# VITE_OAUTH_AUTH_ENDPOINT=…  VITE_OAUTH_TOKEN_ENDPOINT=…  VITE_OAUTH_USERINFO_ENDPOINT=…
+```
+
+Optional extras as needed: `VITE_CONTROL_PLANE_URL`, `VITE_CONTROL_PLANE_ORG`,
+`VITE_CUBE_API_URL`, `VITE_API_TYPE`, `VITE_SUPABASE_APIKEY`,
+`VITE_OAUTH_AUDIENCE`, `VITE_OAUTH_SCOPE`, `VITE_OAUTH_LOGOUT_ENDPOINT`,
+`VITE_OAUTH_LOGOUT_REDIRECT`, `VITE_OAUTH_REDIRECT_URI`.
+
+### Adjusting a running deployment
+
+Edit `docker/.env`, then `docker compose -f docker/docker-compose.yml restart`.
+`config.js` is regenerated on the next start — no rebuild.
+
+## CI / GitHub Container Registry
+
+`.github/workflows/docker-publish.yml` builds and pushes the image to
+`ghcr.io/intranetfactory/semantius-web` when a **`v*` tag** is pushed (e.g.
+`v1.2.3`), tagging `1.2.3`, `1.2`, and `latest`. Pull and run it exactly like the
+local image:
+
+```bash
+docker run -p 7070:80 --env-file docker/.env ghcr.io/intranetfactory/semantius-web:latest
+```
+
+## Files
+
+| File | Role |
+| --- | --- |
+| `Dockerfile` | Multi-stage build (`node:22-slim` → `nginx:stable-alpine`). |
+| `Dockerfile.dockerignore` | BuildKit ignore rules (kept beside the Dockerfile). |
+| `gen-config.sh` | Generates `config.js` from env + `.env` + OIDC discovery. |
+| `docker-entrypoint.sh` | Installed to `/docker-entrypoint.d/` so nginx runs it at start. |
+| `nginx.conf` | Static serving + SPA fallback + cache headers. |
+| `docker-compose.yml` | LOCAL build/run definition. |
+| `docker-compose.ghcr.yml` | Run the PUBLISHED GHCR image (no build). |
+| `build.sh` / `start.sh` | Build / run the local image. |
+| `start-published.sh` | Pull + run the published GHCR image. |
+| `stop.sh` / `delete.sh` | Stop (keep) / stop + delete the container. |
+| `logs.sh` | Follow container logs. |
+| `.env.example` | Config template (committed). `.env` is your real values (git-ignored). |

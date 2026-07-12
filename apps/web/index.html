@@ -42,6 +42,11 @@
         }
       }
     </style>
+    <!-- Runtime config (window.__ENV__). Plain, blocking script so it runs
+         before the deferred app module below. In Docker this file is generated
+         at container start (docker/gen-config.sh); in dev / on Vercel it holds
+         only placeholder tokens and is ignored (see src/lib/runtimeEnv.ts). -->
+    <script src="/config.js"></script>
   </head>
   <body>
     <div id="app-loader">

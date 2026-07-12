@@ -1,0 +1,26 @@
+# LOCAL image definition (dev). Build and run are separate steps:
+#   docker compose -f docker/docker-compose.yml build   # build (or: docker/build.sh)
+#   docker compose -f docker/docker-compose.yml up -d    # run   (or: docker/start.sh)
+# `up` does not rebuild — it reuses semantius-web:local (building only if absent).
+# To run the PUBLISHED GHCR image instead, see docker-compose.ghcr.yml.
+#
+# Paths below are resolved relative to THIS file (docker/), so `context: ..` is
+# the repo root and `env_file: .env` is docker/.env.
+services:
+  web:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+    # Local tag (NOT pushed). The published image is ghcr.io/... (see CI).
+    image: semantius-web:local
+    container_name: semantius-web
+    # Host port defaults to 7070; override with WEB_PORT (env or docker/.env).
+    ports:
+      - "${WEB_PORT:-7070}:80"
+    # Your real values. gen-config.sh turns them into config.js at container
+    # start. Optional: if docker/.env is absent, the image's baked default
+    # (/config/.env from .env.example) is used instead.
+    env_file:
+      - path: .env
+        required: false
+    restart: unless-stopped

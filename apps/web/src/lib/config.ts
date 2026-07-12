@@ -2,11 +2,13 @@
  * Runtime application configuration.
  *
  * initConfig() is async and must be awaited before the app renders.
+ * when VITE_API_BASE_URL is set, that value is used directly and no control-plane lookup is performed.
  * When VITE_CONTROL_PLANE_URL is set, tenant config is fetched from the
  * control plane and merged on top of VITE_* fallback values.
  */
 
 import { _ } from "ajv"
+import { runtimeEnv } from './runtimeEnv'
 
 export interface AppConfig {
   // OAuth
@@ -42,20 +44,25 @@ export function getConfigError(): string | null {
   return _configError
 }
 
+// Every VITE_ read goes through runtimeEnv(key, buildTimeValue): window.__ENV__
+// (Docker) wins when it holds a real value, else the Vite-inlined build-time
+// value is used (dev / Vercel / Cloudflare — unchanged). See lib/runtimeEnv.ts.
 function envFallback(): AppConfig {
   return {
-    oauthClientId: import.meta.env.VITE_OAUTH_CLIENT_ID ?? '',
-    oauthAuthEndpoint: import.meta.env.VITE_OAUTH_AUTH_ENDPOINT ?? '',
-    oauthTokenEndpoint: import.meta.env.VITE_OAUTH_TOKEN_ENDPOINT ?? '',
-    oauthScope: import.meta.env.VITE_OAUTH_SCOPE || 'openid profile email',
-    oauthUserinfoEndpoint: import.meta.env.VITE_OAUTH_USERINFO_ENDPOINT || undefined,
-    oauthLogoutEndpoint: import.meta.env.VITE_OAUTH_LOGOUT_ENDPOINT || undefined,
-    oauthLogoutRedirect: import.meta.env.VITE_OAUTH_LOGOUT_REDIRECT || undefined,
-    oauthAudience: import.meta.env.VITE_OAUTH_AUDIENCE || undefined,
+    oauthClientId: runtimeEnv('VITE_OAUTH_CLIENT_ID', import.meta.env.VITE_OAUTH_CLIENT_ID) ?? '',
+    oauthAuthEndpoint: runtimeEnv('VITE_OAUTH_AUTH_ENDPOINT', import.meta.env.VITE_OAUTH_AUTH_ENDPOINT) ?? '',
+    oauthTokenEndpoint: runtimeEnv('VITE_OAUTH_TOKEN_ENDPOINT', import.meta.env.VITE_OAUTH_TOKEN_ENDPOINT) ?? '',
+    oauthScope: runtimeEnv('VITE_OAUTH_SCOPE', import.meta.env.VITE_OAUTH_SCOPE) || 'openid profile email',
+    oauthUserinfoEndpoint: runtimeEnv('VITE_OAUTH_USERINFO_ENDPOINT', import.meta.env.VITE_OAUTH_USERINFO_ENDPOINT) || undefined,
+    oauthLogoutEndpoint: runtimeEnv('VITE_OAUTH_LOGOUT_ENDPOINT', import.meta.env.VITE_OAUTH_LOGOUT_ENDPOINT) || undefined,
+    oauthLogoutRedirect: runtimeEnv('VITE_OAUTH_LOGOUT_REDIRECT', import.meta.env.VITE_OAUTH_LOGOUT_REDIRECT) || undefined,
+    oauthAudience: runtimeEnv('VITE_OAUTH_AUDIENCE', import.meta.env.VITE_OAUTH_AUDIENCE) || undefined,
 
-    apiBaseUrl: import.meta.env.VITE_API_BASE_URL ?? '',
-    apiType: normaliseApiType(import.meta.env.VITE_API_TYPE),
-    supabaseApiKey: import.meta.env.VITE_SUPABASE_APIKEY || undefined
+    apiBaseUrl: runtimeEnv('VITE_API_BASE_URL', import.meta.env.VITE_API_BASE_URL) ?? '',
+    apiType: normaliseApiType(runtimeEnv('VITE_API_TYPE', import.meta.env.VITE_API_TYPE)),
+    supabaseApiKey: runtimeEnv('VITE_SUPABASE_APIKEY', import.meta.env.VITE_SUPABASE_APIKEY) || undefined,
+
+    cubeApiUrl: runtimeEnv('VITE_CUBE_API_URL', import.meta.env.VITE_CUBE_API_URL) || undefined
   }
 }
 
@@ -67,7 +74,7 @@ function envFallback(): AppConfig {
  *      http://localhost:1234/bar  → "localhost"
  */
 function getTenantName(): string {
-  const org = (import.meta.env.VITE_CONTROL_PLANE_ORG ?? '').trim()
+  const org = (runtimeEnv('VITE_CONTROL_PLANE_ORG', import.meta.env.VITE_CONTROL_PLANE_ORG) ?? '').trim()
   if (org) return org
   const parts = window.location.hostname.split('.')
   return parts[0]
@@ -102,7 +109,17 @@ export async function initConfig(): Promise<AppConfig> {
   _configError = null
   const fallback = envFallback()
 
-  const controlPlaneUrl = (import.meta.env.VITE_CONTROL_PLANE_URL ?? 'https://app.semantius.com').trim()
+  // Self-hosted / fully-configured path: when VITE_API_BASE_URL is explicitly
+  // provided, trust the env config and SKIP the control-plane tenant lookup
+  // entirely. Multi-tenant production builds leave VITE_API_BASE_URL unset and
+  // fall through to the control-plane resolution below (where the tenant's
+  // postgrest_url is fetched from api.semantius.cloud).
+  if (fallback.apiBaseUrl) {
+    _config = fallback
+    return _config
+  }
+
+  const controlPlaneUrl = (runtimeEnv('VITE_CONTROL_PLANE_URL', import.meta.env.VITE_CONTROL_PLANE_URL) ?? 'https://app.semantius.com').trim()
 
   if (controlPlaneUrl) {
     const tenantName = getTenantName()
@@ -147,7 +164,7 @@ export async function initConfig(): Promise<AppConfig> {
         oauthScope: 'openid profile email',
         oauthLogoutAPIEndpoint: `${controlPlaneUrl.replace(/\/+$/, '')}/api/logout`,
         apiBaseUrl: tenant.postgrest_url || fallback.apiBaseUrl,
-        cubeApiUrl: import.meta.env.VITE_CUBE_API_URL || `https://${tenant.name}.semantius.io`,
+        cubeApiUrl: runtimeEnv('VITE_CUBE_API_URL', import.meta.env.VITE_CUBE_API_URL) || `https://${tenant.name}.semantius.io`,
         oauthAudience: "tenant://" + tenant.id,
         tenantId: tenant.id,
         tenantName: tenant.name,
