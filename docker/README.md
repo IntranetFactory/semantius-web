@@ -180,12 +180,30 @@ Edit `docker/.env`, then `docker compose -f docker/docker-compose.yml restart`.
 
 `.github/workflows/docker-publish.yml` builds and pushes the image to
 `ghcr.io/intranetfactory/semantius-web` when a **`v*` tag** is pushed (e.g.
-`v1.2.3`), tagging `1.2.3`, `1.2`, and `latest`. Pull and run it exactly like the
-local image:
+`v1.2.3`), tagging `1.2.3`, `1.2`, and `latest`. It publishes a **multi-arch**
+manifest (`linux/amd64` + `linux/arm64`), so it runs on x64 and ARM hosts alike
+(cloud VMs, Apple Silicon / Windows-on-ARM via Docker Desktop, Graviton, Pi). The
+arm64 leg builds under QEMU emulation, so CI is slower than a single-arch build.
+Pull and run it exactly like the local image:
 
 ```bash
 docker run -p 7070:80 --env-file docker/.env ghcr.io/intranetfactory/semantius-web:latest
 ```
+
+### Manual publish (`push.sh`)
+
+Prefer the CI path above. For a one-off manual push of your **local** build:
+
+```bash
+docker/build.sh                                  # produce semantius-web:local
+echo "$GHCR_PAT" | docker login ghcr.io -u <github-username> --password-stdin
+docker/push.sh                                   # push :latest
+TAG=v1.2.3 docker/push.sh                         # or push :v1.2.3 and move :latest
+```
+
+`push.sh` retags `semantius-web:local` as `ghcr.io/intranetfactory/semantius-web`
+and pushes it. It publishes a **single-arch** image (your machine's arch) — for a
+multi-arch release, let CI do it. Requires a PAT with `write:packages`.
 
 ## Files
 
@@ -199,6 +217,7 @@ docker run -p 7070:80 --env-file docker/.env ghcr.io/intranetfactory/semantius-w
 | `docker-compose.yml` | LOCAL build/run definition. |
 | `docker-compose.ghcr.yml` | Run the PUBLISHED GHCR image (no build). |
 | `build.sh` / `start.sh` | Build / run the local image. |
+| `push.sh` | Manually push the local image to GHCR (CI does this on a `v*` tag). |
 | `start-published.sh` | Pull + run the published GHCR image. |
 | `stop.sh` / `delete.sh` | Stop (keep) / stop + delete the container. |
 | `logs.sh` | Follow container logs. |
