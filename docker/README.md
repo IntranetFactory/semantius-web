@@ -190,20 +190,15 @@ Pull and run it exactly like the local image:
 docker run -p 7070:80 --env-file docker/.env ghcr.io/intranetfactory/semantius-web:latest
 ```
 
-### Manual publish (`push.sh`)
-
-Prefer the CI path above. For a one-off manual push of your **local** build:
+Cut a release with the helper — it tags the current commit and pushes the tag,
+which is what triggers the workflow (multi-arch build + publish):
 
 ```bash
-docker/build.sh                                  # produce semantius-web:local
-echo "$GHCR_PAT" | docker login ghcr.io -u <github-username> --password-stdin
-docker/push.sh                                   # push :latest
-TAG=v1.2.3 docker/push.sh                         # or push :v1.2.3 and move :latest
+docker/release.sh v0.1.0        # tag + push (asks to confirm); add -y to skip the prompt
 ```
 
-`push.sh` retags `semantius-web:local` as `ghcr.io/intranetfactory/semantius-web`
-and pushes it. It publishes a **single-arch** image (your machine's arch) — for a
-multi-arch release, let CI do it. Requires a PAT with `write:packages`.
+`release.sh` refuses to run on a dirty tree or a duplicate tag, and does no local
+build/push itself — publishing happens entirely in CI.
 
 ## Files
 
@@ -217,7 +212,7 @@ multi-arch release, let CI do it. Requires a PAT with `write:packages`.
 | `docker-compose.yml` | LOCAL build/run definition. |
 | `docker-compose.ghcr.yml` | Run the PUBLISHED GHCR image (no build). |
 | `build.sh` / `start.sh` | Build / run the local image. |
-| `push.sh` | Manually push the local image to GHCR (CI does this on a `v*` tag). |
+| `release.sh` | Tag the current commit `vX.Y.Z` and push it to trigger the CI publish. |
 | `start-published.sh` | Pull + run the published GHCR image. |
 | `stop.sh` / `delete.sh` | Stop (keep) / stop + delete the container. |
 | `logs.sh` | Follow container logs. |
