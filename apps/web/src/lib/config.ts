@@ -2,9 +2,11 @@
  * Runtime application configuration.
  *
  * initConfig() is async and must be awaited before the app renders.
- * when VITE_API_BASE_URL is set, that value is used directly and no control-plane lookup is performed.
- * When VITE_CONTROL_PLANE_URL is set, tenant config is fetched from the
- * control plane and merged on top of VITE_* fallback values.
+ * The control plane is used BY DEFAULT (VITE_CONTROL_PLANE_URL defaults to
+ * https://app.semantius.com): tenant config is fetched and merged on top of the
+ * VITE_* fallback values. Setting VITE_CONTROL_PLANE_URL to an EXPLICIT empty
+ * string opts out (self-hosted): the VITE_* env config is used directly and any
+ * blank OAuth endpoints are resolved from VITE_OAUTH_CONFIG (OIDC discovery).
  */
 
 import { _ } from "ajv"
@@ -109,22 +111,27 @@ export async function initConfig(): Promise<AppConfig> {
   _configError = null
   const fallback = envFallback()
 
-  // Self-hosted / fully-configured path: when VITE_API_BASE_URL is explicitly
-  // provided, trust the env config and SKIP the control-plane tenant lookup
-  // entirely. Multi-tenant production builds leave VITE_API_BASE_URL unset and
-  // fall through to the control-plane resolution below (where the tenant's
-  // postgrest_url is fetched from api.semantius.cloud).
-  if (fallback.apiBaseUrl) {
-    // Resolve OAuth endpoints from the OIDC discovery document (VITE_OAUTH_CONFIG)
-    // into any endpoint left blank; explicit VITE_OAUTH_*_ENDPOINT values win.
-    // A failed discovery records _configError, which blocks app boot (main.tsx).
+  // The control plane is opt-OUT, not opt-in. VITE_CONTROL_PLANE_URL is only
+  // defaulted when UNSET (undefined); an EXPLICIT empty string ("") is the
+  // self-hosted opt-out.
+  //
+  // NOTE: do NOT key the self-hosted branch off `fallback.apiBaseUrl`. Dev's
+  // .env.local sets VITE_API_BASE_URL (Neon) yet must still resolve OAuth via
+  // the control plane (its VITE_OAUTH_* values are only fallbacks), so a truthy
+  // apiBaseUrl is NOT a valid "self-hosted" signal — using it there sent dev to
+  // the test-oidc-server instead of <org>.semantius.cloud.
+  const rawControlPlaneUrl = runtimeEnv('VITE_CONTROL_PLANE_URL', import.meta.env.VITE_CONTROL_PLANE_URL)
+  const controlPlaneUrl = (rawControlPlaneUrl ?? 'https://app.semantius.com').trim()
+
+  // Self-hosted path: no control plane configured. Trust the VITE_* env config
+  // and fill any blank OAuth endpoint from the OIDC discovery document
+  // (VITE_OAUTH_CONFIG). A failed discovery records _configError → blocks boot.
+  if (!controlPlaneUrl) {
     const rawScope = (runtimeEnv('VITE_OAUTH_SCOPE', import.meta.env.VITE_OAUTH_SCOPE) ?? '').trim()
     await applyOidcDiscovery(fallback, rawScope)
     _config = fallback
     return _config
   }
-
-  const controlPlaneUrl = (runtimeEnv('VITE_CONTROL_PLANE_URL', import.meta.env.VITE_CONTROL_PLANE_URL) ?? 'https://app.semantius.com').trim()
 
   if (controlPlaneUrl) {
     const tenantName = getTenantName()

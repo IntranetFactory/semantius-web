@@ -191,9 +191,12 @@ export function TablePagination<TData>({
                 }
               }
             }}
-            className="h-8 min-w-12 text-center"
+            className="h-8 text-center [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none [&::-webkit-outer-spin-button]:appearance-none"
             style={{
-              width: `${Math.max(String(totalPages).length, 2) + 1}ch`,
+              // Hug the content: reserve room for the widest page number
+              // (digits scale with the page count) plus the input's padding.
+              // The native spinner is removed above, so no extra gap remains.
+              width: `calc(${Math.max(String(totalPages).length, 1)}ch + 1.75rem)`,
             }}
             disabled={totalPages === 0 || isLoading || isFetching}
             aria-label={`Page ${currentPage} of ${totalPages}`}

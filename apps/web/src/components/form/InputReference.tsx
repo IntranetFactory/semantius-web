@@ -22,10 +22,10 @@ export function InputReference({
   const hidden = inputMode === 'hidden'
 
   // Get reference-specific config from schema prop
-  let fieldType = (schema as any)?.type
+  const fieldType = (schema as any)?.type
   let searchUrl = (schema as any)?.searchUrl
   let idUrl = (schema as any)?.idUrl
-  let getRecords = (schema as any)?.getRecords
+  const getRecords = (schema as any)?.getRecords
   let getRecordId = (schema as any)?.getRecordId ?? '${id}'
   let renderItem = (schema as any)?.renderItem ?? '${label}'
   let placeholder = (schema as any)?.placeholder || (label ? `Search ${label.toLowerCase()}...` : 'Search...')

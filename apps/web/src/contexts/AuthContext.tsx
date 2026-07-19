@@ -65,6 +65,84 @@ export interface RpcUserInfo {
   [key: string]: unknown
 }
 
+/**
+ * Build an Error from a failed fetch Response, capturing the HTTP status, URL and
+ * response body (parsed as JSON when possible) onto `error.cause`.
+ *
+ * ApiErrorDisplay renders `error.cause` in its expandable "Details" panel, so this
+ * is what surfaces the actual server payload — e.g. PostgREST's
+ * `{"message":"jwk not found"}` — instead of an empty `statusText` (HTTP/2 drops
+ * the reason phrase, so `response.statusText` is blank and useless on its own).
+ */
+async function responseError(label: string, response: Response): Promise<Error> {
+  const raw = await response.text().catch(() => '')
+  let body: unknown = raw
+  try {
+    body = raw ? JSON.parse(raw) : ''
+  } catch {
+    // Non-JSON body — keep the raw text as-is.
+  }
+  const statusText = response.statusText ? ` ${response.statusText}` : ''
+  return new Error(`${label}: ${response.status}${statusText}`, {
+    cause: { status: response.status, url: response.url, response: body },
+  })
+}
+
+// One-shot guard for the token self-heal below. sessionStorage (not local):
+// scoped to the tab, survives the OAuth redirect round-trip, and clears when the
+// tab closes. It caps auto-reauth at ONCE per session so a token refused for a
+// NON-transient reason (rotated signing keys, wrong tenant, clock skew) can never
+// drive an infinite logout→login loop. Reset on the next clean success.
+const REAUTH_ATTEMPTED_KEY = 'sc_reauth_attempted'
+
+// Well-known "this access token cannot be verified" signatures. The endpoints do
+// NOT use a consistent 401 — PostgREST answers 400 `{"message":"jwk not found"}`
+// for an unverifiable token and the OAuth userinfo endpoint answers 500 — so we
+// match the response body/message, not just the status.
+const TOKEN_REJECTION_RE =
+  /jwk not found|jwserror|not a valid jwt|invalid jwt|signature error|jwt expired|token .*expired|invalid[_ ]token|invalid access token/i
+
+/**
+ * Does this failed-fetch error mean the ACCESS TOKEN itself was refused (vs a
+ * transient network/server problem we must NOT log the user out over)? Reads the
+ * `{ status, response }` that responseError() captured onto error.cause.
+ */
+export function isTokenRejection(err: unknown): boolean {
+  if (!(err instanceof Error) || typeof err.cause !== 'object' || err.cause === null) return false
+  const cause = err.cause as { status?: number; response?: unknown }
+  if (cause.status === 401 || cause.status === 403) return true
+  const body = cause.response
+  const text =
+    typeof body === 'string'
+      ? body
+      : body && typeof body === 'object'
+        ? JSON.stringify(body)
+        : ''
+  return TOKEN_REJECTION_RE.test(text)
+}
+
+export type ReauthAction = 'reauth' | 'reset-guard' | 'show-error'
+
+/**
+ * Decide what to do after the userinfo/API fetches settle. Pure (no side effects)
+ * so it is unit-testable in isolation — the effect below maps the result to the
+ * actual storage writes / logIn() / error UI.
+ *
+ * - 'reauth'      — a token-rejection occurred AND we have not already retried
+ *                   this session → clear the token and re-authenticate once.
+ * - 'reset-guard' — every fetch succeeded → clear the one-shot guard so a stale
+ *                   token later in the same session can self-heal again.
+ * - 'show-error'  — a failure we must NOT auto-retry → render the error UI. This
+ *                   covers both the loop guard (already retried once) and
+ *                   transient / non-token errors (network, 5xx with no JWT signal).
+ */
+export function planTokenReauth(authErrors: unknown[], alreadyAttempted: boolean): ReauthAction {
+  const tokenRejected = authErrors.some(isTokenRejection)
+  if (tokenRejected && !alreadyAttempted) return 'reauth'
+  if (authErrors.length === 0) return 'reset-guard'
+  return 'show-error'
+}
+
 // Combined auth context type
 export interface AuthContextType extends IAuthContext {
   userInfo: UserInfo | null
@@ -142,6 +220,10 @@ function RouterContextUpdater({
   const [rpcUserInfoError, setRpcUserInfoError] = useState<Error | null>(null)
   const [isAuthReady, setIsAuthReady] = useState(false)
   const fetchedTokenRef = useRef<string | null>(null)
+  // Latest logIn() without making it an effect dependency (the OAuth lib
+  // recreates the function each render). Used by the token self-heal below.
+  const logInRef = useRef(oauthContext.logIn)
+  logInRef.current = oauthContext.logIn
 
   useLayoutEffect(() => {
     setInterceptorToken(token || null)
@@ -192,6 +274,9 @@ function RouterContextUpdater({
       setRpcUserInfoLoading(shouldFetchRpcUserInfo)
 
       const promises: Promise<boolean>[] = []
+      // Raw errors thrown by the fetches below, inspected after they settle to
+      // decide whether the token was rejected (→ self-heal) vs a transient error.
+      const authErrors: unknown[] = []
 
       if (shouldFetchOAuthUserInfo) {
         promises.push(
@@ -202,7 +287,7 @@ function RouterContextUpdater({
           })
             .then(async (response) => {
               if (!response.ok) {
-                throw new Error(`Failed to fetch user info: ${response.statusText}`)
+                throw await responseError('Failed to fetch user info', response)
               }
               const data = await response.json()
               setUserInfo(data)
@@ -210,6 +295,7 @@ function RouterContextUpdater({
             })
             .catch((error) => {
               console.error('Error fetching OAuth user info:', error)
+              authErrors.push(error)
               setUserInfoError(error instanceof Error ? error : new Error('Unknown error'))
               setUserInfo(null)
               return false
@@ -231,7 +317,7 @@ function RouterContextUpdater({
           })
             .then(async (response) => {
               if (!response.ok) {
-                throw new Error(`Failed to fetch RPC user info: ${response.statusText}`)
+                throw await responseError('Failed to fetch RPC user info', response)
               }
               const data = await response.json()
               setRpcUserInfo(data)
@@ -239,6 +325,7 @@ function RouterContextUpdater({
             })
             .catch((error) => {
               console.error('Error fetching RPC user info:', error)
+              authErrors.push(error)
               setRpcUserInfoError(error instanceof Error ? error : new Error('Unknown error'))
               setRpcUserInfo(null)
               return false
@@ -251,6 +338,36 @@ function RouterContextUpdater({
 
       if (promises.length > 0) {
         await Promise.all(promises)
+      }
+
+      // Self-heal a rejected token. If the stored token was refused because it
+      // can't be verified (e.g. PostgREST "jwk not found" — signed by a key the
+      // tenant no longer trusts; the classic symptom of a token left over from a
+      // different OAuth provider/build), clear it and re-authenticate ONCE.
+      //
+      // REAUTH_ATTEMPTED_KEY is the one-shot guard: once set, we do NOT retry —
+      // we fall through and show the error UI. This prevents an infinite
+      // logout→login loop when the *fresh* token is also rejected (a real,
+      // non-transient mismatch rather than mere staleness). It is reset only on a
+      // clean success, so genuine staleness later in the session can heal again.
+      const action = planTokenReauth(authErrors, !!sessionStorage.getItem(REAUTH_ATTEMPTED_KEY))
+      if (action === 'reauth') {
+        sessionStorage.setItem(REAUTH_ATTEMPTED_KEY, '1')
+        console.error(
+          '[auth] Stored access token was rejected during userinfo/API load; ' +
+            'clearing it and re-authenticating once.',
+          authErrors.filter(isTokenRejection).map((e) => (e as Error).cause),
+        )
+        // Clear the error state so the boxes don't flash before the redirect.
+        setUserInfoError(null)
+        setRpcUserInfoError(null)
+        // logIn() clearStorage()s the SC_<mode>_ token keys and redirects to the
+        // OAuth authorize endpoint — i.e. clear + retry, in a single call.
+        logInRef.current()
+        return
+      }
+      if (action === 'reset-guard') {
+        sessionStorage.removeItem(REAUTH_ATTEMPTED_KEY)
       }
 
       setIsAuthReady(true)

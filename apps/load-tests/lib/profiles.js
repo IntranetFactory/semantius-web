@@ -45,16 +45,22 @@ export function requestsPerIteration(profile) {
   return profile.actions.length
 }
 
-// Throughput mode (probe/sustain): fire every action back-to-back, no pauses.
-export function runThroughput(token, profile) {
-  for (const a of profile.actions) apiRequest(token, a.name, a.build())
+// Throughput mode (probe/sustain): fire every action back-to-back, no pauses. `tags` is passed
+// through to every request (the probe uses it to attribute requests to the current ramp step).
+export function runThroughput(token, profile, tags) {
+  for (const a of profile.actions) apiRequest(token, a.name, a.build(), tags)
 }
 
 // Session mode (users): one action, then think — repeated. Models a real person reading
 // between clicks, so one request per (think + active) regardless of how many actions.
-export function runSession(token, profile) {
+//
+// `tagsFor` is an optional callback invoked PER ACTION (not once per session) to tag that
+// request. It must be per-action because a session spans ~30s of wall time, so its requests can
+// fall on either side of a phase boundary — evaluating once per iteration would misattribute
+// most of them.
+export function runSession(token, profile, tagsFor) {
   for (const a of profile.actions) {
-    apiRequest(token, a.name, a.build())
+    apiRequest(token, a.name, a.build(), tagsFor ? tagsFor() : undefined)
     think()
   }
 }

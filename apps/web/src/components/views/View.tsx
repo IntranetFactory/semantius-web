@@ -223,7 +223,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
     : undefined
   const parentRecordPath = refTable && _pv ? `/${module_name}/${refTable}/${_pv}/view` : undefined
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   const navigatePreservingSearch = (opts: Record<string, unknown>) => {
     ;(navigate as any)({ ...opts, search: (prev: Record<string, unknown>) => prev })
   }
@@ -255,7 +255,7 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   }
 
   // Standalone mode detection: /module/entity/id/view or /module/entity/new
-  const standaloneViewMatch = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)\/view$`))
+  const standaloneViewMatch = pathname.match(new RegExp(`^${escapedViewName}/([^/]+)/view$`))
   const isStandaloneNew = pathname === `${view_name}/new`
   const isStandalone = !!standaloneViewMatch || isStandaloneNew
 
@@ -264,8 +264,8 @@ export function View({ moduleId: _moduleId, table_name: _table_name, recordId: _
   const CREATE_SEGMENT = 'create'
   const isCreateMode = pathname === `${view_name}/${CREATE_SEGMENT}`
 
-  const editMatch = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)\/edit$`))
-  const viewMatchResult = pathname.match(new RegExp(`^${escapedViewName}\/([^/]+)$`))
+  const editMatch = pathname.match(new RegExp(`^${escapedViewName}/([^/]+)/edit$`))
+  const viewMatchResult = pathname.match(new RegExp(`^${escapedViewName}/([^/]+)$`))
   // Exclude 'create' from being treated as a record ID
   const viewMatch =
     viewMatchResult && !editMatch && viewMatchResult[1] !== CREATE_SEGMENT

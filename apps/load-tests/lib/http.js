@@ -11,6 +11,20 @@ export function think() {
   sleep(THINK_MIN + Math.random() * (THINK_MAX - THINK_MIN))
 }
 
+// One-off random delay before a VU's FIRST request, spreading VU start times uniformly across
+// one user cycle (think + active). Without it `constant-vus` starts every VU simultaneously and
+// each fires immediately, so N users produce an N-deep burst at t=0 — e.g. 300 users hitting a
+// ~36 req/s backend with 300 concurrent requests, ~8x over its ceiling. The run's *average*
+// demand is well within budget, but the arrival pattern is a thundering herd, so the run errors
+// at startup and the herd stays partly in lockstep for several cycles afterwards.
+//
+// Must be uniform over [0, cycle) — NOT a plain think(), which shifts every VU by 8–12s and
+// leaves the herd fully intact. With a uniform phase offset each user still fires once per
+// cycle, but the aggregate arrival process is smooth, which is what real users look like.
+export function startupJitter() {
+  sleep(Math.random() * ((THINK_MIN + THINK_MAX) / 2))
+}
+
 // Neon PostgREST data API. Overridable via LOADTEST_API_HOST so the same tests can be
 // pointed at another instance without editing code.
 export const API_HOST =
@@ -44,18 +58,27 @@ function record(res, name) {
   return res
 }
 
+// Per-request timeout. k6's default is 60s, which is far too long for a saturation test: once
+// the backend starts queueing rather than rejecting, VUs sit blocked for a full minute, the
+// arrival-rate executor runs out of VUs, and the run reports a collapsed throughput that says
+// nothing about the real ceiling. A bounded timeout turns "queued past usefulness" into a
+// prompt failure — which is also what a real user would experience.
+export const REQ_TIMEOUT = __ENV.REQ_TIMEOUT || '15s'
+
 // Perform one tagged request from a descriptor `{ method, url, body? }` with the bearer token.
-// `name` tags the request so each action gets its own metric row in the summary. Handles GET
+// `name` tags the request so each action gets its own metric row in the summary. `extraTags`
+// adds further tags (the probe uses it to attribute each request to its ramp step). Handles GET
 // and POST (a `body` implies JSON). Returns the k6 response. This is the single request path
 // used by every profile action.
-export function apiRequest(token, name, req) {
+export function apiRequest(token, name, req, extraTags) {
   const params = {
     headers: {
       Authorization: `Bearer ${token}`,
       Accept: 'application/json',
       ...(req.body ? { 'Content-Type': 'application/json' } : {}),
     },
-    tags: { name },
+    tags: { name, ...extraTags },
+    timeout: REQ_TIMEOUT,
   }
   const res = req.method === 'POST' ? http.post(req.url, req.body, params) : http.get(req.url, params)
   return record(res, name)

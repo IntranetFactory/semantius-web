@@ -18,8 +18,10 @@
 #   ./load-test.sh users analytics 30 5     # 30 users, analytics profile, 5 minutes
 #   ./load-test.sh peak analytics 5         # peak req/s for the analytics profile
 #
-# Tunables (env vars): PROFILE, MINUTES, PROBE_RATE, PROBE_DURATION, MAX_VUS, THINK_MIN/MAX,
-# HEADROOM, LOADTEST_API_HOST. Trailing args (after scenario/profile/numbers) pass to `k6 run`.
+# Tunables (env vars): PROFILE, MINUTES, MAX_VUS, THINK_MIN/MAX, HEADROOM, LOADTEST_API_HOST,
+# REQ_TIMEOUT. Probe ramp: STEP_START, STEP_SIZE, STEP_COUNT, STEP_SECONDS, STEP_WARMUP; probe
+# SLO: MAX_ERROR_RATE, MAX_P95_MS, MIN_DELIVERY (see scenarios/probe.js).
+# Trailing args (after scenario/profile/numbers) pass to `k6 run`.
 #
 # Works on Windows Git Bash and the Linux sandbox alike.
 set -euo pipefail
@@ -92,6 +94,23 @@ run_phase() {
   echo ">>> ${label} finished: $(date '+%Y-%m-%d %H:%M:%S')  (elapsed $(($(date +%s) - start_epoch))s)"
 }
 
+# Surface the probe's own caveats. A ceiling the ramp never BRACKETED is not an answer: if every
+# rung passed the real peak is higher than anything probed, and if none passed the figure is a
+# floor. Both `peak` and `maxusers` build on that number, so both must say so rather than print a
+# confident value — silently trusting an unbracketed ceiling is exactly how a bogus figure spreads.
+warn_unbracketed() {
+  node -e "
+    const r = require('./.probe-result.json');
+    if (!r.ceilingFound) {
+      console.error('>>> WARNING: no rung met the SLO — the figure below is a FLOOR, not a ceiling.');
+      console.error('>>>          Check backend health, or lower STEP_START.');
+    } else if (r.reachedTop) {
+      console.error('>>> WARNING: every rung passed — the real ceiling is ABOVE what was probed.');
+      console.error('>>>          Re-run with STEP_COUNT / STEP_SIZE raised to bracket it.');
+    }
+  "
+}
+
 # `peak` is orchestrated (two chained runs), not a single scenario file.
 if [ "$SCENARIO" = "peak" ]; then
   MINUTES="${N1:-1}"
@@ -104,6 +123,7 @@ if [ "$SCENARIO" = "peak" ]; then
   fi
   PEAK_ITERS=$(node -e "const r=require('./.probe-result.json'); process.stdout.write(String(Math.max(1, Math.round(r.peakIters))))")
   SUCC_RPS=$(node -e "process.stdout.write(String(require('./.probe-result.json').successRps))")
+  warn_unbracketed
   echo ">>> Discovered peak ≈ ${SUCC_RPS} req/s → sustaining at ${PEAK_ITERS} iters/s for ${MINUTES} min"
   echo ">>> Phase 2/2 — sustaining at the discovered peak..."
   export RATE="$PEAK_ITERS"
@@ -138,13 +158,18 @@ if [ "$SCENARIO" = "maxusers" ]; then
   read -r SATURATION_USERS MAX_USERS < <(node -e "
     const r = require('./.probe-result.json');
     const avgThink = (Number(process.env.THINK_MIN) + Number(process.env.THINK_MAX)) / 2;
-    const activePerReq = Number(process.env.ACTIVE_PER_REQ || 0.5); // per-request active seconds
+    // Active seconds per request: prefer the latency actually MEASURED at the winning rung over
+    // the old 0.5s guess, which understated it whenever the ceiling sits in the elevated-latency
+    // region. ACTIVE_PER_REQ still overrides.
+    const measured = r.avgDurationMs ? r.avgDurationMs / 1000 : 0.5;
+    const activePerReq = Number(process.env.ACTIVE_PER_REQ || measured);
     const perUserRps = 1 / (avgThink + activePerReq);              // 1 request per (think+active)
     const saturation = r.successRps / perUserRps;                  // avg demand == ceiling
     const target = Math.max(1, Math.floor(saturation * Number(process.env.HEADROOM)));
     process.stdout.write(Math.max(1, Math.round(saturation)) + ' ' + target + '\n');
   ") || true
   SUCC_RPS=$(node -e "process.stdout.write(String(require('./.probe-result.json').successRps))")
+  warn_unbracketed
   echo ">>> Ceiling ${SUCC_RPS} req/s + ${THINK_MIN}-${THINK_MAX}s think → saturates ~${SATURATION_USERS} users, max ${MAX_USERS} (${HEADROOM} headroom)"
 
   # Include the profile token in the hints only when it is not the default, so they reproduce.
